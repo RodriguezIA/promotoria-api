@@ -1,6 +1,7 @@
 import db from "../config/database";
 import { Database } from "../core/database";
 import { Utils } from "../core/utils";
+import { RowDataPacket } from "mysql2/promise";
 
 interface CreateClientData {
     rfc?: string;
@@ -12,6 +13,18 @@ interface CreateClientData {
     zip?: string;
     adiccional_notes?: string;
 }
+
+interface TotalRow extends RowDataPacket {
+  total: number;
+}
+
+interface PromoterHeatmapRow extends RowDataPacket {
+  id_promoter: number;
+  vc_name: string;
+  dc_latitude: number;
+  dc_longitude: number;
+}
+
 
 export class Client {
     private db: Database = db;
@@ -84,6 +97,42 @@ export class Client {
             return clients.length > 0 ? clients[0] : null;
         } catch (error) {
             console.error("Error en getClientById: ", error);
+            throw error;
+        }
+    }
+
+    async getDashboardAnalytics(dateFrom: string, dateTo: string) {
+        try {
+            const totalClientsResult = await this.db.select<TotalRow[]>(`SELECT COUNT(*) AS total FROM clients`);
+            const totalClients = totalClientsResult[0]?.total || 0;
+
+            const totalUsuriosPromotoresResult = await this.db.select<TotalRow[]>(`SELECT COUNT(DISTINCT id_promoter) AS total FROM promoters`);
+            const totalUsuariosPromotores = totalUsuriosPromotoresResult[0]?.total || 0;
+
+            const totalStoresResult = await this.db.select<TotalRow[]>(`SELECT COUNT(*) AS total FROM stores`);
+            const totalStores = totalStoresResult[0]?.total || 0;
+
+            const activeUsersPromotoersResult = await this.db.select<TotalRow[]>(`SELECT COUNT(DISTINCT id_promoter) AS total FROM promoters WHERE b_active = 1 AND dt_last_login BETWEEN ? AND ?`, [dateFrom, dateTo]);
+            const activeUsersPromoters = activeUsersPromotoersResult[0]?.total || 0;
+
+            const heatmapPromoters = await this.db.select<PromoterHeatmapRow[]>(
+                `SELECT id_promoter, vc_name, f_latitude, f_longitude
+                FROM promoters
+                WHERE f_latitude IS NOT NULL AND f_longitude IS NOT NULL
+                ORDER BY dt_last_login DESC
+                LIMIT 100`
+            );
+
+            return {
+                totalClients,
+                totalUsuariosPromotores,
+                totalStores,
+                activeUsersPromoters,
+                heatmapPromoters,
+            };
+
+        } catch (error) {
+            console.error("Error en superAdminDashboard: ", error);
             throw error;
         }
     }

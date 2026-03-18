@@ -5,6 +5,7 @@ import { Client } from "./client";
 import { Store } from "./store";
 import { Question } from "./question";
 import { IStore } from "@/core/interfaces/store";
+import { NotificationService } from "@/services/notification.service";
 
 const superAdminRouter: Router = express.Router();
 const getUserModel = () => new User();
@@ -891,6 +892,65 @@ superAdminRouter.get("/questions-client/:id_question_client", async (req: Reques
     res.status(500).json({
       ok: false,
       error: "Error obteniendo asignación",
+      details: error instanceof Error ? error.message : String(error),
+    });
+  }
+});
+
+superAdminRouter.get('/analytics/dashboard', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { dateFrom, dateTo } = req.query;
+
+    if (!dateFrom || !dateTo) {
+      res.status(400).json({
+        ok: false,
+        error: 'dateFrom y dateTo son requeridos',
+      });
+      return;
+    }
+    const clientModel = getClientModel();
+    const analytics = await clientModel.getDashboardAnalytics(String(dateFrom), String(dateTo));
+
+    res.status(200).json({
+      ok: true,
+      message: 'Datos analíticos obtenidos exitosamente',
+      data: analytics,
+    });
+  } catch (error) {
+    res.status(500).json({
+      ok: false,
+      error: 'Error obteniendo datos analíticos',
+      details: error instanceof Error ? error.message : String(error),
+    });
+  }
+});
+
+
+// ==================== TEST PUSH NOTIFICATION ====================
+
+superAdminRouter.post("/test-push-notification", async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { fcm_token, title, body } = req.body;
+
+    if (!fcm_token) {
+      res.status(400).json({ ok: false, error: "fcm_token es requerido" });
+      return;
+    }
+
+    const result = await NotificationService.sendPushNotification(fcm_token, {
+      title: title || "Notificación de prueba",
+      body: body || "Esta es una notificación de prueba desde el servidor.",
+    });
+
+    res.status(200).json({
+      ok: true,
+      message: "Notificación enviada exitosamente",
+      data: result,
+    });
+  } catch (error) {
+    res.status(500).json({
+      ok: false,
+      error: "Error enviando notificación",
       details: error instanceof Error ? error.message : String(error),
     });
   }

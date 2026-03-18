@@ -8,10 +8,14 @@ import { QuestionAdmin } from './questionAdmin';
 import { QuotationAdmin } from './quotationAdmin';
 import { ServiceOrderAdmin } from './serviceOrderAdmin';
 import { ServiceAdmin } from './serviceAdmin';
+import { RequestAdmin } from './requestAdmin';
+import { OrderAdmin } from './orderAdmin';
+import { PromoterAdmin } from './promoterAdmin';
 
 import { upload, uploadExcel } from '../core/middleware/upload.middleware';
 
 import { CreateServicePayload } from "../core/interfaces/service";
+import admin from "@/config/firebase";
 
 const adminRouter: Router = express.Router();
 const getAdminUser = () => new UserAdmin();
@@ -21,6 +25,9 @@ const getAdminQuestion = () => new QuestionAdmin();
 const getAdminQuotation = () => new QuotationAdmin();
 const getAdminServiceOrder = () => new ServiceOrderAdmin();
 const getAdminService = () => new ServiceAdmin();
+const getRequestAdmin = () => new RequestAdmin();
+const getOrderAdmin = () => new OrderAdmin();
+const getPromoterAdmin = () => new PromoterAdmin();
 
 adminRouter.post(
   "/login",
@@ -684,7 +691,7 @@ adminRouter.get("/questions/:id_client/search/:search_term", async (req: Request
         const questionModel = getAdminQuestion();
         const questions = await questionModel.searchQuestionsForClient(
             Number(id_client),
-            search_term
+            String(search_term)
         );
 
         res.status(200).json({
@@ -1319,5 +1326,445 @@ adminRouter.post("/service", async (req: Request, res: Response): Promise<void> 
         });
     }
 });
+
+// ==========================================
+// RUTAS PARA SOLICITUDES (REQUESTS)
+// ==========================================
+
+// 1. CREAR NUEVA SOLICITUD
+adminRouter.post(
+  "/requests",
+  async (req: Request, res: Response): Promise<void> => {
+    let requestModel: RequestAdmin | null = null;
+    try {
+      // Extraemos el JSON que manda el frontend
+      const { id_cliente, nombre_solicitud, costo_total, productos } = req.body;
+
+      // OJO: Si tienes el id del usuario en el token (req.user), úsalo aquí. 
+      // Por ahora lo tomamos del body o le ponemos un valor por defecto para que no falle.
+      const id_user = req.body.id_user || 1; 
+
+      if (!id_cliente || !nombre_solicitud || !productos || !Array.isArray(productos)) {
+        res.status(400).json({ error: "Faltan datos obligatorios o el formato es incorrecto" });
+        return;
+      }
+
+      requestModel = getRequestAdmin();
+      const result = await requestModel.createRequest({
+        id_user,
+        id_cliente,
+        nombre_solicitud,
+        costo_total,
+        productos
+      });
+
+      res.status(201).json({
+        ok: true,
+        message: "Solicitud creada correctamente",
+        data: result,
+      });
+    } catch (error) {
+      console.error(error);
+      res.status(500).json({ ok: false, error: "Error creando la solicitud", details: error });
+    } finally {
+      requestModel = null;
+    }
+  }
+);
+
+// 2. OBTENER SOLICITUDES POR CLIENTE
+adminRouter.get(
+  "/requests/client/:id_client",
+  async (req: Request, res: Response): Promise<void> => {
+    let requestModel: RequestAdmin | null = null;
+    try {
+      const id_client = parseInt(String(req.params.id_client));
+
+      if (isNaN(id_client)) {
+        res.status(400).json({ error: "El id_client debe ser un número válido" });
+        return;
+      }
+
+      requestModel = getRequestAdmin();
+      const result = await requestModel.getRequestsByClient(id_client);
+
+      res.status(200).json({
+        ok: true,
+        data: result,
+      });
+    } catch (error) {
+      console.error(error);
+      res.status(500).json({ ok: false, error: "Error obteniendo las solicitudes", details: error });
+    } finally {
+      requestModel = null;
+    }
+  }
+);
+
+// 3. OBTENER DETALLE DE UNA SOLICITUD (Con productos y preguntas)
+adminRouter.get(
+  "/requests/:id_request",
+  async (req: Request, res: Response): Promise<void> => {
+    let requestModel: RequestAdmin | null = null;
+    try {
+      const id_request = parseInt(String(req.params.id_request));
+
+      if (isNaN(id_request)) {
+        res.status(400).json({ error: "El id_request debe ser un número válido" });
+        return;
+      }
+
+      requestModel = getRequestAdmin();
+      const result = await requestModel.getRequestById(id_request);
+
+      if (!result) {
+        res.status(404).json({ ok: false, error: "Solicitud no encontrada" });
+        return;
+      }
+
+      res.status(200).json({
+        ok: true,
+        data: result,
+      });
+    } catch (error) {
+      console.error(error);
+      res.status(500).json({ ok: false, error: "Error obteniendo el detalle de la solicitud", details: error });
+    } finally {
+      requestModel = null;
+    }
+  }
+);
+
+// ACTUALIZAR SOLICITUD COMPLETA (Productos y Preguntas)
+adminRouter.put(
+  "/requests/:id_request/full",
+  async (req: Request, res: Response): Promise<void> => {
+    let requestModel: RequestAdmin | null = null;
+    try {
+      const id_request = parseInt(String(req.params.id_request));
+      // Recibimos el mismo payload que usamos para Crear
+      const { id_cliente, nombre_solicitud, costo_total, productos } = req.body;
+      const id_user = req.body.id_user || 1;
+
+      if (isNaN(id_request)) {
+        res.status(400).json({ error: "El id_request debe ser un número válido" });
+        return;
+      }
+
+      if (!nombre_solicitud || !productos || !Array.isArray(productos)) {
+        res.status(400).json({ error: "Faltan datos obligatorios para la actualización completa" });
+        return;
+      }
+
+      requestModel = getRequestAdmin();
+      const result = await requestModel.updateFullRequest(id_request, {
+        id_user,
+        id_cliente,
+        nombre_solicitud,
+        costo_total,
+        productos
+      });
+
+      res.status(200).json({
+        ok: true,
+        data: result,
+      });
+    } catch (error) {
+      console.error(error);
+      res.status(500).json({ ok: false, error: "Error actualizando la solicitud completa", details: error });
+    } finally {
+      requestModel = null;
+    }
+  }
+);
+
+// 5. ELIMINAR SOLICITUD (Borrado lógico)
+adminRouter.delete(
+  "/requests/:id_request",
+  async (req: Request, res: Response): Promise<void> => {
+    let requestModel: RequestAdmin | null = null;
+    try {
+      const id_request = parseInt(String(req.params.id_request));
+
+      if (isNaN(id_request)) {
+        res.status(400).json({ error: "El id_request debe ser un número válido" });
+        return;
+      }
+
+      requestModel = getRequestAdmin();
+      const result = await requestModel.deleteRequest(id_request);
+
+      res.status(200).json({
+        ok: true,
+        data: result,
+      });
+    } catch (error) {
+      console.error(error);
+      res.status(500).json({ ok: false, error: "Error eliminando la solicitud", details: error });
+    } finally {
+      requestModel = null;
+    }
+  }
+);
+
+// interface CreateOrderPayload {
+//     id_user: number;
+//     id_client: number;
+//     id_request: number;
+//     stores: number[];
+// }
+
+adminRouter.post('/orders', async (req: Request, res: Response): Promise<void> => {
+  let orderModel: OrderAdmin | null = null;
+  try {
+    const { id_user, id_client, id_request, stores } = req.body;
+
+    orderModel = getOrderAdmin();
+    const result = await orderModel.createOrder({
+      id_user,
+      id_client,
+      id_request,
+      stores
+    });
+
+    res.status(201).json({
+      ok: true,
+      message: "Orden creada exitosamente",
+      data: result,
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ ok: false, error: "Error creando la orden", details: error });
+  } finally {
+    orderModel = null;
+  }
+});
+
+
+adminRouter.get('/orders/client/:id_client', async (req: Request, res: Response): Promise<void> => {
+  let orderModel: OrderAdmin | null = null;
+  try {
+    const id_client = parseInt(String(req.params.id_client));
+
+    if (isNaN(id_client)) {
+      res.status(400).json({ ok: false, error: "El id_client debe ser un número válido" });
+      return;
+    }
+
+    orderModel = getOrderAdmin();
+    const result = await orderModel.getOrdersByClient(id_client);
+
+    res.status(200).json({
+      ok: true,
+      data: result,
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ ok: false, error: "Error obteniendo los pedidos del cliente", details: error });
+  } finally {
+    orderModel = null;
+  }
+});
+
+// GET: Obtener el detalle de un pedido (incluyendo sus tareas)
+adminRouter.get('/orders/:id_order', async (req: Request, res: Response): Promise<void> => {
+  let orderModel: OrderAdmin | null = null;
+  try {
+    const id_order = parseInt(String(req.params.id_order));
+
+    if (isNaN(id_order)) {
+      res.status(400).json({ ok: false, error: "El id_order debe ser un número válido" });
+      return;
+    }
+
+    orderModel = getOrderAdmin();
+    const result = await orderModel.getOrderById(id_order);
+
+    if (!result) {
+      res.status(404).json({ ok: false, error: "Pedido no encontrado" });
+      return;
+    }
+
+    res.status(200).json({
+      ok: true,
+      data: result,
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ ok: false, error: "Error obteniendo el detalle del pedido", details: error });
+  } finally {
+    orderModel = null;
+  }
+});
+
+adminRouter.put('/admin/task/:id_task/assign', async (req: Request, res: Response): Promise<void> => {
+    let orderModel: OrderAdmin | null = null;
+    try {
+        const id_task = parseInt(String(req.params.id_task));
+        const { id_promoter } = req.body;
+        if (isNaN(id_task) || !id_promoter) {
+            res.status(400).json({ ok: false, error: "El id_task debe ser un número válido y se requiere id_promoter" });
+            return;
+        }
+        orderModel = getOrderAdmin();
+        const result = await orderModel.assignPromoterToTask(id_task, id_promoter);
+        res.status(200).json({ ok: true, data: result });
+    } catch (error) {
+      console.error(error);
+      res.status(500).json({ ok: false, error: "Error asignando tarea", details: error });
+    }
+});
+
+adminRouter.put('/admin/task/:id_task/reject', async (req: Request, res: Response): Promise<void> => {
+    let orderModel: OrderAdmin | null = null;
+    try {
+        const id_task = parseInt(String(req.params.id_task));
+        if (isNaN(id_task)) {
+            res.status(400).json({ ok: false, error: "El id_task debe ser un número válido" });
+            return;
+        }
+        orderModel = getOrderAdmin();
+        const result = await orderModel.rejectTask(id_task);
+        res.status(200).json({ ok: true, data: result });
+    } catch (error: any) {
+        console.error(error);
+        const isValidationError = error?.message?.includes("no está en estatus 5");
+        res.status(isValidationError ? 409 : 500).json({ ok: false, error: error?.message ?? "Error rechazando tarea" });
+    }
+});
+
+adminRouter.post('/promoters', async (req: Request, res: Response): Promise<void> => {
+    let promoterModel: PromoterAdmin | null = null;
+    try {
+        const { vc_name, vc_email, vc_password, vc_phone } = req.body;
+
+        if (!vc_name || !vc_email || !vc_password) {
+            res.status(400).json({ ok: false, error: "Nombre, email y contraseña son obligatorios" });
+            return;
+        }
+
+        promoterModel = getPromoterAdmin();
+        const result = await promoterModel.createPromoter({ vc_name, vc_email, vc_password, vc_phone });
+
+        res.status(201).json({ ok: true, data: result });
+    } catch (error: any) {
+        console.error(error);
+        res.status(500).json({ ok: false, error: error.message || "Error creando promotor" });
+    } finally {
+        promoterModel = null;
+    }
+});
+
+// 2. OBTENER TODOS LOS PROMOTORES
+adminRouter.get('/promoters', async (req: Request, res: Response): Promise<void> => {
+    let promoterModel: PromoterAdmin | null = null;
+    try {
+        promoterModel = getPromoterAdmin();
+        const result = await promoterModel.getAllPromoters();
+
+        res.status(200).json({ ok: true, data: result });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ ok: false, error: "Error obteniendo promotores" });
+    } finally {
+        promoterModel = null;
+    }
+});
+
+// 3. OBTENER UN PROMOTOR POR ID
+adminRouter.get('/promoters/:id', async (req: Request, res: Response): Promise<void> => {
+    let promoterModel: PromoterAdmin | null = null;
+    try {
+        const id = parseInt(String(req.params.id));
+        if (isNaN(id)) {
+            res.status(400).json({ ok: false, error: "ID inválido" });
+            return;
+        }
+
+        promoterModel = getPromoterAdmin();
+        const result = await promoterModel.getPromoterById(id);
+
+        if (!result) {
+            res.status(404).json({ ok: false, error: "Promotor no encontrado" });
+            return;
+        }
+
+        res.status(200).json({ ok: true, data: result });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ ok: false, error: "Error obteniendo el promotor" });
+    } finally {
+        promoterModel = null;
+    }
+});
+
+// 4. ACTUALIZAR PROMOTOR
+adminRouter.put('/promoters/:id', async (req: Request, res: Response): Promise<void> => {
+    let promoterModel: PromoterAdmin | null = null;
+    try {
+        const id = parseInt(String(req.params.id));
+        const { vc_name, vc_phone, b_active } = req.body;
+
+        if (isNaN(id)) {
+            res.status(400).json({ ok: false, error: "ID inválido" });
+            return;
+        }
+
+        promoterModel = getPromoterAdmin();
+        const result = await promoterModel.updatePromoter(id, { vc_name, vc_phone, b_active });
+
+        res.status(200).json({ ok: true, data: result });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ ok: false, error: "Error actualizando el promotor" });
+    } finally {
+        promoterModel = null;
+    }
+});
+
+// 5. ELIMINAR PROMOTOR (Borrado lógico)
+adminRouter.delete('/promoters/:id', async (req: Request, res: Response): Promise<void> => {
+    let promoterModel: PromoterAdmin | null = null;
+    try {
+        const id = parseInt(String(req.params.id));
+        if (isNaN(id)) {
+            res.status(400).json({ ok: false, error: "ID inválido" });
+            return;
+        }
+
+        promoterModel = getPromoterAdmin();
+        const result = await promoterModel.deletePromoter(id);
+
+        res.status(200).json({ ok: true, data: result });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ ok: false, error: "Error eliminando el promotor" });
+    } finally {
+        promoterModel = null;
+    }
+});
+
+adminRouter.post('/promoters/login', async (req: Request, res: Response): Promise<void> => {
+    let promoterModel: PromoterAdmin | null = null;
+    try {
+        const { vc_phone, vc_password, vc_fcm_token, f_latitude, f_longitude } = req.body;
+
+        if (!vc_phone || !vc_password) {
+            res.status(400).json({ ok: false, error: "El teléfono y la contraseña son obligatorios" });
+            return;
+        }
+
+        promoterModel = new PromoterAdmin();
+        const result = await promoterModel.loginPromoter(vc_phone, vc_password, vc_fcm_token || null, f_latitude ?? null, f_longitude ?? null);
+
+        res.status(200).json({ ok: true, data: result });
+    } catch (error: any) {
+        console.error(error);
+        res.status(401).json({ ok: false, error: error.message || "Credenciales inválidas" });
+    } finally {
+        promoterModel = null;
+    }
+});
+
 
 export default adminRouter;

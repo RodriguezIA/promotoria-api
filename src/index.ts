@@ -13,6 +13,8 @@ import {
 
 import adminRouter from "./app_admin/index";
 import superadminRouter from "./app_superadmin/index";
+import mobileRouter from "./app_mobile/index";
+import { startNearbyTaskNotificationJob } from "./jobs/nearby-task-notification.job";
 
 dotenv.config();
 const app: Express = express();
@@ -27,6 +29,7 @@ app.use(responseLogger);
 
 app.use("/retailink-api/superadmin", superadminRouter);
 app.use("/retailink-api/admin", adminRouter);
+app.use("/retailink-api/mobile", mobileRouter);
 app.use(notFoundHandler);
 app.use(errorHandler);
 
@@ -38,6 +41,8 @@ const startServer = async () => {
       console.log(`API is accessible at http://localhost:${PORT}`);
       console.log(`Local network access: http://[TU_IP_LOCAL]:${PORT}`);
     });
+
+    startNearbyTaskNotificationJob();
   } catch (error) {
     console.error("Error starting server:", error);
   }
