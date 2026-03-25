@@ -221,6 +221,39 @@ export class User {
     }
   }
 
+  async changePassword(userId: number, currentPassword: string, newPassword: string) {
+    try {
+      const [result]: any[] = await this.db.query(
+        "SELECT id_user, email, password, name FROM users WHERE id_user = ? LIMIT 1",
+        [userId],
+      );
+      const user = result[0];
+      if (!user) {
+        throw new Error("Usuario no encontrado");
+      }
+
+      const isValid = await Utils.compare_password(currentPassword, user.password);
+      if (!isValid) {
+        throw new Error("Contraseña actual incorrecta");
+      }
+
+      const hashedPassword = await Utils.hash_password(newPassword);
+      await this.updatePassword(userId, hashedPassword);
+
+      await Utils.sendEmail(
+        user.email,
+        "Contraseña Actualizada",
+        getPasswordChangedTemplate(user.name),
+      );
+
+      await Utils.registerUserLog(this.db, userId, "Contraseña cambiada exitosamente");
+
+      return { message: "Contraseña actualizada exitosamente" };
+    } catch (error) {
+      throw error;
+    }
+  }
+
   async updatePassword(userId: number, hashedPassword: string) {
     const query = `
       UPDATE users
@@ -293,6 +326,161 @@ export class User {
       return user;
     } catch (error) {
       throw error;
+    }
+  }
+
+  async getUsersByClient(id_client: number): Promise<IUser[]> {
+    try {
+      const [result]: any[] = await this.db.query(
+        "SELECT id_user, email, name, lastname, i_rol, i_status, dt_register, dt_updated FROM users WHERE id_client = ? ORDER BY name ASC",
+        [id_client]
+      );
+      return result;
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  async updateUserEmail(userId: number, email: string) {
+    try {
+      const existing = await this.db.select<RowDataPacket[]>(
+        "SELECT id_user FROM users WHERE email = ? AND id_user != ?",
+        [email, userId]
+      );
+      if (existing.length > 0) {
+        throw new Error("El correo electrónico ya está en uso");
+      }
+      await this.db.query("UPDATE users SET email = ? WHERE id_user = ?", [email, userId]);
+      await Utils.registerUserLog(this.db, userId, `Email actualizado a: ${email}`);
+      return await this.getUserById(userId);
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  async updateUserProfile(userId: number, name: string, lastname: string) {
+    try {
+      await this.db.query(
+        "UPDATE users SET name = ?, lastname = ? WHERE id_user = ?",
+        [name, lastname, userId]
+      );
+      await Utils.registerUserLog(this.db, userId, "Perfil actualizado");
+      return await this.getUserById(userId);
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  async updateUserRol(userId: number, i_rol: number) {
+    try {
+      await this.db.query("UPDATE users SET i_rol = ? WHERE id_user = ?", [i_rol, userId]);
+      await Utils.registerUserLog(this.db, userId, `Rol actualizado a: ${i_rol}`);
+      return await this.getUserById(userId);
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  async resetUserPassword(userId: number, newPassword: string) {
+    try {
+      const user = await this.getUserById(userId);
+      const hashedPassword = await Utils.hash_password(newPassword);
+      await this.updatePassword(userId, hashedPassword);
+      await Utils.sendEmail(
+        user.email,
+        "Contraseña Actualizada",
+        getPasswordChangedTemplate(user.name),
+      );
+      await Utils.registerUserLog(this.db, userId, "Contraseña restablecida por administrador");
+      return { message: "Contraseña restablecida exitosamente" };
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  async deactivateUser(userId: number) {
+    try {
+      await this.db.query("UPDATE users SET i_status = 0 WHERE id_user = ?", [userId]);
+      await Utils.registerUserLog(this.db, userId, "Usuario desactivado");
+      return { message: "Usuario desactivado exitosamente" };
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  async activateUser(userId: number) {
+    try {
+      await this.db.query("UPDATE users SET i_status = 1 WHERE id_user = ?", [userId]);
+      await Utils.registerUserLog(this.db, userId, "Usuario activado");
+      return { message: "Usuario activado exitosamente" };
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  async getCountriesList(){
+    try {
+      const query = `SELECT id, name FROM countries WHERE is_active = 1 ORDER BY name ASC`;
+      const rows = await this.db.select<RowDataPacket[]>(query);
+      return rows;
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  async getCountryById(id_country: number){
+    try {
+      const query = `SELECT id, name FROM countries WHERE id = ? AND is_active = 1 LIMIT 1`;
+      const rows = await this.db.select<RowDataPacket[]>(query
+        , [id_country]);
+      return rows.length > 0 ? rows[0] : null;
+    }
+    catch (error) {
+      throw error;
+    }
+  }
+
+
+  async getStatesList(id_country: number){
+    try {
+        const query = `SELECT id, name FROM states WHERE id_country = ? AND is_active = 1 ORDER BY name ASC`;
+        const rows = await this.db.select<RowDataPacket[]>(query, [id_country]);
+        return rows;
+    } catch (error) {
+        throw error;
+    }
+  }
+
+  async getStateById(id_state: number){
+    try {
+        const query = `SELECT id, id_country, name FROM states WHERE id = ? AND is_active = 1 LIMIT 1`; 
+        const rows = await this.db.select<RowDataPacket[]>(query
+        , [id_state]);
+        return rows.length > 0 ? rows[0] : null;
+    } catch (error) {
+        throw error;
+    }
+  }
+
+
+  async getCitiesList(id_country: number, id_state: number){
+    try {
+        const query = `SELECT id, name FROM cities WHERE id_country = ? AND id_state = ? AND is_active = 1 ORDER BY name ASC`;
+        const rows = await this.db.select<RowDataPacket[]>(query, [id_country, id_state]);
+        return rows;
+    } catch (error) {
+        throw error;
+    }
+  }
+
+  async getCityById(id_city: number){
+    try {
+        const query = `SELECT id, id_country, id_state, name FROM cities WHERE id = ? AND is_active = 1 LIMIT 1`; 
+        const rows = await this.db.select<RowDataPacket[]>(query
+        , [id_city]);
+        return rows.length > 0 ? rows[0] : null;
+    } catch (error) {
+        throw error;
     }
   }
 }

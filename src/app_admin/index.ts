@@ -13,6 +13,7 @@ import { OrderAdmin } from './orderAdmin';
 import { PromoterAdmin } from './promoterAdmin';
 
 import { upload, uploadExcel } from '../core/middleware/upload.middleware';
+import { authMiddleware } from '../core/middleware/auth.middleware';
 
 import { CreateServicePayload } from "../core/interfaces/service";
 import admin from "@/config/firebase";
@@ -133,6 +134,197 @@ adminRouter.post(
         details: errorMessage,
         success: false,
       });
+    }
+  },
+);
+
+adminRouter.get(
+  "/profile",
+  authMiddleware,
+  async (req: Request, res: Response): Promise<void> => {
+    try {
+      const userId = req.user!.id;
+      const userModel = getAdminUser();
+      const user = await userModel.getUserById(userId);
+
+      res.status(200).json({ ok: true, data: user });
+    } catch (error) {
+      console.error(error);
+      res.status(500).json({ ok: false, error: "Error al obtener perfil", details: error instanceof Error ? error.message : String(error) });
+    }
+  },
+);
+
+adminRouter.get(
+  "/users/client/:id_client",
+  authMiddleware,
+  async (req: Request, res: Response): Promise<void> => {
+    try {
+      const id_client = parseInt(req.params.id_client as string);
+      const userModel = getAdminUser();
+      const users = await userModel.getUsersByClient(id_client);
+      res.status(200).json({ ok: true, data: users });
+    } catch (error) {
+      console.error(error);
+      res.status(500).json({ ok: false, error: error instanceof Error ? error.message : String(error) });
+    }
+  },
+);
+
+adminRouter.put(
+  "/users/:id/email",
+  authMiddleware,
+  async (req: Request, res: Response): Promise<void> => {
+    try {
+      const userId = parseInt(req.params.id as string);
+      const { email } = req.body;
+      if (!email) {
+        res.status(400).json({ ok: false, error: "Email es requerido" });
+        return;
+      }
+      const userModel = getAdminUser();
+      const user = await userModel.updateUserEmail(userId, email);
+      res.status(200).json({ ok: true, data: user });
+    } catch (error) {
+      console.error(error);
+      const msg = error instanceof Error ? error.message : String(error);
+      const status = msg.includes("ya está en uso") ? 409 : 500;
+      res.status(status).json({ ok: false, error: msg });
+    }
+  },
+);
+
+adminRouter.put(
+  "/users/:id/profile",
+  authMiddleware,
+  async (req: Request, res: Response): Promise<void> => {
+    try {
+      const userId = parseInt(req.params.id as string);
+      const { name, lastname } = req.body;
+      if (!name || !lastname) {
+        res.status(400).json({ ok: false, error: "name y lastname son requeridos" });
+        return;
+      }
+      const userModel = getAdminUser();
+      const user = await userModel.updateUserProfile(userId, name, lastname);
+      res.status(200).json({ ok: true, data: user });
+    } catch (error) {
+      console.error(error);
+      res.status(500).json({ ok: false, error: error instanceof Error ? error.message : String(error) });
+    }
+  },
+);
+
+adminRouter.put(
+  "/users/:id/rol",
+  authMiddleware,
+  async (req: Request, res: Response): Promise<void> => {
+    try {
+      const userId = parseInt(req.params.id as string);
+      const { i_rol } = req.body;
+      if (i_rol === undefined || i_rol === null) {
+        res.status(400).json({ ok: false, error: "i_rol es requerido" });
+        return;
+      }
+      const userModel = getAdminUser();
+      const user = await userModel.updateUserRol(userId, i_rol);
+      res.status(200).json({ ok: true, data: user });
+    } catch (error) {
+      console.error(error);
+      res.status(500).json({ ok: false, error: error instanceof Error ? error.message : String(error) });
+    }
+  },
+);
+
+adminRouter.put(
+  "/users/:id/password",
+  authMiddleware,
+  async (req: Request, res: Response): Promise<void> => {
+    try {
+      const userId = parseInt(req.params.id as string);
+      const { newPassword } = req.body;
+      if (!newPassword) {
+        res.status(400).json({ ok: false, error: "newPassword es requerido" });
+        return;
+      }
+      if (newPassword.length < 6) {
+        res.status(400).json({ ok: false, error: "La contraseña debe tener al menos 6 caracteres" });
+        return;
+      }
+      const userModel = getAdminUser();
+      const result = await userModel.resetUserPassword(userId, newPassword);
+      res.status(200).json({ ok: true, message: result.message });
+    } catch (error) {
+      console.error(error);
+      res.status(500).json({ ok: false, error: error instanceof Error ? error.message : String(error) });
+    }
+  },
+);
+
+adminRouter.delete(
+  "/users/:id",
+  authMiddleware,
+  async (req: Request, res: Response): Promise<void> => {
+    try {
+      const userId = parseInt(req.params.id as string);
+      const userModel = getAdminUser();
+      const result = await userModel.deactivateUser(userId);
+      res.status(200).json({ ok: true, message: result.message });
+    } catch (error) {
+      console.error(error);
+      res.status(500).json({ ok: false, error: error instanceof Error ? error.message : String(error) });
+    }
+  },
+);
+
+adminRouter.put(
+  "/users/:id/activate",
+  authMiddleware,
+  async (req: Request, res: Response): Promise<void> => {
+    try {
+      const userId = parseInt(req.params.id as string);
+      const userModel = getAdminUser();
+      const result = await userModel.activateUser(userId);
+      res.status(200).json({ ok: true, message: result.message });
+    } catch (error) {
+      console.error(error);
+      res.status(500).json({ ok: false, error: error instanceof Error ? error.message : String(error) });
+    }
+  },
+);
+
+adminRouter.post(
+  "/change-password",
+  authMiddleware,
+  async (req: Request, res: Response): Promise<void> => {
+    try {
+      const { currentPassword, newPassword } = req.body;
+      const userId = req.user!.id;
+
+      if (!currentPassword || !newPassword) {
+        res.status(400).json({ error: "Contraseña actual y nueva contraseña son requeridas" });
+        return;
+      }
+
+      if (newPassword.length < 6) {
+        res.status(400).json({ error: "La nueva contraseña debe tener al menos 6 caracteres" });
+        return;
+      }
+
+      const userModel = getAdminUser();
+      const result = await userModel.changePassword(userId, currentPassword, newPassword);
+
+      res.status(200).json({ message: result.message, success: true });
+    } catch (error) {
+      console.error(error);
+      const errorMessage = error instanceof Error ? error.message : String(error);
+
+      if (errorMessage.includes("incorrecta")) {
+        res.status(401).json({ error: errorMessage, success: false });
+        return;
+      }
+
+      res.status(500).json({ error: "Error al cambiar contraseña", details: errorMessage, success: false });
     }
   },
 );
@@ -1766,5 +1958,49 @@ adminRouter.post('/promoters/login', async (req: Request, res: Response): Promis
     }
 });
 
+adminRouter.get('/countries', async (req: Request, res: Response): Promise<void> => {
+    let userModel: UserAdmin | null = null;
+    try {
+        userModel = new UserAdmin();
+        const result = await userModel.getCountriesList();
+        res.status(200).json({ ok: true, data: result });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ ok: false, error: "Error obteniendo lista de países", error_details: error instanceof Error ? error.message : String(error) });
+    } finally {
+        userModel = null;
+    }
+});
+
+adminRouter.get('/states/:id_country', async (req: Request, res: Response): Promise<void> => {
+    let userModel: UserAdmin | null = null;
+    try {
+        const id_country = parseInt(req.params.id_country as string);
+        userModel = new UserAdmin();
+        const result = await userModel.getStatesList(id_country);
+        res.status(200).json({ ok: true, data: result });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ ok: false, error: "Error obteniendo lista de estados", error_details: error instanceof Error ? error.message : String(error) });
+    } finally {
+        userModel = null;
+    }
+});
+
+adminRouter.get('/cities/:id_country/:id_state', async (req: Request, res: Response): Promise<void> => {
+    let userModel: UserAdmin | null = null;
+    try {
+        const id_country = parseInt(req.params.id_country as string);
+        const id_state = parseInt(req.params.id_state as string);
+        userModel = new UserAdmin();
+        const result = await userModel.getCitiesList(id_country, id_state);
+        res.status(200).json({ ok: true, data: result });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ ok: false, error: "Error obteniendo lista de ciudades", error_details: error instanceof Error ? error.message : String(error) });
+    } finally {
+        userModel = null;
+    }
+});
 
 export default adminRouter;

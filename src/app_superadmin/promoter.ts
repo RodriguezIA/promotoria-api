@@ -1,5 +1,6 @@
 import db from "../config/database";
 import { Database } from "../core/database";
+import { Utils } from "../core/utils";
 
 export interface CreatePromoterData {
     vc_name: string;
@@ -45,6 +46,7 @@ export class Promoter {
                 data.vc_phone
             ]);
 
+            await Utils.registerPromoterLog(this.db, result.insertId, 0, `Promotor creado: ${data.vc_name}`);
             return {
                 id_promoter: result.insertId,
                 message: "Promotor creado exitosamente"
@@ -152,7 +154,7 @@ export class Promoter {
 
             const query = `UPDATE promoters SET ${fields.join(", ")} WHERE id_promoter = ?`;
             await this.db.execute(query, values);
-
+            await Utils.registerPromoterLog(this.db, id_promoter, 0, "Promotor actualizado");
             return { success: true, message: "Promotor actualizado exitosamente" };
         } catch (error) {
             console.error("Error en updatePromoter: ", error);
@@ -165,10 +167,7 @@ export class Promoter {
         try {
             const query = `UPDATE promoters SET b_active = 0 WHERE id_promoter = ?`;
             await this.db.execute(query, [id_promoter]);
-
-            // Nota: Podrías querer validar si tiene tareas "En progreso" antes de borrarlo,
-            // pero por ahora el borrado lógico es seguro.
-
+            await Utils.registerPromoterLog(this.db, id_promoter, 0, "Promotor dado de baja (borrado lógico)");
             return { success: true, message: "Promotor dado de baja exitosamente" };
         } catch (error) {
             console.error("Error en deletePromoter: ", error);

@@ -40,7 +40,9 @@ export class Service {
                 throw new Error("No se pudo obtener el ID del servicio registrado.");
             }
             
-            return serviceRows[0].id_service;
+            const id_service = serviceRows[0].id_service;
+            await Utils.registerServiceLog(this.db, id_service, payload.id_user, `Servicio registrado, folio: ${vc_folio}`, { id_negocio: payload.id_client });
+            return id_service;
         } catch (error) {
             console.log("f.registerService: ", error);
         }

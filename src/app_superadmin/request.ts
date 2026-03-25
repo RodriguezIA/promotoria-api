@@ -78,8 +78,7 @@ export class Request {
                 }
             }
 
-            // Registro opcional en bitácora si tienes un método similar al de productos
-            // await Utils.registerLog(this.db, idRequest, data.id_user, `Solicitud creada: ${data.nombre_solicitud}`);
+            await Utils.registerRequestLog(this.db, idRequest, data.id_user, `Solicitud creada: ${data.nombre_solicitud}`, { id_negocio: data.id_cliente });
 
             if (commit) {
                 await this.db.commit();
@@ -217,6 +216,8 @@ export class Request {
                 }
             }
 
+            await Utils.registerRequestLog(this.db, id_request, data.id_user, `Solicitud actualizada: ${data.nombre_solicitud}`, { id_negocio: data.id_cliente });
+
             if (commit) {
                 await this.db.commit();
             }
@@ -248,8 +249,7 @@ export class Request {
             const queryProd = `UPDATE request_products SET b_active = 0, dt_update = NOW() WHERE id_request = ?`;
             await this.db.execute(queryProd, [id_request]);
 
-            // Nota: Podrías hacer un JOIN para desactivar las preguntas también, 
-            // pero al estar inactivo el producto padre, suele ser suficiente a nivel de lógica de negocio.
+            await Utils.registerRequestLog(this.db, id_request, 0, "Solicitud eliminada (borrado lógico)");
 
             if (commit) {
                 await this.db.commit();

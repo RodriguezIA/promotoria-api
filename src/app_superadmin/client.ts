@@ -3,6 +3,8 @@ import { Database } from "../core/database";
 import { Utils } from "../core/utils";
 import { RowDataPacket } from "mysql2/promise";
 
+import { Address } from './address';
+
 interface CreateClientData {
     rfc?: string;
     email?: string;
@@ -12,6 +14,22 @@ interface CreateClientData {
     state?: string;
     zip?: string;
     adiccional_notes?: string;
+    address_details?: create_address_payload;
+    vc_initialism?: string;
+}
+
+interface create_address_payload {
+    id_pais: number;
+    id_estado: number;
+    id_ciudad: number;
+    street: string;
+    ext_number: string;
+    int_number?: string;
+    zip_code?: string;
+    neighborhood?: string;
+    address_references?: string;
+    latitude?: number;
+    longitude?: number;
 }
 
 interface TotalRow extends RowDataPacket {
@@ -33,9 +51,10 @@ export class Client {
 
     async createClient(id_user: number, name: string, data: CreateClientData = {}) {
         let commit = false;
+        let addressModel: Address | null = null;
         try {
             if(!this.db.inTransaction){
-                this.db.beginTransaction();
+                await this.db.beginTransaction();
                 commit = true;
             }
 
@@ -44,7 +63,7 @@ export class Client {
             const placeholders = ['?', '?'];
 
             const optionalFields: (keyof CreateClientData)[] = [
-                'rfc', 'email', 'phone', 'address', 'city', 'adiccional_notes'
+                'rfc', 'email', 'phone', 'address', 'city', 'adiccional_notes', 'vc_initialism'
             ];
 
             for (const field of optionalFields) {
@@ -57,10 +76,28 @@ export class Client {
 
             const query = `INSERT INTO clients (${fields.join(', ')}) VALUES (${placeholders.join(', ')})`;
             const result = await this.db.execute(query, values);
-
             const clientId = result.insertId;
 
             await Utils.registerClienteLog(this.db, clientId, id_user, "Cliente creado");
+
+            // Registrar dirección
+            if (data.address_details) {
+                addressModel = new Address();
+                addressModel.setDb(this.db);
+                await addressModel.createAddress({
+                    entity_type: 'client',
+                    entity_id: clientId,
+                    id_country: data.address_details.id_pais,
+                    id_state: data.address_details.id_estado,
+                    id_city: data.address_details.id_ciudad,
+                    street: data.address_details.street,
+                    ext_number: data.address_details.ext_number,
+                    int_number: data.address_details.int_number,
+                    neighborhood: data.address_details.neighborhood,
+                    postal_code: data.address_details.zip_code ?? ''
+                });
+                addressModel = null;
+            }
 
             if(commit){
                 await this.db.commit();
@@ -76,6 +113,8 @@ export class Client {
                 await this.db.rollback();
             }
             throw error;
+        } finally {
+            addressModel = null;
         }
     }
 
@@ -133,6 +172,16 @@ export class Client {
 
         } catch (error) {
             console.error("Error en superAdminDashboard: ", error);
+            throw error;
+        }
+    }
+
+    async updateClientFiscalUrl(id_client: number, url: string) {
+        try {
+            const query = `UPDATE clients SET vc_url_situacion_fiscal = ? WHERE id_client = ?`;
+            const result = await this.db.query(query, [url, id_client]);
+            return result;
+        } catch (error) {
             throw error;
         }
     }

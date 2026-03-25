@@ -76,6 +76,7 @@ superAdminRouter.post(
   "/create-client",
   async (req: Request, res: Response): Promise<void> => {
     let clientModel: Client | null = null;
+    let userModel: User | null = null;
     try {
       const { 
         id_user, 
@@ -87,7 +88,16 @@ superAdminRouter.post(
         city,
         state,
         zip,
-        adiccional_notes
+        adiccional_notes,
+        id_pais,
+        id_estado,
+        id_ciudad,
+        street,
+        ext_number,
+        int_number,
+        zip_code,
+        neighborhood,
+        address_references,
       } = req.body;
 
       if (!id_user || !name) {
@@ -96,6 +106,9 @@ superAdminRouter.post(
       }
 
       clientModel = getClientModel();
+
+      const vc_initialism = name.split(' ').map((word: string) => word.charAt(0).toUpperCase()).join('');
+
       const result = await clientModel.createClient(id_user, name, {
         rfc,
         email,
@@ -104,7 +117,19 @@ superAdminRouter.post(
         city,
         state,
         zip,
-        adiccional_notes
+        vc_initialism,
+        adiccional_notes,
+        address_details: {
+          id_pais,
+          id_estado,
+          id_ciudad,
+          street,
+          ext_number,
+          int_number,
+          zip_code,
+          neighborhood,
+          address_references,
+        }
       });
 
       res.status(201).json({

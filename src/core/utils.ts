@@ -40,6 +40,13 @@ interface FolioRow extends RowDataPacket {
   i_folio?: number;
 }
 
+// Opciones adicionales de contexto para todos los logs
+export interface LogOptions {
+  id_promotor?: number; // 0 si la acción la hizo un usuario admin, número si fue un promotor
+  id_negocio?: number;  // id_client del contexto del negocio, 0 si no aplica
+  id_pais?: number;     // id del país de contexto, 0 si no aplica
+}
+
 export class Utils {
   static db: Database = db;
 
@@ -47,24 +54,19 @@ export class Utils {
     db: Database,
     userId: number,
     log: string,
+    opts: LogOptions = {},
   ): Promise<void> {
+    const { id_promotor = 0, id_negocio = 0, id_pais = 0 } = opts;
     let commit = false;
     try {
-      if (!db.inTransaction) {
-        await db.beginTransaction();
-        commit = true;
-      }
+      if (!db.inTransaction) { await db.beginTransaction(); commit = true; }
       await db.query(
-        "INSERT INTO user_logs (id_user, `log`, i_status) VALUES (?, ?, 1)",
-        [userId, log],
+        "INSERT INTO user_logs (id_usuario, vc_log, id_promotor, id_negocio, id_pais, i_status) VALUES (?, ?, ?, ?, ?, 1)",
+        [userId, log, id_promotor, id_negocio, id_pais],
       );
-      if (commit) {
-        await db.commit();
-      }
+      if (commit) await db.commit();
     } catch (error) {
-      if (commit) {
-        await db.rollback();
-      }
+      if (commit) await db.rollback();
       throw error;
     }
   }
@@ -74,26 +76,19 @@ export class Utils {
     clientId: number,
     userId: number,
     log: string,
+    opts: LogOptions = {},
   ): Promise<void> {
+    const { id_promotor = 0, id_negocio = clientId, id_pais = 0 } = opts;
     let commit = false;
     try {
-      if (!db.inTransaction) {
-        await db.beginTransaction();
-        commit = true;
-      }
-
-      const query =
-        "INSERT INTO client_logs (id_client, id_user, `log`, i_status) VALUES (?, ?, ?, 1)";
-      const params = [clientId, userId, log];
-      await db.execute(query, params);
-
-      if (commit) {
-        await db.commit();
-      }
+      if (!db.inTransaction) { await db.beginTransaction(); commit = true; }
+      await db.execute(
+        "INSERT INTO client_logs (id_client, id_usuario, vc_log, id_promotor, id_negocio, id_pais, i_status) VALUES (?, ?, ?, ?, ?, ?, 1)",
+        [clientId, userId, log, id_promotor, id_negocio, id_pais],
+      );
+      if (commit) await db.commit();
     } catch (error) {
-      if (commit) {
-        await db.rollback();
-      }
+      if (commit) await db.rollback();
       throw error;
     }
   }
@@ -103,24 +98,19 @@ export class Utils {
     storeId: number,
     userId: number,
     log: string,
+    opts: LogOptions = {},
   ): Promise<void> {
+    const { id_promotor = 0, id_negocio = 0, id_pais = 0 } = opts;
     let commit = false;
     try {
-      if (!db.inTransaction) {
-        await db.beginTransaction();
-        commit = true;
-      }
+      if (!db.inTransaction) { await db.beginTransaction(); commit = true; }
       await db.query(
-        "INSERT INTO store_logs (id_store, id_user, `log`, i_status) VALUES (?, ?, ?, 1)",
-        [storeId, userId, log],
+        "INSERT INTO store_logs (id_store, id_usuario, vc_log, id_promotor, id_negocio, id_pais, i_status) VALUES (?, ?, ?, ?, ?, ?, 1)",
+        [storeId, userId, log, id_promotor, id_negocio, id_pais],
       );
-      if (commit) {
-        await db.commit();
-      }
+      if (commit) await db.commit();
     } catch (error) {
-      if (commit) {
-        await db.rollback();
-      }
+      if (commit) await db.rollback();
       throw error;
     }
   }
@@ -130,24 +120,19 @@ export class Utils {
     questionId: number,
     userId: number,
     log: string,
+    opts: LogOptions = {},
   ): Promise<void> {
+    const { id_promotor = 0, id_negocio = 0, id_pais = 0 } = opts;
     let commit = false;
     try {
-      if (!db.inTransaction) {
-        await db.beginTransaction();
-        commit = true;
-      }
+      if (!db.inTransaction) { await db.beginTransaction(); commit = true; }
       await db.query(
-        "INSERT INTO question_logs (id_question, id_user, `log`, i_status) VALUES (?, ?, ?, 1)",
-        [questionId, userId, log],
+        "INSERT INTO question_logs (id_question, id_usuario, vc_log, id_promotor, id_negocio, id_pais, i_status) VALUES (?, ?, ?, ?, ?, ?, 1)",
+        [questionId, userId, log, id_promotor, id_negocio, id_pais],
       );
-      if (commit) {
-        await db.commit();
-      }
+      if (commit) await db.commit();
     } catch (error) {
-      if (commit) {
-        await db.rollback();
-      }
+      if (commit) await db.rollback();
       throw error;
     }
   }
@@ -157,24 +142,19 @@ export class Utils {
     questionClientId: number,
     userId: number,
     log: string,
+    opts: LogOptions = {},
   ): Promise<void> {
+    const { id_promotor = 0, id_negocio = 0, id_pais = 0 } = opts;
     let commit = false;
     try {
-      if (!db.inTransaction) {
-        await db.beginTransaction();
-        commit = true;
-      }
+      if (!db.inTransaction) { await db.beginTransaction(); commit = true; }
       await db.query(
-        "INSERT INTO question_client_logs (id_question_client, id_user, `log`, i_status) VALUES (?, ?, ?, 1)",
-        [questionClientId, userId, log],
+        "INSERT INTO question_client_logs (id_question_client, id_usuario, vc_log, id_promotor, id_negocio, id_pais, i_status) VALUES (?, ?, ?, ?, ?, ?, 1)",
+        [questionClientId, userId, log, id_promotor, id_negocio, id_pais],
       );
-      if (commit) {
-        await db.commit();
-      }
+      if (commit) await db.commit();
     } catch (error) {
-      if (commit) {
-        await db.rollback();
-      }
+      if (commit) await db.rollback();
       throw error;
     }
   }
@@ -184,26 +164,122 @@ export class Utils {
     productId: number,
     userId: number,
     log: string,
+    opts: LogOptions = {},
   ): Promise<void> {
+    const { id_promotor = 0, id_negocio = 0, id_pais = 0 } = opts;
     let commit = false;
     try {
-      if (!db.inTransaction) {
-        await db.beginTransaction();
-        commit = true;
-      }
+      if (!db.inTransaction) { await db.beginTransaction(); commit = true; }
       await db.query(
-        "INSERT INTO product_logs (id_product, id_user, `log`, i_status) VALUES (?, ?, ?, 1)",
-        [productId, userId, log],
+        "INSERT INTO product_logs (id_product, id_usuario, vc_log, id_promotor, id_negocio, id_pais, i_status) VALUES (?, ?, ?, ?, ?, ?, 1)",
+        [productId, userId, log, id_promotor, id_negocio, id_pais],
       );
-      if (commit) {
-        await db.commit();
-      }
+      if (commit) await db.commit();
     } catch (error) {
-      if (commit) {
-        await db.rollback();
-      }
+      if (commit) await db.rollback();
       throw error;
     }
+  }
+
+  static async registerQuotationLog(
+    db: Database,
+    quotationId: number,
+    userId: number,
+    log: string,
+    i_type: 1 | 2 = 1,
+    opts: LogOptions = {},
+  ): Promise<void> {
+    const { id_promotor = 0, id_negocio = 0, id_pais = 0 } = opts;
+    await db.execute(
+      "INSERT INTO quotation_logs (id_quotation, id_usuario, vc_log, i_type, id_promotor, id_negocio, id_pais) VALUES (?, ?, ?, ?, ?, ?, ?)",
+      [quotationId, userId, log, i_type, id_promotor, id_negocio, id_pais],
+    );
+  }
+
+  static async registerServiceOrderLog(
+    db: Database,
+    serviceOrderId: number,
+    userId: number,
+    log: string,
+    i_type: 1 | 2 = 1,
+    opts: LogOptions = {},
+  ): Promise<void> {
+    const { id_promotor = 0, id_negocio = 0, id_pais = 0 } = opts;
+    await db.execute(
+      "INSERT INTO service_order_logs (id_service_order, id_usuario, vc_log, i_type, id_promotor, id_negocio, id_pais) VALUES (?, ?, ?, ?, ?, ?, ?)",
+      [serviceOrderId, userId, log, i_type, id_promotor, id_negocio, id_pais],
+    );
+  }
+
+  static async registerTicketLog(
+    db: Database,
+    ticketId: number,
+    userId: number,
+    log: string,
+    i_type: 1 | 2 = 1,
+    opts: LogOptions = {},
+  ): Promise<void> {
+    const { id_promotor = 0, id_negocio = 0, id_pais = 0 } = opts;
+    await db.execute(
+      "INSERT INTO ticket_logs (id_ticket, id_usuario, vc_log, i_type, id_promotor, id_negocio, id_pais) VALUES (?, ?, ?, ?, ?, ?, ?)",
+      [ticketId, userId, log, i_type, id_promotor, id_negocio, id_pais],
+    );
+  }
+
+  static async registerRequestLog(
+    db: Database,
+    requestId: number,
+    userId: number,
+    log: string,
+    opts: LogOptions = {},
+  ): Promise<void> {
+    const { id_promotor = 0, id_negocio = 0, id_pais = 0 } = opts;
+    await db.execute(
+      "INSERT INTO request_logs (id_request, id_usuario, vc_log, id_promotor, id_negocio, id_pais) VALUES (?, ?, ?, ?, ?, ?)",
+      [requestId, userId, log, id_promotor, id_negocio, id_pais],
+    );
+  }
+
+  static async registerOrderLog(
+    db: Database,
+    orderId: number,
+    userId: number,
+    log: string,
+    opts: LogOptions = {},
+  ): Promise<void> {
+    const { id_promotor = 0, id_negocio = 0, id_pais = 0 } = opts;
+    await db.execute(
+      "INSERT INTO order_logs (id_order, id_usuario, vc_log, id_promotor, id_negocio, id_pais) VALUES (?, ?, ?, ?, ?, ?)",
+      [orderId, userId, log, id_promotor, id_negocio, id_pais],
+    );
+  }
+
+  static async registerPromoterLog(
+    db: Database,
+    promoterId: number,
+    userId: number,
+    log: string,
+    opts: LogOptions = {},
+  ): Promise<void> {
+    const { id_negocio = 0, id_pais = 0 } = opts;
+    await db.execute(
+      "INSERT INTO promoter_logs (id_promotor, id_usuario, vc_log, id_negocio, id_pais) VALUES (?, ?, ?, ?, ?)",
+      [promoterId, userId, log, id_negocio, id_pais],
+    );
+  }
+
+  static async registerServiceLog(
+    db: Database,
+    serviceId: number,
+    userId: number,
+    log: string,
+    opts: LogOptions = {},
+  ): Promise<void> {
+    const { id_promotor = 0, id_negocio = 0, id_pais = 0 } = opts;
+    await db.execute(
+      "INSERT INTO service_logs (id_service, id_usuario, vc_log, id_promotor, id_negocio, id_pais) VALUES (?, ?, ?, ?, ?, ?)",
+      [serviceId, userId, log, id_promotor, id_negocio, id_pais],
+    );
   }
 
   static async hash_password(password_unsecured: string): Promise<string> {
