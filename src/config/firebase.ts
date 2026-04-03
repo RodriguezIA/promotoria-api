@@ -1,4 +1,4 @@
-import * as admin from 'firebase-admin';
+import admin from 'firebase-admin';
 import dotenv from 'dotenv';
 
 dotenv.config();
@@ -23,5 +23,5 @@ if (!admin.apps.length) {
   }
 }
 
-export const messaging = admin.messaging();
+export const messaging: admin.messaging.Messaging = admin.messaging();
 export default admin;

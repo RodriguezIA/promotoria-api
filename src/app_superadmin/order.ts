@@ -62,6 +62,10 @@ export class Order {
                 await this.db.commit();
             }
 
+            console.log("llega aqui?`");
+
+            await Utils.add_job_to_process_task_notificacions_queue(idOrder);
+
             return {
                 id_order: idOrder,
                 total_tasks: data.stores.length,

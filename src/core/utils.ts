@@ -1,14 +1,16 @@
 import dotenv from "dotenv";
 import bcrypt from "bcrypt";
-import * as jwt from "jsonwebtoken";
+import jwt from "jsonwebtoken";
+
 import { RowDataPacket } from "mysql2/promise";
 import { EmailService } from "./services/email/EmailService";
 
-import { Database } from "./database";
 import db from "../config/database";
+import { Database } from "./database";
+import { process_task_notificacions_queue } from "./bullmq/queue";
+
 
 dotenv.config();
-
 const JWT_SECRET = process.env.JWT_SECRET || "tu_clave_secreta_super_segura";
 
 export interface TokenPayload {
@@ -306,10 +308,7 @@ export class Utils {
     }
   }
 
-  static generate_token(
-    payload: TokenPayload,
-    _expiresIn: string = "30d",
-  ): string {
+  static generate_token(payload: TokenPayload, _expiresIn: string = "30d"): string {
     return jwt.sign(payload, JWT_SECRET, {
       expiresIn: "30d",
     });
@@ -396,93 +395,91 @@ export class Utils {
     return new Promise(resolve => setTimeout(resolve, ms));
   }
 
+  /**
+   * Obtiene el siguiente folio disponible SIN crear registro
+   * Solo consulta cuál sería el siguiente número
+  */
+  static async getCurrentFolio(id_client: number, i_type: number = 1): Promise<string> {
+    try {
+      const getClient = "SELECT vc_initialism FROM clients WHERE id_client = ? LIMIT 1";
+      const clientRows = await this.db.select<ClientRow[]>(getClient, [id_client]);
+      
+      if (!clientRows || clientRows.length === 0) {
+        throw new Error(`Client ${id_client} not found`);
+      }
+
+      const initialism = clientRows[0].vc_initialism;
+
+      // Obtener el ÚLTIMO folio registrado para este cliente/tipo
+      const getLastFolio = `
+        SELECT i_folio 
+        FROM folios 
+        WHERE id_client = ? AND i_type = ? 
+        ORDER BY i_folio DESC 
+        LIMIT 1
+      `;
+      const lastFolioRows = await this.db.select<FolioRow[]>(getLastFolio, [id_client, i_type]);
+
+      let nextFolio: number;
+
+      if (!lastFolioRows || lastFolioRows.length === 0) {
+        // Si no existe ningún folio, el siguiente será 1
+        nextFolio = 1;
+      } else {
+        // El siguiente es el último + 1
+        nextFolio = lastFolioRows[0].i_folio! + 1;
+      }
+
+      const formattedFolio = `${initialism}${String(nextFolio).padStart(5, '0')}`;
+      return formattedFolio;
+
+    } catch (error) {
+      console.error("Error getting current folio:", error);
+      throw error;
+    }
+  }
 
   /**
- * Obtiene el siguiente folio disponible SIN crear registro
- * Solo consulta cuál sería el siguiente número
- */
-static async getCurrentFolio(id_client: number, i_type: number = 1): Promise<string> {
-  try {
-    const getClient = "SELECT vc_initialism FROM clients WHERE id_client = ? LIMIT 1";
-    const clientRows = await this.db.select<ClientRow[]>(getClient, [id_client]);
-    
-    if (!clientRows || clientRows.length === 0) {
-      throw new Error(`Client ${id_client} not found`);
+   * Registra/inserta un nuevo folio usado en la base de datos
+   * Cada ticket tendrá su propio registro en la tabla folios
+  */
+  static async updateFolioCounter(id_client: number, i_type: number = 1): Promise<number> {
+    try {
+      const getLastFolio = `SELECT i_folio FROM folios WHERE id_client = ? AND i_type = ? ORDER BY i_folio DESC LIMIT 1`;
+      const lastFolioRows = await this.db.select<FolioRow[]>(getLastFolio, [id_client, i_type]);
+
+      let newFolioNumber: number;
+
+      if (!lastFolioRows || lastFolioRows.length === 0) {
+        newFolioNumber = 1;
+      } else {
+        newFolioNumber = lastFolioRows[0].i_folio! + 1;
+      }
+
+      const insertFolio = `INSERT INTO folios (id_client, i_type, i_folio, i_before_folio, i_next_folio) VALUES (?, ?, ?, ?, ?)`;
+      await this.db.execute(insertFolio, [
+        id_client, 
+        i_type, 
+        newFolioNumber,
+        newFolioNumber - 1,
+        newFolioNumber + 1
+      ]);
+
+      return newFolioNumber;
+
+    } catch (error) {
+      console.error("Error inserting folio record:", error);
+      throw error;
     }
-
-    const initialism = clientRows[0].vc_initialism;
-
-    // Obtener el ÚLTIMO folio registrado para este cliente/tipo
-    const getLastFolio = `
-      SELECT i_folio 
-      FROM folios 
-      WHERE id_client = ? AND i_type = ? 
-      ORDER BY i_folio DESC 
-      LIMIT 1
-    `;
-    const lastFolioRows = await this.db.select<FolioRow[]>(getLastFolio, [id_client, i_type]);
-
-    let nextFolio: number;
-
-    if (!lastFolioRows || lastFolioRows.length === 0) {
-      // Si no existe ningún folio, el siguiente será 1
-      nextFolio = 1;
-    } else {
-      // El siguiente es el último + 1
-      nextFolio = lastFolioRows[0].i_folio! + 1;
-    }
-
-    const formattedFolio = `${initialism}${String(nextFolio).padStart(5, '0')}`;
-    return formattedFolio;
-
-  } catch (error) {
-    console.error("Error getting current folio:", error);
-    throw error;
   }
-}
 
-/**
- * Registra/inserta un nuevo folio usado en la base de datos
- * Cada ticket tendrá su propio registro en la tabla folios
- */
-static async updateFolioCounter(id_client: number, i_type: number = 1): Promise<number> {
-  try {
-    // Obtener el último folio registrado
-    const getLastFolio = `
-      SELECT i_folio 
-      FROM folios 
-      WHERE id_client = ? AND i_type = ? 
-      ORDER BY i_folio DESC 
-      LIMIT 1
-    `;
-    const lastFolioRows = await this.db.select<FolioRow[]>(getLastFolio, [id_client, i_type]);
-
-    let newFolioNumber: number;
-
-    if (!lastFolioRows || lastFolioRows.length === 0) {
-      newFolioNumber = 1;
-    } else {
-      newFolioNumber = lastFolioRows[0].i_folio! + 1;
+  static async add_job_to_process_task_notificacions_queue(taskId: number): Promise<void> {
+    try {
+      await process_task_notificacions_queue.add("send_task_notification", { taskId });
+      console.log(`Job added to task_notifications queue for task ${taskId}`);
+    } catch (error) {
+      console.error("Error adding job to queue:", error);
+      throw error;
     }
-
-    // INSERTAR un NUEVO registro para este folio
-    const insertFolio = `
-      INSERT INTO folios (id_client, i_type, i_folio, i_before_folio, i_next_folio) 
-      VALUES (?, ?, ?, ?, ?)
-    `;
-    await this.db.execute(insertFolio, [
-      id_client, 
-      i_type, 
-      newFolioNumber,
-      newFolioNumber - 1,
-      newFolioNumber + 1
-    ]);
-
-    return newFolioNumber;
-
-  } catch (error) {
-    console.error("Error inserting folio record:", error);
-    throw error;
   }
-}
 }

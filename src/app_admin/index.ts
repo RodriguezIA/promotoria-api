@@ -45,6 +45,8 @@ adminRouter.post(
       userModel = getAdminUser();
       const result = await userModel.loginSuperAdmin(vc_username, vc_password);
 
+      console.log("Super admin inició sesión:", result);
+
       res.status(201).json({
         message: "Super admin inicio session correctamente",
         data: result,
@@ -85,9 +87,7 @@ adminRouter.post(
   },
 );
 
-adminRouter.post(
-  "/reset-password",
-  async (req: Request, res: Response): Promise<void> => {
+adminRouter.post("/reset-password", async (req: Request, res: Response): Promise<void> => {
     try {
       const { token, newPassword } = req.body;
 
@@ -113,19 +113,14 @@ adminRouter.post(
         success: true,
       });
     } catch (error) {
-      console.error(error);
-      const errorMessage =
-        error instanceof Error ? error.message : String(error);
+      const errorMessage = error instanceof Error ? error.message : String(error);
 
-      // Errores específicos con códigos apropiados
-      if (
-        errorMessage.includes("Token inválido") ||
-        errorMessage.includes("expirado")
-      ) {
+      if (errorMessage.includes("Token inválido") || errorMessage.includes("expirado")) {
         res.status(401).json({
           error: errorMessage,
           success: false,
         });
+        
         return;
       }
 

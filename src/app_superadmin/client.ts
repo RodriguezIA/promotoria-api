@@ -1,6 +1,8 @@
 import db from "../config/database";
-import { Database } from "../core/database";
+
 import { Utils } from "../core/utils";
+import { prisma } from "../core/prisma";
+import { Database } from "../core/database";
 import { RowDataPacket } from "mysql2/promise";
 
 import { Address } from './address';
@@ -49,9 +51,15 @@ export class Client {
 
     constructor(){}
 
+    setDb(db: Database) {
+        this.db = db;
+    }
+
+
     async createClient(id_user: number, name: string, data: CreateClientData = {}) {
         let commit = false;
         let addressModel: Address | null = null;
+
         try {
             if(!this.db.inTransaction){
                 await this.db.beginTransaction();
@@ -120,7 +128,7 @@ export class Client {
 
     async getClients() {
         try {
-            const query = `SELECT id_client, name, i_status, dt_register, dt_updated, rfc, email, phone FROM clients`;
+            const query = `SELECT id_client, name, i_status, dt_register, dt_updated, rfc, email, phone FROM clients WHERE i_status = 1`;
             const clients = await this.db.select(query);
             return clients;
         } catch (error) {
@@ -182,6 +190,37 @@ export class Client {
             const result = await this.db.query(query, [url, id_client]);
             return result;
         } catch (error) {
+            throw error;
+        }
+    }
+
+    async deleteClient(id_client: number, id_user: number): Promise<{ ok: boolean; message: string }> {
+        try {
+            await prisma.$transaction(async (tx) => {
+
+                const promotor = await tx.clients.findUnique({ where: { id_client: id_client }});
+
+                if(!promotor){
+                    throw new Error("Cliente no encontrado");
+                }
+
+                await tx.clients.update({
+                    where: { id_client },
+                    data: { i_status: 0 }
+                });
+
+                // TODO: obtener el id_usuario para el log
+                await tx.client_logs.create({
+                    data: {
+                        id_client,
+                        id_user,
+                        log: "Cliente eliminado",
+                    }
+                });
+            });
+            return { ok: true, message: "Cliente eliminado correctamente" };
+        } catch (error) {
+            console.error("Error en deleteClient: ", error);
             throw error;
         }
     }

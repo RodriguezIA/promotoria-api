@@ -48,7 +48,7 @@ export class FirebaseNotificationProvider {
     return admin.messaging().send(message);
   }
 
-  static async sendToTokens(tokens: string[], payload: FCMNotificationPayload) {
+  static async sendToTokens(tokens: string[], payload: FCMNotificationPayload): Promise<admin.messaging.BatchResponse> {
     if (!admin.apps.length) throw new Error('Firebase Admin no inicializado');
     if (tokens.length === 0) return { successCount: 0, failureCount: 0, responses: [] };
     const message: admin.messaging.MulticastMessage = {

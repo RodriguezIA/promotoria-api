@@ -1,14 +1,19 @@
+import "dotenv/config";
 import express, { Express } from "express";
-import dotenv from "dotenv";
+import { createBullBoard } from "@bull-board/api";
+import { BullMQAdapter } from "@bull-board/api/bullMQAdapter";
+import { ExpressAdapter } from "@bull-board/express";
+// import dotenv from "dotenv";
 import cors from "cors";
 import helmet from "helmet";
 import morgan from "morgan";
 
-import {
-  responseLogger,
-  errorHandler,
-  notFoundHandler,
-} from "./core/middleware/error.middleware";
+
+// import {
+//   responseLogger,
+//   errorHandler,
+//   notFoundHandler,
+// } from "./core/middleware/error.middleware";
 
 
 import adminRouter from "./app_admin/index";
@@ -16,7 +21,23 @@ import superadminRouter from "./app_superadmin/index";
 import mobileRouter from "./app_mobile/index";
 import { startNearbyTaskNotificationJob } from "./jobs/nearby-task-notification.job";
 
-dotenv.config();
+// WORKERS bullmq
+import "./core/bullmq/workers";
+
+import { process_task_notificacions_queue } from "./core/bullmq/queue";
+
+const serverAdapter = new ExpressAdapter();
+serverAdapter.setBasePath("/admin/queues");
+
+createBullBoard({
+    queues: [
+        new BullMQAdapter(process_task_notificacions_queue),
+        // agrega más colas aquí cuando las tengas
+    ],
+    serverAdapter,
+});
+
+// dotenv.config();
 const app: Express = express();
 const PORT = parseInt(process.env.PORT || "3000", 10);
 
@@ -25,13 +46,18 @@ app.use(helmet());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(morgan("dev"));
-app.use(responseLogger);
+// app.use(responseLogger);
 
 app.use("/retailink-api/superadmin", superadminRouter);
 app.use("/retailink-api/admin", adminRouter);
 app.use("/retailink-api/mobile", mobileRouter);
-app.use(notFoundHandler);
-app.use(errorHandler);
+app.use("/admin/queues", serverAdapter.getRouter());
+// app.use(notFoundHandler);
+// app.use(errorHandler);
+
+
+
+
 
 const startServer = async () => {
   try {

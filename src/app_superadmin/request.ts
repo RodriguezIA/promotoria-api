@@ -37,10 +37,7 @@ export class Request {
             }
 
             // Paso 1: Insertar la cabecera de la solicitud (requests)
-            const queryRequest = `
-                INSERT INTO requests (id_user, id_client, vc_name, f_value, dt_register, dt_update, id_status) 
-                VALUES (?, ?, ?, ?, NOW(), NOW(), 1)
-            `;
+            const queryRequest = `INSERT INTO requests (id_user, id_client, vc_name, f_value, dt_register, dt_update, id_status) VALUES (?, ?, ?, ?, NOW(), NOW(), 1)`;
             const resultRequest = await this.db.execute(queryRequest, [
                 data.id_user,
                 data.id_cliente,
@@ -52,10 +49,7 @@ export class Request {
 
             // Paso 2: Iterar e insertar los productos (request_products)
             for (const prod of data.productos) {
-                const queryProduct = `
-                    INSERT INTO request_products (id_request, id_product, f_subtotal, dt_register, dt_update, b_active) 
-                    VALUES (?, ?, ?, NOW(), NOW(), 1)
-                `;
+                const queryProduct = `INSERT INTO request_products (id_request, id_product, f_subtotal, dt_register, dt_update, b_active) VALUES (?, ?, ?, NOW(), NOW(), 1)`;
                 const resultProduct = await this.db.execute(queryProduct, [
                     idRequest,
                     prod.id_product,
@@ -66,10 +60,7 @@ export class Request {
 
                 // Paso 3: Iterar e insertar las preguntas de este producto (request_product_questions)
                 for (const preg of prod.preguntas) {
-                    const queryQuestion = `
-                        INSERT INTO request_product_questions (id_request_product, id_question, f_value, dt_register, dt_update, b_active) 
-                        VALUES (?, ?, ?, NOW(), NOW(), 1)
-                    `;
+                    const queryQuestion = `INSERT INTO request_product_questions (id_request_product, id_question, f_value, dt_register, dt_update, b_active) VALUES (?, ?, ?, NOW(), NOW(), 1)`;
                     await this.db.execute(queryQuestion, [
                         idRequestProduct,
                         preg.id_pregunta,
@@ -83,6 +74,7 @@ export class Request {
             if (commit) {
                 await this.db.commit();
             }
+
 
             return {
                 id: idRequest,

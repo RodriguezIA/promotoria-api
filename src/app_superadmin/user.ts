@@ -65,11 +65,11 @@ export class User {
       };
       const token = Utils.generate_token(tokenPayload);
 
-      await Utils.registerUserLog(
-        this.db,
-        user.id_user!,
-        "Usuario inició sesión"
-      );
+      // await Utils.registerUserLog(
+      //   this.db,
+      //   user.id_user!,
+      //   "Usuario inició sesión"
+      // );
 
       const { password: _, ...userWithoutPassword } = user;
 
@@ -94,7 +94,10 @@ export class User {
         id: user.id_user!,
         email: user.email,
       });
+
+
       const expiresAt = new Date(Date.now() + 3600000);
+
       await this.updateResetToken(user.id_user!, token, expiresAt);
 
       // Crear link de recuperación
@@ -161,7 +164,6 @@ export class User {
     }
   }
 
-  // Método para verificar el token y cambiar la contraseña
   async resetPasswordWithToken(token: string, newPassword: string) {
     try {
       const user_data = await this.getUserByResetToken(token);
@@ -170,10 +172,7 @@ export class User {
         throw new Error("Token inválido o expirado");
       }
 
-      if (
-        user_data.reset_password_token !== token ||
-        new Date(user_data.reset_password_expires!) < new Date()
-      ) {
+      if (user_data.reset_password_token !== token || new Date(user_data.reset_password_expires!) < new Date()) {
         throw new Error("El token ha expirado");
       }
 
@@ -187,11 +186,12 @@ export class User {
         getPasswordChangedTemplate(user_data.name),
       );
 
-      await Utils.registerUserLog(
-        this.db,
-        user_data.id_user,
-        "Contraseña restablecida exitosamente"
-      );
+      // TODO actualizar esto despues
+      // await Utils.registerUserLog(
+      //   this.db,
+      //   user_data.id_user,
+      //   "Contraseña restablecida exitosamente"
+      // );
 
       return {
         message: "Contraseña actualizada exitosamente",

@@ -6,7 +6,11 @@
       "Bash(del \"c:\\\\Users\\\\Edgar\\\\Documents\\\\software_dev\\\\RetaiLink-Api\\\\src\\\\core\\\\interfaces\\\\negocio.ts\")",
       "Bash(del \"c:\\\\Users\\\\Edgar\\\\Documents\\\\software_dev\\\\RetaiLink-Api\\\\src\\\\core\\\\interfaces\\\\establecimiento.ts\")",
       "Bash(del \"c:\\\\Users\\\\Edgar\\\\Documents\\\\software_dev\\\\RetaiLink-Api\\\\src\\\\core\\\\interfaces\\\\usuarios.ts\")",
-      "Bash(npx tsc:*)"
+      "Bash(npx tsc:*)",
+      "Bash(npx ts-node:*)",
+      "Bash(npm install:*)",
+      "Bash(npx prisma:*)",
+      "Bash(npx tsx:*)"
     ],
     "deny": [],
     "ask": []

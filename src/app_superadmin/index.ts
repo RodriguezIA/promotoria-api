@@ -7,6 +7,8 @@ import { Question } from "./question";
 import { IStore } from "@/core/interfaces/store";
 import { NotificationService } from "@/services/notification.service";
 
+import { authMiddleware } from "../core/middleware/auth.middleware";
+
 const superAdminRouter: Router = express.Router();
 const getUserModel = () => new User();
 const getClientModel = () => new Client();
@@ -72,23 +74,32 @@ superAdminRouter.post(
   },
 );
 
-superAdminRouter.post(
-  "/create-client",
-  async (req: Request, res: Response): Promise<void> => {
-    let clientModel: Client | null = null;
-    let userModel: User | null = null;
-    try {
-      const { 
-        id_user, 
-        name,
-        rfc,
-        email,
-        phone,
-        address,
-        city,
-        state,
-        zip,
-        adiccional_notes,
+
+superAdminRouter.post("/create-client", async (req: Request, res: Response): Promise<void> => {
+  let clientModel: Client | null = null;
+  try {
+    const { id_user, name, rfc, email, phone, address, city, state, zip, adiccional_notes, id_pais, id_estado, id_ciudad, street, ext_number, int_number, zip_code, neighborhood, address_references } = req.body;
+
+    if (!id_user || !name) {
+      res.status(400).json({ error: "Es necesario iniciar session y el nombre para crear un cliente" });
+      return;
+    }
+
+    clientModel = getClientModel();
+
+    const vc_initialism = name.split(' ').map((word: string) => word.charAt(0).toUpperCase()).join('');
+
+    const result = await clientModel.createClient(id_user, name, {
+      rfc,
+      email,
+      phone,
+      address,
+      city,
+      state,
+      zip,
+      vc_initialism,
+      adiccional_notes,
+      address_details: {
         id_pais,
         id_estado,
         id_ciudad,
@@ -98,52 +109,67 @@ superAdminRouter.post(
         zip_code,
         neighborhood,
         address_references,
-      } = req.body;
-
-      if (!id_user || !name) {
-        res.status(400).json({ error: "id_user y name son requeridos" });
-        return;
       }
+    });
 
-      clientModel = getClientModel();
-
-      const vc_initialism = name.split(' ').map((word: string) => word.charAt(0).toUpperCase()).join('');
-
-      const result = await clientModel.createClient(id_user, name, {
-        rfc,
-        email,
-        phone,
-        address,
-        city,
-        state,
-        zip,
-        vc_initialism,
-        adiccional_notes,
-        address_details: {
-          id_pais,
-          id_estado,
-          id_ciudad,
-          street,
-          ext_number,
-          int_number,
-          zip_code,
-          neighborhood,
-          address_references,
-        }
-      });
-
-      res.status(201).json({
-        message: "Super admin creo cliente correctamente",
-        data: result,
-      });
-    } catch (error) {
-      console.error(error);
-      res.status(500).json({ error: "Error creando cliente", details: error });
-    } finally {
-      clientModel = null;
-    }
+    res.status(201).json({
+      message: "Super admin creo cliente correctamente",
+      data: result,
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: "Error creando cliente", details: error });
+  } finally {
+    clientModel = null;
+  }
   },
 );
+
+
+superAdminRouter.delete("/client/:id_client", authMiddleware, async (req: Request, res: Response) => {
+  let clientModel: Client | null = null;
+  try {
+    const { id_client } = req.params;
+    const id_user = req.user?.id;
+
+    console.log("id_user desde req.user:", id_user);
+
+    if (!id_client) {
+      res.status(400).json({
+        ok: false,
+        error: "id_client es requerido",
+        message: "el cliente es requerido para eliminarlo",
+      });
+      return;
+    }
+    
+    if (!id_user) {
+      res.status(401).json({ ok: false, message: "Usuario no autenticado" });
+      return;
+    }
+
+    clientModel = getClientModel();
+    const response = await clientModel.deleteClient(Number(id_client), id_user);
+
+    console.log("respuesta de funcion deleteClient:", response);
+
+    res.status(200).json({
+      ok: response?.ok,
+      error: 0,
+      message: response?.message || "Cliente eliminado correctamente",
+    });
+    
+  } catch (error) {
+    console.error("client/:id_client - Error eliminando cliente:", error);
+    res.status(500).json({ 
+      ok: false,
+      error: error instanceof Error ? error.message : String(error),
+      message: "Error eliminando cliente",
+     });
+  } finally {
+    clientModel = null;
+  }
+});
 
 superAdminRouter.post("/stores", async (req: Request, res: Response): Promise<void> => {
   try {

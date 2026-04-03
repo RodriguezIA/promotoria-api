@@ -61,3 +61,7 @@ config.local.js
 *.pem
 *.key
 *.crt
+
+/src/generated/prisma
+
+/generated/prisma

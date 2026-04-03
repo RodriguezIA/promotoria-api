@@ -55,7 +55,7 @@ export class NotificationService {
     }
   }
 
-  static async sendMulticastNotification(fcmTokens: string[], notification: NotificationData) {
+  static async sendMulticastNotification(fcmTokens: string[], notification: NotificationData): Promise<import('firebase-admin/messaging').BatchResponse> {
     try {
       const message = {
         tokens: fcmTokens,
