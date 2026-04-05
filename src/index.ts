@@ -18,7 +18,10 @@ import morgan from "morgan";
 
 import adminRouter from "./app_admin/index";
 import superadminRouter from "./app_superadmin/index";
-import mobileRouter from "./app_mobile/index";
+import mobileRouter from "./app_mobile/index"; 
+
+import userAdminRouter from './modules/users/routes';
+
 import { startNearbyTaskNotificationJob } from "./jobs/nearby-task-notification.job";
 
 // WORKERS bullmq
@@ -51,6 +54,9 @@ app.use(morgan("dev"));
 app.use("/retailink-api/superadmin", superadminRouter);
 app.use("/retailink-api/admin", adminRouter);
 app.use("/retailink-api/mobile", mobileRouter);
+
+app.use("/retailink-api/users", userAdminRouter);
+
 app.use("/admin/queues", serverAdapter.getRouter());
 // app.use(notFoundHandler);
 // app.use(errorHandler);

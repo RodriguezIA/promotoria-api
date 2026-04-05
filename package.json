@@ -10,7 +10,8 @@
     "dev": "nodemon --watch src --ext ts --exec tsx src/index.ts",
     "build": "rimraf dist && tsc",
     "postbuild": "cpx \"src/**/*.{env,json,html,css,png,jpg}\" dist",
-    "prod": "npm run build && npm start"
+    "prod": "npm run build && npm start",
+    "postinstall": "prisma generate"
   },
   "_moduleAliases": {
     "@": "dist"

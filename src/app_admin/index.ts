@@ -16,7 +16,9 @@ import { upload, uploadExcel } from '../core/middleware/upload.middleware';
 import { authMiddleware } from '../core/middleware/auth.middleware';
 
 import { CreateServicePayload } from "../core/interfaces/service";
-import admin from "@/config/firebase";
+
+
+import userAdminRouter from "../modules/users/routes";
 
 const adminRouter: Router = express.Router();
 const getAdminUser = () => new UserAdmin();
