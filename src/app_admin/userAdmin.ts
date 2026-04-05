@@ -8,7 +8,7 @@ export class UserAdmin extends User {
             return await prisma.users.findMany({
                 where: {
                     id_client: id_client,
-                    is_active: true
+                    i_status: 1
                 }
             });
         } catch (error) {
