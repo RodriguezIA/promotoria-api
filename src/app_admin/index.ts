@@ -326,24 +326,24 @@ adminRouter.post(
   },
 );
 
-adminRouter.post("/create-user-in-client", async (req: Request, res: Response): Promise<void> => {
-  try {
-    const { name, lastname, email, id_client, id_user_creator } = req.body;
-    const userAdmin = getAdminUser();
-    const result = await userAdmin.createUserInClient(name, lastname, email, id_client, id_user_creator);
-    res.status(201).json({
-      message: "Usuario creado exitosamente",
-      data: result,
-    });
+// adminRouter.post("/create-user-in-client", async (req: Request, res: Response): Promise<void> => {
+//   try {
+//     const { name, lastname, email, id_client, id_user_creator } = req.body;
+//     const userAdmin = getAdminUser();
+//     const result = await userAdmin.createUserInClient(name, lastname, email, id_client, id_user_creator);
+//     res.status(201).json({
+//       message: "Usuario creado exitosamente",
+//       data: result,
+//     });
 
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({
-      error: "Error creando usuario",
-      details: error instanceof Error ? error.message : String(error),
-    });
-  }
-});
+//   } catch (error) {
+//     console.error(error);
+//     res.status(500).json({
+//       error: "Error creando usuario",
+//       details: error instanceof Error ? error.message : String(error),
+//     });
+//   }
+// });
 
 adminRouter.post("/products", async (req: Request, res: Response): Promise<void> => {
   try {

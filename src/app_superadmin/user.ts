@@ -62,6 +62,8 @@ export class User {
       const tokenPayload: TokenPayload = {
         id: user.id_user!,
         email: user.email,
+        id_client: user.id_client!,
+        i_rol: user.i_rol
       };
       const token = Utils.generate_token(tokenPayload);
 
@@ -93,6 +95,8 @@ export class User {
       const token = Utils.generate_token({
         id: user.id_user!,
         email: user.email,
+        id_client: user.id_client!,
+        i_rol: user.i_rol
       });
 
 
@@ -306,6 +310,8 @@ export class User {
       const token = Utils.generate_token({
         id: user.id_user!,
         email: user.email,
+        id_client: user.id_client!,
+        i_rol: user.i_rol
       });
       const expiresAt = new Date(Date.now() + 3600000);
       await this.updateResetToken(user.id_user!, token, expiresAt);

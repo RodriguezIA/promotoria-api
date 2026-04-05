@@ -16,6 +16,8 @@ const JWT_SECRET = process.env.JWT_SECRET || "tu_clave_secreta_super_segura";
 export interface TokenPayload {
   id: number;
   email: string;
+  id_client: number;
+  i_rol: number;
 }
 
 export function generarCodigoAfiliacion(): string {
