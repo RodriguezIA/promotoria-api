@@ -21,6 +21,7 @@ import superadminRouter from "./app_superadmin/index";
 import mobileRouter from "./app_mobile/index"; 
 
 import userAdminRouter from './modules/users/routes';
+import productRouter from './modules/products/routes';
 
 import { startNearbyTaskNotificationJob } from "./jobs/nearby-task-notification.job";
 
@@ -56,6 +57,7 @@ app.use("/retailink-api/admin", adminRouter);
 app.use("/retailink-api/mobile", mobileRouter);
 
 app.use("/retailink-api/users", userAdminRouter);
+app.use("/retailink-api/products", productRouter);
 
 app.use("/admin/queues", serverAdapter.getRouter());
 // app.use(notFoundHandler);

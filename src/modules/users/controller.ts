@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import { UserAdminDTO } from "./user.dto"
+import { UserAdminDTO } from "./user.service"
 import { LogsDTO } from "../logs/logs.dto"
 
 const userAdminDTO = new UserAdminDTO();
