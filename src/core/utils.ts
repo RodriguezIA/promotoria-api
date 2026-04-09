@@ -8,6 +8,7 @@ import { EmailService } from "./services/email/EmailService";
 import db from "../config/database";
 import { Database } from "./database";
 import { process_task_notificacions_queue } from "./bullmq/queue";
+import { prisma } from "./prisma";
 
 
 dotenv.config();
@@ -483,5 +484,23 @@ export class Utils {
       console.error("Error adding job to queue:", error);
       throw error;
     }
+  }
+
+  static async getCountriesList(){
+    return await prisma.countries.findMany({
+      where: { is_active: true }
+    })
+  }
+
+  static async getStatesList(id_country: number){
+    return await prisma.states.findMany({
+      where: { id_country, is_active: true }
+    })
+  }
+
+  static async getCitiesList(id_state: number){
+    return await prisma.cities.findMany({
+      where: { id_state, is_active: true }
+    })
   }
 }

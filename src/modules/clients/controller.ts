@@ -1,12 +1,12 @@
 import { Request, Response, } from 'express'
-
 import { Client } from './client.service'
-
 import { createClientData } from './client.dto';
-
 import { UploadService } from '../../services/upload.service';
+import { Utils } from '../../core/utils';
 
 const clientService = new Client();
+
+
 
 export const createClient = async(req: Request, res: Response) => {
     const clientData: createClientData = req.body;
@@ -88,3 +88,65 @@ export const uploadClientDoc = async (req: Request, res: Response) => {
     res.status(500).json({ ok: false, error: 1, data: null, message: 'Error al subir documento' });
   }
 };
+
+export const getCountriesList = async (req: Request, res: Response) => {
+    try {
+        const countries = await Utils.getCountriesList();
+        res.json({
+            ok: true,
+            error: 0,
+            data: countries,
+            message: 'Paises obtenidos exitosamente'
+        });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({
+            ok: false,
+            error: 1,
+            data: null,
+            message: 'Error al obtener la lista de paises'
+        });
+    }
+}
+
+export const getStatesList = async (req: Request, res: Response) => {
+    const { id_pais } = req.params;
+    try {
+        const states = await Utils.getStatesList(Number(id_pais));
+        res.json({
+            ok: true,
+            error: 0,
+            data: states,
+            message: 'Estados obtenidos exitosamente'
+        });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({
+            ok: false,
+            error: 1,
+            data: null,
+            message: 'Error al obtener la lista de estados'
+        });
+    }
+}
+
+export const getCitiesList = async (req: Request, res: Response) => {
+    const { id_estado } = req.params;
+    try {
+        const cities = await Utils.getCitiesList(Number(id_estado));
+        res.json({
+            ok: true,
+            error: 0,
+            data: cities,
+            message: 'Ciudades obtenidos exitosamente'
+        });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({
+            ok: false,
+            error: 1,
+            data: null,
+            message: 'Error al obtener la lista de ciudades'
+        });
+    }
+}
