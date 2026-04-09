@@ -131,11 +131,11 @@ model orders {
 model product_logs {
   id_product_log Int       @id @default(autoincrement())
   id_product     Int
-  id_usuario     Int       @db.UnsignedInt
+  id_usuario     Int       @default(0) @db.UnsignedInt
   id_promotor    Int       @default(0) @db.UnsignedInt
   id_negocio     Int       @default(0) @db.UnsignedInt
   id_pais        Int       @default(0) @db.UnsignedInt
-  vc_log         String    @db.VarChar(500)
+  vc_log         String    @default("") @db.VarChar(500)
   i_status       Boolean?  @default(true)
   dt_register    DateTime? @default(now()) @db.DateTime(0)
   dt_updated     DateTime? @default(now()) @db.DateTime(0)
