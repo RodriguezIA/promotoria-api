@@ -65,11 +65,43 @@ export class Client {
         }
     }
 
+
     async updateSituacionFiscal(id_client: number, url: string) {
         return await prisma.clients.update({
             where: { id_client },
             data: { vc_url_situacion_fiscal: url }
         });
+    }
+
+
+    async getAddressByIdClient(id_client: number){
+        return await prisma.addresses.findFirst({
+            include: {
+                country: {
+                    select: {
+                        id: true,
+                        name: true
+                    }
+                },
+                state: {
+                    select: {
+                        id: true,
+                        name: true,
+                    }
+                },
+                city: {
+                    select: {
+                        id: true,
+                        name: true,
+                    }
+                }
+            },
+            where: { 
+                entity_type:"client",
+                entity_id: id_client,
+                is_active: true,
+            },
+        })
     }
 
 }

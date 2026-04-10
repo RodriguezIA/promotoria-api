@@ -7,7 +7,6 @@ datasource db {
   provider = "mysql"
 }
 
-/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
 model addresses {
   id                 Int      @id @default(autoincrement()) @db.UnsignedInt
   entity_type        String   @db.VarChar(50)
@@ -26,6 +25,10 @@ model addresses {
   is_active          Boolean  @default(true)
   created_at         DateTime @default(now()) @db.Timestamp(0)
   updated_at         DateTime @default(now()) @db.Timestamp(0)
+
+  country            countries @relation(fields: [id_country], references: [id])
+  state              states    @relation(fields: [id_state], references: [id])
+  city               cities    @relation(fields: [id_city], references: [id])
 }
 
 model cities {
@@ -36,6 +39,10 @@ model cities {
   is_active  Boolean  @default(true)
   created_at DateTime @default(now()) @db.Timestamp(0)
   updated_at DateTime @default(now()) @db.Timestamp(0)
+
+  country    countries   @relation(fields: [id_country], references: [id])
+  state      states      @relation(fields: [id_state], references: [id])
+  addresses  addresses[]
 }
 
 /// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
@@ -85,6 +92,10 @@ model countries {
   is_active  Boolean  @default(true)
   created_at DateTime @default(now()) @db.Timestamp(0)
   updated_at DateTime @default(now()) @db.Timestamp(0)
+
+  states     states[]
+  cities     cities[]
+  addresses  addresses[]
 }
 
 model folios {
@@ -354,6 +365,10 @@ model states {
   is_active  Boolean  @default(true)
   created_at DateTime @default(now()) @db.Timestamp(0)
   updated_at DateTime @default(now()) @db.Timestamp(0)
+
+  country    countries   @relation(fields: [id_country], references: [id])
+  cities     cities[]
+  addresses  addresses[]
 }
 
 model status {

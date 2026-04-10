@@ -30,27 +30,41 @@ export const createClient = async(req: Request, res: Response) => {
 
 export const getClient = async (req: Request, res: Response) => {
     const { id_client } = req.params;
+
+    const clientId = Number(id_client);
+    if (isNaN(clientId)) {
+        return res.status(400).json({
+            ok: false,
+            error: 1,
+            data: null,
+            message: 'El ID del cliente debe ser un número válido'
+        });
+    }
+
     try {
-        const client = await clientService.getClient(Number(id_client));
+        const client = await clientService.getClient(clientId);
         
         if (client) {
-            res.json({
+            const address = await clientService.getAddressByIdClient(client.id_client);
+
+            return res.json({
                 ok: true,
                 error: 0,
-                data: client,
+                data: { ...client, address },
                 message: 'Cliente obtenido exitosamente'
             });
-        } else {
-            res.status(404).json({
-                ok: false,
-                error: 1,
-                data: null,
-                message: 'Cliente no encontrado'
-            });
-        }
+        } 
+        
+        return res.status(404).json({
+            ok: false,
+            error: 1,
+            data: null,
+            message: 'Cliente no encontrado'
+        });
+        
     } catch (error) {
         console.error(error);
-        res.status(500).json({
+        return res.status(500).json({
             ok: false,
             error: 1,
             data: null,
