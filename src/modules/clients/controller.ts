@@ -73,6 +73,29 @@ export const getClient = async (req: Request, res: Response) => {
     }
 }
 
+export const getClientsList = async (req: Request, res: Response) => {
+    try {
+        
+        const clients = await clientService.getClientsList();
+
+        return res.json({
+            ok: true,
+            error: 0,
+            data: clients,
+            message: 'Clientes obtenidos exitosamente'
+        });
+
+    } catch (error) {
+        console.error(error);
+        return res.status(500).json({
+            ok: false,
+            error: 1,
+            data: null,
+            message: 'Error al obtener la lista de clientes'
+        });
+    }
+}
+
 export const uploadClientDoc = async (req: Request, res: Response) => {
   const { id_client } = req.params;
 
@@ -102,6 +125,52 @@ export const uploadClientDoc = async (req: Request, res: Response) => {
     res.status(500).json({ ok: false, error: 1, data: null, message: 'Error al subir documento' });
   }
 };
+
+export const deleteClient = async (req: Request, res: Response) => {
+    const { id_client } = req.params;
+    const id_user = req.user?.id;
+
+    try {
+        const client = await clientService.getClient(Number(id_client));
+
+        if (!client) {
+
+            return res.status(404).json({
+                ok: false,
+                error: 1,
+                data: null,
+                message: 'Cliente no encontrado'
+            });
+        }
+
+        if (client.id_user !== id_user) {
+            return res.status(403).json({
+                ok: false,
+                error: 1,
+                data: null,
+                message: 'No tienes permiso para eliminar este',
+            });
+        }
+
+        const result = await clientService.deleteClient(Number(id_client), id_user);
+
+        return res.json({
+            ok: true,
+            error: 0,
+            data: result,
+            message: 'Cliente eliminado exitosamente'
+        });
+    } catch (error) {
+        console.error(error);
+        return res.status(500).json({
+            ok: false,
+            error: 1,
+            data: null,
+            message: 'Error al eliminar el cliente'
+        });
+    }
+}
+        
 
 export const getCountriesList = async (req: Request, res: Response) => {
     try {

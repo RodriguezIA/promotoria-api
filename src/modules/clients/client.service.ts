@@ -65,6 +65,59 @@ export class Client {
         }
     }
 
+    async getClientsList() {
+        const clients = await prisma.clients.findMany({
+            where: { i_status: 1 },
+        });
+
+        const counts = await prisma.users.groupBy({
+            by: ['id_client'],
+            _count: { id_user: true },
+            where: {
+                id_client: { in: clients.map(c => c.id_client) },
+            }
+        });
+
+        return clients.map(client => ({
+            ...client,
+            i_cant_usuarios: counts.find(c => c.id_client === client.id_client)?._count.id_user || 0
+        }));
+    }
+
+    async deleteClient(id_client: number, id_user: number) {
+        try {
+            return await prisma.$transaction(async (prisma) => {
+                const client = await prisma.clients.findUnique({
+                    where: { id_client },
+                });
+
+                if (!client) {
+                    throw new Error("Cliente no encontrado");
+                }
+
+                await prisma.clients.update({
+                    where: { id_client },
+                    data: { i_status: 0 }
+                });
+
+                await prisma.user_logs.create({
+                    data: {
+                        log: `Cliente eliminado: ${client.name}`,
+                        id_user: id_user
+                    }
+                });
+
+                return {
+                    ok: true,
+                    message: "  Cliente eliminado exitosamente"
+                };
+            });
+        } catch (error) {
+            console.error("Error deleting client:", error);
+            throw error;
+        }
+    }
+
 
     async updateSituacionFiscal(id_client: number, url: string) {
         return await prisma.clients.update({

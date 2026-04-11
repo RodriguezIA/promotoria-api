@@ -492,7 +492,7 @@ model users {
   id_client              Int                    @default(0) @db.UnsignedInt
   id_user_creator        Int                    @default(0) @db.UnsignedInt
   client_logs            client_logs[]
-  clients                clients[]
+  clients                clients[]              @relation(map: "fk_clients_user")
   question_client_logs   question_client_logs[]
   question_logs          question_logs[]
   questions              questions[]
