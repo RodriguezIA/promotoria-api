@@ -33,6 +33,7 @@ app.use(morgan("dev"));
 app.use("/retailink-api/superadmin", superadminRouter);
 app.use("/retailink-api/admin", adminRouter);
 app.use("/retailink-api/mobile", mobileRouter);
+
 app.use("/retailink-api/users", userAdminRouter);
 app.use("/retailink-api/products", productRouter);
 app.use("/retailink-api/clients", clientRouter);

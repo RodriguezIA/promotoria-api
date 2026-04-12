@@ -1,11 +1,12 @@
 import { Request, Response, } from 'express'
+
+import { Utils } from '../../core/utils'
 import { Client } from './client.service'
-import { createClientData } from './client.dto';
-import { UploadService } from '../../services/upload.service';
-import { Utils } from '../../core/utils';
+import { createClientData } from './client.dto'
+import { UploadService } from '../../services/upload.service'
+
 
 const clientService = new Client();
-
 
 
 export const createClient = async(req: Request, res: Response) => {
