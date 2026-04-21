@@ -404,16 +404,6 @@ model stores {
   id_user      Int          @db.UnsignedInt
   name         String       @db.VarChar(100)
   store_code   String?      @db.VarChar(50)
-  street       String       @db.VarChar(150)
-  ext_number   String       @db.VarChar(20)
-  int_number   String?      @db.VarChar(20)
-  neighborhood String       @db.VarChar(100)
-  municipality String       @db.VarChar(100)
-  state        String       @db.VarChar(100)
-  postal_code  String       @db.VarChar(10)
-  country      String       @default("México") @db.VarChar(50)
-  latitude     Decimal?     @db.Decimal(10, 7)
-  longitude    Decimal?     @db.Decimal(10, 7)
   i_status     Int          @default(1) @db.TinyInt
   dt_register  DateTime     @default(now()) @db.Timestamp(0)
   dt_updated   DateTime     @default(now()) @db.Timestamp(0)
