@@ -8,6 +8,7 @@ export class Store {
             const store =  await prisma.stores.create({
                 data: {
                     id_user: storePaylaod.id_user,
+                    id_channel_sale: storePaylaod.id_channel_sale,
                     name: storePaylaod.name,
                     store_code: storePaylaod.store_code,
                 }
@@ -106,6 +107,7 @@ export class Store {
             const store = await prisma.stores.update({
                 where: { id_store },
                 data: {
+                    id_channel_sale: storePaylaod.id_channel_sale,
                     name: storePaylaod.name,
                     store_code: storePaylaod.store_code,
                 }

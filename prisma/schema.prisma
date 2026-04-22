@@ -402,15 +402,19 @@ model store_logs {
 model stores {
   id_store     Int          @id @default(autoincrement()) @db.UnsignedInt
   id_user      Int          @db.UnsignedInt
+  id_channel_sale Int?      @db.UnsignedInt
   name         String       @db.VarChar(100)
   store_code   String?      @db.VarChar(50)
   i_status     Int          @default(1) @db.TinyInt
   dt_register  DateTime     @default(now()) @db.Timestamp(0)
   dt_updated   DateTime     @default(now()) @db.Timestamp(0)
+
   store_logs   store_logs[]
+  sales_channel sales_channels? @relation(fields: [id_channel_sale], references: [id], map: "fk_store_channel")
   users        users        @relation(fields: [id_user], references: [id_user], map: "fk_store_user")
 
   @@index([id_user], map: "fk_store_user")
+  @@index([id_channel_sale], map: "fk_store_channel")
 }
 
 model stores_clients {
@@ -493,4 +497,13 @@ model users {
 
   @@index([reset_password_token], map: "idx_reset_token")
   @@index([i_rol, i_status], map: "idx_users_rol_status")
+}
+
+model sales_channels {
+  id Int @id @default(autoincrement()) @db.UnsignedInt
+  name String
+  description String?
+  url_image String?
+
+  stores stores[]
 }

@@ -63,4 +63,23 @@ export class UploadService {
       throw new Error("Error al subir el documento");
     }
   }
+
+  static async uploadSaleChannelImage(id_sale_channel: number, fileBuffer: Buffer, fileName: string, mimeType: string): Promise<string> {
+    try {
+      const path = `salesChannels/${id_sale_channel}/${fileName}`;
+      const file = bucket.file(path);
+
+      await file.save(fileBuffer, {
+        metadata: {
+          contentType: mimeType,
+          cacheControl: "public, max-age=31536000",
+        },
+      });
+
+      return `https://storage.googleapis.com/${process.env.GCP_BUCKET_NAME}/${path}`;
+    } catch (error) {
+      console.error("f.uploadSaleChannelImage: ", error);
+      throw new Error("Error al subir la imagen")
+    }
+  }
 }
