@@ -504,6 +504,7 @@ model sales_channels {
   name String
   description String?
   url_image String?
+  is_active Boolean @default(true)
 
   stores stores[]
 }
