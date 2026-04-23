@@ -65,7 +65,15 @@ export class Store {
     async getStores() {
         return await prisma.$transaction(async () => {
             const stores = await prisma.stores.findMany({
-                where: { i_status: 1 }
+                where: { i_status: 1 },
+                include: {
+                    sales_channel: {
+                        select: {
+                            name: true,
+                            url_image: true
+                        }
+                    }
+                }
             })
 
             const storesWithAddress = await Promise.all(
