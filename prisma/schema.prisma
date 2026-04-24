@@ -180,17 +180,19 @@ model promoter_logs {
 }
 
 model promoters {
-  id_promoter   Int       @id @default(autoincrement()) @db.UnsignedInt
-  vc_name       String    @db.VarChar(255)
-  vc_email      String    @unique(map: "vc_email") @db.VarChar(255)
-  vc_password   String    @db.VarChar(255)
-  vc_fcm_token  String?   @db.VarChar(255)
-  vc_phone      String    @unique(map: "vc_phone") @db.VarChar(20)
+  id            Int       @id @default(autoincrement()) @db.UnsignedInt
+  name          String    @db.VarChar(255)
+  lastname      String?   @db.VarChar(255)
+  email         String?   @unique(map: "vc_email") @db.VarChar(255)
+  password      String    @db.VarChar(255)
+  phone         String    @unique(map: "vc_phone") @db.VarChar(20)
+  fcm_token     String?   @db.VarChar(255)
   dt_register   DateTime  @db.DateTime(0)
+  dt_updated    DateTime  @default(now()) @db.Timestamp(0)
   dt_last_login DateTime? @db.DateTime(0)
-  b_active      Boolean   @default(true)
-  f_latitude    Decimal?  @db.Decimal(10, 8)
-  f_longitude   Decimal?  @db.Decimal(11, 8)
+  isActive      Boolean   @default(true)
+  latitude      Decimal?  @db.Decimal(10, 8)
+  longitude     Decimal?  @db.Decimal(11, 8)
 }
 
 /// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments

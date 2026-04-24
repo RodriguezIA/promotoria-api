@@ -8,7 +8,7 @@ import express, { Express } from "express"
 import adminRouter from "./app_admin/index";
 import superadminRouter from "./app_superadmin/index";
 import mobileRouter from "./app_mobile/index";
-import { clientRouter, productRouter, userAdminRouter, storeRouter, channelsSalesRouter } from './modules'
+import { clientRouter, productRouter, userAdminRouter, storeRouter, channelsSalesRouter, promoterRouter } from './modules'
 
 
 const app: Express = express();
@@ -31,6 +31,7 @@ app.use("/retailink-api/products", productRouter);
 app.use("/retailink-api/clients", clientRouter);
 app.use("/retailink-api/stores", storeRouter);
 app.use("/retailink-api/channel-sales", channelsSalesRouter);
+app.use("/retailink-api/promoters", promoterRouter);
 
 
 const startServer = async () => {
