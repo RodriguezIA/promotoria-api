@@ -20,7 +20,7 @@ export interface CreatePromoterDTO {
     email?: string
     password: string
     phone: string
-    fmc_token?: string
+    fcm_token?: string
     latitude?: number
     longitude?: number
 }

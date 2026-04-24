@@ -10,7 +10,6 @@ export class Promoter {
         const hashedPassword = await bcrypt.hash(data.password, 10);
 
         return await prisma.$transaction(async (prisma) => {
-
             const prometer = await prisma.promoters.create({
                 data: {
                     ...data,
