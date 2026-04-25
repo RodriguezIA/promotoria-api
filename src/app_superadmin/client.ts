@@ -85,9 +85,6 @@ export class Client {
             const query = `INSERT INTO clients (${fields.join(', ')}) VALUES (${placeholders.join(', ')})`;
             const result = await this.db.execute(query, values);
             const clientId = result.insertId;
-
-            await Utils.registerClienteLog(this.db, clientId, id_user, "Cliente creado");
-
             // Registrar dirección
             if (data.address_details) {
                 addressModel = new Address();

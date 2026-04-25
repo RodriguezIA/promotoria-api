@@ -56,8 +56,6 @@ export class Order {
                 await this.db.execute(queryTask, [idOrder, id_store]);
             }
 
-            await Utils.registerOrderLog(this.db, idOrder, data.id_user, `Pedido creado con ${data.stores.length} tarea(s)`, { id_negocio: data.id_client });
-
             if (commit) {
                 await this.db.commit();
             }
@@ -152,9 +150,6 @@ export class Order {
                 `UPDATE tasks SET id_status = 7, dt_update = NOW() WHERE id_task = ?`,
                 [id_task]
             );
-            if (taskRow.length > 0) {
-                await Utils.registerOrderLog(this.db, taskRow[0].id_order, 0, `Tarea ID ${id_task} rechazada por admin`);
-            }
             return { success: true, message: "Tarea rechazada correctamente" };
         } catch (error) {
             console.error("Error en rejectTask: ", error);
@@ -172,9 +167,6 @@ export class Order {
             `;
             await this.db.execute(query, [id_promoter, id_task]);
             const taskRow2 = await this.db.select(`SELECT id_order FROM tasks WHERE id_task = ?`, [id_task]);
-            if (taskRow2.length > 0) {
-                await Utils.registerOrderLog(this.db, taskRow2[0].id_order, 0, `Promotor ID ${id_promoter} asignado a tarea ID ${id_task}`, { id_promotor: id_promoter });
-            }
             return { success: true, message: "Promotor asignado correctamente" };
         } catch (error) {
             console.error("Error en assignPromoterToTask: ", error);

@@ -47,12 +47,6 @@ export class product {
 
             const productId = result.insertId;
 
-            await Utils.registerProductLog(
-                this.db,
-                productId,
-                id_user,
-                `Producto creado: ${name}`
-            );
 
             if (commit) {
                 await this.db.commit();
@@ -149,13 +143,6 @@ export class product {
             const query = `UPDATE products SET ${fields.join(", ")} WHERE id_product = ?`;
             await this.db.execute(query, values);
 
-            await Utils.registerProductLog(
-                this.db,
-                id_product,
-                id_user,
-                `Producto actualizado: ${changes.join(", ")}`
-            );
-
             return { success: true, message: "Producto actualizado exitosamente" };
         } catch (error) {
             throw error;
@@ -166,13 +153,6 @@ export class product {
         try {
             const query = `UPDATE products SET i_status = 0 WHERE id_product = ?`;
             await this.db.execute(query, [id_product]);
-
-            await Utils.registerProductLog(
-                this.db,
-                id_product,
-                id_user,
-                "Producto eliminado"
-            );
 
             return { success: true, message: "Producto eliminado exitosamente" };
         } catch (error) {

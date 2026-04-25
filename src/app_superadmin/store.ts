@@ -39,9 +39,6 @@ export class Store {
 
       const query = `INSERT INTO stores (${fields.join(", ")}) VALUES (${placeholders.join(", ")})`;
       const result = await this.db.execute(query, values);
-
-      await Utils.registerStoreLog(this.db, result.insertId, id_user, "Tienda creada");
-
       if (commit) {
         await this.db.commit();
       }
@@ -119,9 +116,6 @@ export class Store {
 
       const query = `UPDATE stores SET ${fields.join(", ")} WHERE id_store = ?`;
       await this.db.execute(query, values);
-
-      await Utils.registerStoreLog(this.db, id_store, id_user, "Tienda actualizada");
-
       return { success: true, message: "Tienda actualizada exitosamente" };
     } catch (error) {
       console.error("Error en updateStore: ", error);
@@ -133,9 +127,6 @@ export class Store {
     try {
       const query = `UPDATE stores SET i_status = 0 WHERE id_store = ?`;
       await this.db.execute(query, [id_store]);
-
-      await Utils.registerStoreLog(this.db, id_store, id_user, "Tienda desactivada");
-
       return { success: true, message: "Tienda eliminada exitosamente" };
     } catch (error) {
       console.error("Error en deleteStore: ", error);

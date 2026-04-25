@@ -168,9 +168,6 @@ export class storesAdmin extends Store {
 
             await this.db.execute(query_update, values);
 
-            // 5. Registrar log
-            await Utils.registerStoreLog(this.db, id_store, data_store_updated.id_user_creator, "Tienda actualizada");
-
             return { success: true, message: "Establecimiento actualizado exitosamente" };
 
         } catch (error) {
@@ -200,12 +197,6 @@ export class storesAdmin extends Store {
                 }
             }
 
-            await Utils.registerStoreLog(
-                this.db,
-                store?.data?.id_store,
-                id_user,
-                `Tienda desvinculada del cliente ${store?.data?.id_client}`
-            );
 
             return {
                 ok: true,
@@ -302,10 +293,6 @@ export class storesAdmin extends Store {
                     VALUES (?, ?, 1, ?)
                 `;
                 await this.db.execute(query_client, [id_client, id_store, id_user]);
-
-                // Log
-                await Utils.registerStoreLog(this.db, id_store, id_user, "Tienda creada desde importación Excel");
-
                 inserted++;
 
             } catch (error) {

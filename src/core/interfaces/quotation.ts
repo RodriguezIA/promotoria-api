@@ -1,15 +1,7 @@
-// ============================================
-// TIPOS Y ESTADOS
-// ============================================
-
 export type QuotationStatus = 1 | 2 | 0; // 1=borrador, 2=confirmado, 0=eliminado
 export type LogType = 1 | 2; // 1=bitácora (visible), 2=transaccional (oculto)
 export type PaymentStatus = 0 | 1 | 2; // 0=pendiente, 1=pagado, 2=fallido
 export type TicketStatus = 0 | 1 | 2 | 3; // 0=pendiente, 1=asignado, 2=en_progreso, 3=completado
-
-// ============================================
-// COTIZACIONES (Templates reutilizables)
-// ============================================
 
 export interface IQuotation {
     id_quotation: number;

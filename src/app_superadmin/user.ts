@@ -33,11 +33,7 @@ export class User {
         "INSERT INTO users (email, password, i_rol, name, lastname) VALUES (?, ?, 1, ?, ?)",
         [email, hased_password, name, lastname],
       );
-      await Utils.registerUserLog(
-        this.db,
-        result.insertId,
-        "Super admin creado",
-      );
+
       if (commit) {
         await this.db.commit();
       }
@@ -250,8 +246,6 @@ export class User {
         getPasswordChangedTemplate(user.name),
       );
 
-      await Utils.registerUserLog(this.db, userId, "Contraseña cambiada exitosamente");
-
       return { message: "Contraseña actualizada exitosamente" };
     } catch (error) {
       throw error;
@@ -299,8 +293,6 @@ export class User {
       }
 
       const userId = (await this.db.select<RowDataPacket[]>("SELECT LAST_INSERT_ID() AS id"))[0].id;
-      await Utils.registerUserLog(this.db, userId, `Usuario creado en cliente ID: ${id_client}`);
-      
 
       // Obtener datos del usuario y cliente
       const user = await this.getUserById(userId);
@@ -357,7 +349,6 @@ export class User {
         throw new Error("El correo electrónico ya está en uso");
       }
       await this.db.query("UPDATE users SET email = ? WHERE id_user = ?", [email, userId]);
-      await Utils.registerUserLog(this.db, userId, `Email actualizado a: ${email}`);
       return await this.getUserById(userId);
     } catch (error) {
       throw error;
@@ -370,7 +361,6 @@ export class User {
         "UPDATE users SET name = ?, lastname = ? WHERE id_user = ?",
         [name, lastname, userId]
       );
-      await Utils.registerUserLog(this.db, userId, "Perfil actualizado");
       return await this.getUserById(userId);
     } catch (error) {
       throw error;
@@ -380,7 +370,6 @@ export class User {
   async updateUserRol(userId: number, i_rol: number) {
     try {
       await this.db.query("UPDATE users SET i_rol = ? WHERE id_user = ?", [i_rol, userId]);
-      await Utils.registerUserLog(this.db, userId, `Rol actualizado a: ${i_rol}`);
       return await this.getUserById(userId);
     } catch (error) {
       throw error;
@@ -397,7 +386,6 @@ export class User {
         "Contraseña Actualizada",
         getPasswordChangedTemplate(user.name),
       );
-      await Utils.registerUserLog(this.db, userId, "Contraseña restablecida por administrador");
       return { message: "Contraseña restablecida exitosamente" };
     } catch (error) {
       throw error;
@@ -407,7 +395,6 @@ export class User {
   async deactivateUser(userId: number) {
     try {
       await this.db.query("UPDATE users SET i_status = 0 WHERE id_user = ?", [userId]);
-      await Utils.registerUserLog(this.db, userId, "Usuario desactivado");
       return { message: "Usuario desactivado exitosamente" };
     } catch (error) {
       throw error;
@@ -417,7 +404,6 @@ export class User {
   async activateUser(userId: number) {
     try {
       await this.db.query("UPDATE users SET i_status = 1 WHERE id_user = ?", [userId]);
-      await Utils.registerUserLog(this.db, userId, "Usuario activado");
       return { message: "Usuario activado exitosamente" };
     } catch (error) {
       throw error;

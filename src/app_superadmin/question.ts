@@ -114,9 +114,7 @@ export class Question {
             if (questionType === 'options' && questionData.options && questionData.options.length > 0) {
                 await this.insertOptions(id_question, questionData.options);
             }
-
-            await Utils.registerQuestionLog(this.db, id_question, id_user, `Pregunta creada (tipo: ${questionType}): ${questionData.question.substring(0, 50)}...`);
-
+            
             if (commit) {
                 await this.db.commit();
             }
@@ -405,12 +403,6 @@ export class Question {
                 changes.push(`opciones actualizadas (${data.options.length})`);
             }
 
-            await Utils.registerQuestionLog(
-                this.db,
-                id_question,
-                id_user,
-                `Pregunta actualizada: ${changes.join(", ")}`
-            );
 
             if (commit) {
                 await this.db.commit();
@@ -434,13 +426,6 @@ export class Question {
         try {
             const query = `UPDATE questions SET i_status = 0 WHERE id_question = ?`;
             await this.db.execute(query, [id_question]);
-
-            await Utils.registerQuestionLog(
-                this.db,
-                id_question,
-                id_user,
-                "Pregunta eliminada"
-            );
 
             return { success: true, message: "Pregunta eliminada exitosamente" };
         } catch (error) {
@@ -492,10 +477,6 @@ export class Question {
             const query = "INSERT INTO questions_client (id_question, id_client, id_user, client_price, client_promoter_earns) VALUES (?, ?, ?, ?, ?)";
             const result = await this.db.execute(query, [id_question, id_client, id_user, client_price, client_promoter_earns]);
 
-            await Utils.registerQuestionLog(this.db, id_question, id_user, `Pregunta asignada al cliente ID: ${id_client}`);
-            await Utils.registerQuestionClientLog(this.db, result.insertId, id_user, "Asignación creada");
-            await Utils.registerClienteLog(this.db, id_client, id_user, `Pregunta ID: ${id_question} asignada`);
-
             if (commit) {
                 await this.db.commit();
             }
@@ -528,10 +509,6 @@ export class Question {
 
             const query = `UPDATE questions_client SET i_status = 0 WHERE id_question = ? AND id_client = ?`;
             await this.db.execute(query, [id_question, id_client]);
-
-            await Utils.registerQuestionLog(this.db, id_question, id_user, `Pregunta desasignada del cliente ID: ${id_client}`);
-            await Utils.registerQuestionClientLog(this.db, id_question_client, id_user, "Asignación eliminada");
-            await Utils.registerClienteLog(this.db, id_client, id_user, `Pregunta ID: ${id_question} desasignada`);
 
             return { ok: true, message: "Pregunta desasignada del cliente exitosamente" };
         } catch (error) {
@@ -570,12 +547,6 @@ export class Question {
             const query = `UPDATE questions_client SET ${fields.join(", ")} WHERE id_question_client = ?`;
             await this.db.execute(query, values);
 
-            await Utils.registerQuestionClientLog(
-                this.db,
-                id_question_client,
-                id_user,
-                `Precios actualizados: ${changes.join(", ")}`
-            );
 
             return { success: true, message: "Precios actualizados exitosamente" };
         } catch (error) {

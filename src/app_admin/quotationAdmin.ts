@@ -59,9 +59,6 @@ export class QuotationAdmin {
             // Recalcular totales
             await this.recalculateTotals(id_quotation);
 
-            // Registrar log
-            await Utils.registerQuotationLog(this.db, id_quotation, id_user, 'Cotización creada', 1);
-
             if (commit) {
                 await this.db.commit();
             }
@@ -237,11 +234,6 @@ export class QuotationAdmin {
             // Recalcular totales
             await this.recalculateTotals(id_quotation);
 
-            // Registrar log
-            if (changes.length > 0) {
-                await Utils.registerQuotationLog(this.db, id_quotation, id_user, `Cotización actualizada: ${changes.join(', ')}`, 1);
-            }
-
             if (commit) {
                 await this.db.commit();
             }
@@ -274,8 +266,6 @@ export class QuotationAdmin {
                     message: "Cotización no encontrada"
                 };
             }
-
-            await Utils.registerQuotationLog(this.db, id_quotation, id_user, 'Cotización eliminada', 1);
 
             return {
                 ok: true,

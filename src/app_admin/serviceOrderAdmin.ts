@@ -144,10 +144,6 @@ export class ServiceOrderAdmin {
 
             const id_service_order = orderResult.insertId;
 
-            // 5. Registrar log de orden (bitácora)
-            await Utils.registerServiceOrderLog(this.db, id_service_order, id_user, `Orden creada desde cotización "${quotationData.quotation_name}"`, 1);
-            await Utils.registerServiceOrderLog(this.db, id_service_order, id_user, `Orden generada: ${stores.length} tickets, monto total: $${totalAmount}`, 2);
-
             // 6. Crear tickets (1 por establecimiento)
             const ticketsCreated: number[] = [];
 
@@ -177,9 +173,6 @@ export class ServiceOrderAdmin {
                         VALUES (?, ?, ?)
                     `, [id_ticket, question.id_question, question.question_price]);
                 }
-
-                // Log del ticket
-                await Utils.registerTicketLog(this.db, id_ticket, id_user, 'Ticket creado', 1);
             }
 
             // 7. Actualizar estado de cotización a "confirmado"
@@ -500,9 +493,6 @@ export class ServiceOrderAdmin {
                     message: "Orden no encontrada o ya está pagada"
                 };
             }
-
-            await Utils.registerServiceOrderLog(this.db, id_service_order, id_user, 'Pago registrado', 1);
-            await Utils.registerServiceOrderLog(this.db, id_service_order, id_user, 'payment_status: 0 -> 1', 2);
 
             return {
                 ok: true,
