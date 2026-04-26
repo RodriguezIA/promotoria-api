@@ -2,7 +2,7 @@ import { Request, Response } from 'express'
 
 
 import { Promoter } from './promoter.service'
-import { CreatePromoterDTO } from './promoter.dtos'
+import { CreatePromoterDTO,  LoginPromoterDTO } from './promoter.dtos'
 
 
 const promoterService = new Promoter();
@@ -27,6 +27,43 @@ export const createPromoter = async (req: Request, res: Response) => {
             error: 1,
             data: null,
             message: "Error al crear el promotor",
+        })
+    }
+}
+
+export const loginPromoter = async(req: Request, res: Response) => {
+    try {
+        const body: LoginPromoterDTO = req.body
+
+        const result = await promoterService.validatePromoterByTermino(body.termino, body.password)
+
+        if (!result) {
+            return res.status(401).json({
+                ok: false,
+                error: 1,
+                data: null,
+                message: "Credenciales inválidas",
+            })
+        }
+
+        const { promoter, field } = result
+
+        await promoterService.updateLastLogin(promoter.id)
+
+        res.status(200).json({
+            ok: true,
+            error: 0,
+            data: promoter,
+            message: `Promotor autenticado exitosamente por ${field}`,
+        })
+
+    } catch (error) {
+        console.log("f.loginPromoter error: ", error)
+        res.status(500).json({
+            ok: false,
+            error: 1,
+            data: null,
+            message: "Error al iniciar sesión del promotor",
         })
     }
 }

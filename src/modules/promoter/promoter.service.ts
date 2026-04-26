@@ -137,4 +137,23 @@ export class Promoter {
 
         return promoter;
     }
+
+    async validatePromoterByTermino(termino: string, plainPassword: string){
+        const isEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(termino)
+        const isPhone = /^\+?[\d\s\-().]{7,20}$/.test(termino)
+
+        if(!isEmail && !isPhone) return null
+
+        const field = isEmail ? 'email' : 'phone'
+
+        const promoter = await prisma.promoters.findUnique({
+            where: isEmail ? { email: termino } : { phone: termino }
+        })
+        if (!promoter) return null;
+
+        const isValid = await bcrypt.compare(plainPassword, promoter.password);
+        if (!isValid) return null;
+
+        return { promoter, field };
+    }
 }

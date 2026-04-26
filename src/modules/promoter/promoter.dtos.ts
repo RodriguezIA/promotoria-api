@@ -24,3 +24,11 @@ export interface CreatePromoterDTO {
     latitude?: number
     longitude?: number
 }
+
+export interface LoginPromoterDTO {
+    termino: string
+    password: string
+    fcm_token: string
+    latitude?: number
+    longitude?: number
+}
