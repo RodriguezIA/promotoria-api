@@ -1,8 +1,9 @@
 import { Request, Response } from 'express'
 
 
+import { Utils } from '../../core/utils'
 import { Promoter } from './promoter.service'
-import { CreatePromoterDTO,  LoginPromoterDTO } from './promoter.dtos'
+import { CreatePromoterDTO,  LoginPromoterDTO, TokenPromoterPayload } from './promoter.dtos'
 
 
 const promoterService = new Promoter();
@@ -48,12 +49,22 @@ export const loginPromoter = async(req: Request, res: Response) => {
 
         const { promoter, field } = result
 
+        const tokenPayload: TokenPromoterPayload = {
+            id: promoter.id,
+            phone: promoter.phone,
+            email: promoter.email || undefined,
+        }
+
+        const token =  Utils.generate_token(tokenPayload)
+
+        const { password, ...promoterWithoutPassword} = promoter
+
         await promoterService.updateLastLogin(promoter.id)
 
         res.status(200).json({
             ok: true,
             error: 0,
-            data: promoter,
+            data: { ...promoterWithoutPassword, token },
             message: `Promotor autenticado exitosamente por ${field}`,
         })
 

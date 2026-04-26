@@ -21,6 +21,12 @@ export interface TokenPayload {
   i_rol: number;
 }
 
+interface TokenPromoterPayload {
+  id: number
+  phone: string
+  email?: string
+}
+
 export function generarCodigoAfiliacion(): string {
   const caracteres = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
   let codigo = "";
@@ -80,7 +86,7 @@ export class Utils {
   }
 
 
-  static generate_token(payload: TokenPayload, _expiresIn: string = "30d"): string {
+  static generate_token(payload: TokenPayload | TokenPromoterPayload, _expiresIn: string = "30d"): string {
     return jwt.sign(payload, JWT_SECRET, {
       expiresIn: "30d",
     });

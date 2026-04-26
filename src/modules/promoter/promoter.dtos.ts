@@ -32,3 +32,9 @@ export interface LoginPromoterDTO {
     latitude?: number
     longitude?: number
 }
+
+export interface TokenPromoterPayload {
+    id: number
+    phone: string
+    email?: string
+}
