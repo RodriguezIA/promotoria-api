@@ -4,5 +4,14 @@ import productRouter from './products/routes'
 import storeRouter from './stores/store.routes'
 import channelsSalesRouter from './channel_sales/channel_sales.routes'
 import promoterRouter from './promoter/promoter.routes'
+import questionRouter from './questions/questions.route'
 
-export { clientRouter, userAdminRouter, productRouter, storeRouter, channelsSalesRouter, promoterRouter }
+export { 
+    clientRouter, 
+    userAdminRouter, 
+    productRouter, 
+    storeRouter, 
+    channelsSalesRouter, 
+    promoterRouter,
+    questionRouter 
+}
