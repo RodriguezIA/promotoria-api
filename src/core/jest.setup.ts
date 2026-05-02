@@ -1,0 +1,31 @@
+jest.mock('ioredis', () => {
+  return jest.fn().mockImplementation(() => ({
+    on: jest.fn(),
+    connect: jest.fn(),
+    disconnect: jest.fn(),
+    get: jest.fn(),
+    set: jest.fn(),
+    del: jest.fn(),
+  }));
+});
+
+jest.mock('bullmq', () => ({
+  Queue: jest.fn().mockImplementation(() => ({
+    on: jest.fn(),
+    add: jest.fn(),
+    close: jest.fn(),
+  })),
+  Worker: jest.fn().mockImplementation(() => ({
+    on: jest.fn(),
+    close: jest.fn(),
+  })),
+  RedisConnection: jest.fn(),
+}));
+
+jest.mock('../services/upload.service', () => ({
+  UploadService: {
+    uploadProductImage: jest.fn().mockResolvedValue('https://fake-url.com/image.png'),
+    uploadClientDoc: jest.fn().mockResolvedValue('https://fake-url.com/doc.pdf'),
+    uploadSaleChannelImage: jest.fn().mockResolvedValue('https://fake-url.com/channel.png'),
+  },
+}));

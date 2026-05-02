@@ -1,0 +1,45 @@
+name: CD — Deploy a VPS
+
+# Este workflow se ejecuta manualmente (workflow_dispatch) o cuando se hace push a main
+# Solo corre si el CI previo fue exitoso
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+
+jobs:
+  deploy:
+    name: Deploy a VPS
+    runs-on: ubuntu-latest
+    # Solo ejecutar si el último commit pasó CI (opcional, puedes quitar esta línea)
+    # needs: test-and-build
+    # Pero como needs no funciona entre workflows distintos, el deploy es manual o
+    # puedes unir CI y CD en un solo workflow
+
+    steps:
+      - name: Deploy vía SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          port: ${{ secrets.VPS_PORT || '22' }}
+          script: |
+            set -e
+            echo "🚀 Iniciando deploy..."
+            cd ~/promotoria-api || exit 1
+
+            git pull origin main
+
+            npm ci
+            npx prisma generate
+            npm run build
+
+            # Reiniciar con PM2 (si lo usas)
+            # pm2 restart retailink-api || pm2 start dist/index.js --name retailink-api
+
+            # O con systemd
+            # sudo systemctl restart retailink-api
+
+            echo "✅ Deploy completado"

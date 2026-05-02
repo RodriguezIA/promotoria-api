@@ -20,8 +20,8 @@
     "strictNullChecks": true,
     "strictFunctionTypes": true,
     "noUnusedLocals": false,
-    // "noUnusedParameters": true
+    "types": ["jest", "node"]
   },
   "include": ["src/**/*"],
-  "exclude": ["node_modules", "dist", "**/*.test.ts"]
+  "exclude": ["node_modules", "dist"]
 }

@@ -8,8 +8,9 @@
     "test:watch": "jest --watch",
     "start": "node dist/index.js",
     "dev": "nodemon --watch src --ext ts --exec tsx src/index.ts",
-    "build": "rimraf dist && tsc",
+    "build": "rimraf dist && tsc -p tsconfig.build.json",
     "postbuild": "cpx \"src/**/*.{env,json,html,css,png,jpg}\" dist",
+    "verify": "npm run build && npm test",
     "prod": "npm run build && npm start",
     "postinstall": "prisma generate"
   },
@@ -50,7 +51,9 @@
     "redis": "^5.8.2",
     "resend": "^6.6.0",
     "sharp": "^0.34.5",
-    "xlsx": "^0.18.5"
+    "supertest": "^7.2.2",
+    "xlsx": "^0.18.5",
+    "zod": "^4.4.2"
   },
   "devDependencies": {
     "@testing-library/jest-dom": "^6.9.1",
@@ -66,6 +69,7 @@
     "@types/node": "^22.14.1",
     "@types/node-cron": "^3.0.11",
     "@types/nodemailer": "^7.0.4",
+    "@types/supertest": "^7.2.0",
     "cpx": "^1.5.0",
     "jest": "^30.0.5",
     "jsdom": "^29.0.2",

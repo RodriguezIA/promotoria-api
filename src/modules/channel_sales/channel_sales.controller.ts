@@ -8,7 +8,7 @@ const salesChannelService = new SalesChannel();
 
 export const createSaleChannel = async(req: Request, res: Response) => {
     try {
-        const body: salesChannelsDTOCreate = JSON.parse(req.body.data)
+        const body: salesChannelsDTOCreate = req.body
 
         const result = await salesChannelService.create(body);
 
@@ -85,7 +85,7 @@ export const getSaleChannel = async(req: Request, res: Response) => {
 export const updateSaleChannel = async(req: Request, res: Response) => {
     try {
         const { id_channel } = req.params
-        const body: salesChannelsDTOCreate = JSON.parse(req.body.data)
+        const body: salesChannelsDTOCreate = req.body
 
         const result = await salesChannelService.update(Number(id_channel), body)
 

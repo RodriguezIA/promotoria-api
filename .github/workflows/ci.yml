@@ -1,0 +1,58 @@
+name: CI — Validar Build y Tests
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+
+jobs:
+  test-and-build:
+    name: Test & Build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout código
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Instalar dependencias
+        run: npm ci
+
+      - name: Generar cliente de Prisma
+        run: npx prisma generate
+
+      - name: Ejecutar tests
+        run: npm test
+        env:
+          NODE_ENV: test
+          JWT_SECRET: ci-jwt-secret-123
+          DATABASE_URL: mysql://root:@localhost:3306/promotoria_test
+          REDIS_URL: redis://localhost:6379
+          GCP_BUCKET_NAME: ci-bucket
+          GCP_PROJECT_ID: ci-project
+          GCS_PROJECT_ID: ci-project
+          RESEND_API_KEY: ci-resend
+          SMTP_HOST: smtp.test.com
+          SMTP_PORT: '587'
+          SMTP_USER: test@test.com
+          SMTP_PASS: testpass
+          FIREBASE_PROJECT_ID: ci-firebase
+          GOOGLE_MAPS_API_KEY: ci-maps
+
+      - name: Compilar TypeScript (Build)
+        run: npm run build
+
+      - name: Verificar que dist/ existe
+        run: |
+          if [ ! -d "dist" ]; then
+            echo "❌ Error: no se generó la carpeta dist/"
+            exit 1
+          fi
+          echo "✅ Build exitoso. Archivos generados:"
+          ls -la dist/

@@ -6,9 +6,11 @@ module.exports = {
   transform: {
     '^.+\\.ts$': 'ts-jest',
   },
-  moduleNameMapping: {
+  moduleNameMapper: {
     '^@/(.*)$': '<rootDir>/src/$1',
+    '^(.+)/generated/prisma/client$': '<rootDir>/src/generated/prisma/stub.ts',
   },
+  setupFilesAfterEnv: ['<rootDir>/src/core/jest.setup.ts'],
   clearMocks: true,
   resetMocks: true,
 };

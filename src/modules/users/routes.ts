@@ -1,12 +1,11 @@
-import { Router, Request, Response} from 'express'
+import { Router } from 'express'
 import { getAllUsersByClientId, createUser } from './controller'
-import { authMiddleware } from "../../core/middleware/auth.middleware"
+import { authMiddleware, validateBody } from "../../core/middleware"
+import { createUserSchema } from './user.schema'
 
 const userAdminRouter = Router()
 
-userAdminRouter.post('/', authMiddleware, createUser)
+userAdminRouter.post('/', authMiddleware, validateBody(createUserSchema), createUser)
 userAdminRouter.get('/:id_client', authMiddleware, getAllUsersByClientId)
-
-
 
 export default userAdminRouter
