@@ -153,7 +153,7 @@ export const deleteClient = async (req: Request, res: Response) => {
             });
         }
 
-        const result = await clientService.deleteClient(Number(id_client), id_user);
+        const result = await clientService.deleteClient(Number(id_client), id_user || 0);
 
         return res.json({
             ok: true,
