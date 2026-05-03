@@ -11,22 +11,9 @@ jobs:
     name: Test & Build
     runs-on: ubuntu-latest
 
-    # Variables disponibles en TODOS los pasos (incluyendo postinstall de npm ci)
     env:
-      DATABASE_URL: mysql://root:@localhost:3306/promotoria_test
-      JWT_SECRET: ci-jwt-secret-123
-      REDIS_URL: redis://localhost:6379
-      GCP_BUCKET_NAME: ci-bucket
-      GCP_PROJECT_ID: ci-project
-      GCS_PROJECT_ID: ci-project
-      RESEND_API_KEY: ci-resend
-      SMTP_HOST: smtp.test.com
-      SMTP_PORT: 587
-      SMTP_USER: test@test.com
-      SMTP_PASS: testpass
-      FIREBASE_PROJECT_ID: ci-firebase
-      GOOGLE_MAPS_API_KEY: ci-maps
       NODE_ENV: test
+      JWT_SECRET: ci-jwt-secret-123
 
     steps:
       - name: Checkout código
@@ -40,9 +27,6 @@ jobs:
 
       - name: Instalar dependencias
         run: npm ci
-
-      - name: Generar cliente de Prisma
-        run: npx prisma generate
 
       - name: Ejecutar tests
         run: npm test

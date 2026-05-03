@@ -11,8 +11,7 @@
     "build": "rimraf dist && tsc -p tsconfig.build.json",
     "postbuild": "cpx \"src/**/*.{env,json,html,css,png,jpg}\" dist",
     "verify": "npm run build && npm test",
-    "prod": "npm run build && npm start",
-    "postinstall": "prisma generate"
+    "prod": "npm run build && npm start"
   },
   "_moduleAliases": {
     "@": "dist"
