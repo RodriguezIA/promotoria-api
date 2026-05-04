@@ -18,3 +18,8 @@ export interface CreateQuestionDto {
     options: CreateQuestionOptionDto[];
     clients?: number[];
 }
+
+export interface AssignClientsToQuestionDto {
+    id_user: number;
+    clients: number[];
+}

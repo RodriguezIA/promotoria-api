@@ -22,6 +22,11 @@ export const createQuestionSchema = z.object({
 
 export const updateQuestionSchema = createQuestionSchema.partial();
 
+export const assignClientsSchema = z.object({
+  id_user: z.number().int().positive('id_user es requerido'),
+  clients: z.array(z.number().int().positive()).min(1, 'Debe enviar al menos un cliente'),
+});
+
 export const questionIdParamSchema = z.object({
   id_question: z.string().regex(/^\d+$/, 'id_question debe ser un número').transform(Number),
 });

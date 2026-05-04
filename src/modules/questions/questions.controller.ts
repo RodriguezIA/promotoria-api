@@ -2,7 +2,7 @@ import { Request, Response } from 'express'
 
 
 import { Questions } from './questions.service'
-import { CreateQuestionDto } from './questions.dtos'
+import { CreateQuestionDto, AssignClientsToQuestionDto } from './questions.dtos'
 
 const questionService = new Questions()
 
@@ -107,6 +107,37 @@ export const updateQuestion = async(req: Request, res: Response) => {
             error: 1,
             data: null,
             message: "Un error ocurrio al actualizar la pregunta.",
+            error_backend: error instanceof Error ? error.message : String(error)
+        });
+    }
+}
+
+export const assignClientsToQuestion = async(req: Request, res: Response) => {
+    try {
+        const id_question = req.params.id_question;
+        const body: AssignClientsToQuestionDto = req.body;
+        const question = await questionService.assignClientsToQuestion(Number(id_question), body);
+        if (!question) {
+            return res.status(404).json({
+                ok: false,
+                error: 1,
+                data: null,
+                message: "Pregunta no encontrada."
+            });
+        }
+        res.status(200).json({
+            ok: true,
+            error: 0,
+            data: question,
+            message: "Clientes asignados a la pregunta exitosamente."
+        });
+    } catch (error) {
+        console.error("Error assigning clients to question:", error);
+        res.status(500).json({
+            ok: false,
+            error: 1,
+            data: null,
+            message: "Un error ocurrio al asignar clientes a la pregunta.",
             error_backend: error instanceof Error ? error.message : String(error)
         });
     }

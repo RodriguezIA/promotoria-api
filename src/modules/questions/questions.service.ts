@@ -1,6 +1,6 @@
 import { prisma } from '../../core/prisma'
 
-import { CreateQuestionDto } from './questions.dtos'
+import { CreateQuestionDto, AssignClientsToQuestionDto } from './questions.dtos'
 
 export class Questions {
 
@@ -35,9 +35,9 @@ export class Questions {
         return await prisma.questions.findMany({
             where: {
                 i_status: 1,
-                ...(id_client && id_client > 0 && {
+                ...(id_client !== undefined && id_client > 0 ? {
                     questions_client: { some: { id_client } }
-                })
+                } : {})
             },
             include: {
                 question_options: true,
@@ -85,6 +85,29 @@ export class Questions {
                         id_user: data.id_user!
                     }))
                 } : undefined
+            }
+        })
+    }
+
+    async assignClientsToQuestion(id_question: number, data: AssignClientsToQuestionDto) {
+        return await prisma.questions.update({
+            where: { id_question },
+            data: {
+                questions_client: {
+                    deleteMany: {},
+                    create: data.clients.map((id_client) => ({
+                        id_client: id_client,
+                        id_user: data.id_user
+                    }))
+                }
+            },
+            include: {
+                question_options: true,
+                questions_client: {
+                    include: {
+                        clients: true
+                    }
+                }
             }
         })
     }

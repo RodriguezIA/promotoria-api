@@ -21,21 +21,23 @@ export class Client {
                     }
                 });
 
-                await prisma.addresses.create({
-                    data: {
-                        entity_type: "client",
-                        entity_id: client.id_client,
-                        id_country: clientData?.id_pais || 0,
-                        id_state: clientData?.id_estado || 0,
-                        id_city: clientData?.id_ciudad || 0,
-                        street: clientData.street || "",
-                        ext_number: clientData.ext_number || "",
-                        int_number: clientData.int_number || "",
-                        neighborhood: clientData.neighborhood || "",
-                        postal_code: clientData.zip || "",
-                        is_active: true,
-                    }
-                });
+                if (clientData.street || clientData.ext_number || clientData.neighborhood || clientData.zip) {
+                    await prisma.addresses.create({
+                        data: {
+                            entity_type: "client",
+                            entity_id: client.id_client,
+                            id_country: clientData?.id_pais || 0,
+                            id_state: clientData?.id_estado || 0,
+                            id_city: clientData?.id_ciudad || 0,
+                            street: clientData.street || "",
+                            ext_number: clientData.ext_number || "",
+                            int_number: clientData.int_number || "",
+                            neighborhood: clientData.neighborhood || "",
+                            postal_code: clientData.zip || "",
+                            is_active: true,
+                        }
+                    });
+                }
 
                 await prisma.user_logs.create({
                     data: {
