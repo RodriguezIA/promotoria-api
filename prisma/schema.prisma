@@ -120,8 +120,8 @@ model order_logs {
 
 model orders {
   id_order    Int            @id @default(autoincrement()) @db.UnsignedInt
-  id_user     Int
-  id_client   Int
+  id_user     Int            @db.UnsignedInt
+  id_client   Int            @db.UnsignedInt
   f_total     Decimal        @db.Decimal(10, 2)
   dt_register DateTime       @db.DateTime(0)
   dt_update   DateTime       @db.DateTime(0)
@@ -164,8 +164,8 @@ model product_logs {
 
 model products {
   id_product  Int       @id @default(autoincrement())
-  id_user     Int
-  id_client   Int
+  id_user     Int       @db.UnsignedInt
+  id_client   Int       @db.UnsignedInt
   name        String    @db.VarChar(255)
   description String?   @db.Text
   vc_image    String?   @db.VarChar(500)
@@ -345,8 +345,8 @@ model request_products {
 
 model requests {
   id_request  Int      @id @default(autoincrement()) @db.UnsignedInt
-  id_user     Int
-  id_client   Int
+  id_user     Int      @db.UnsignedInt
+  id_client   Int      @db.UnsignedInt
   vc_name     String   @db.VarChar(255)
   f_value     Decimal  @db.Decimal(10, 2)
   url_rack_image String?  @db.VarChar(500)
