@@ -36,6 +36,26 @@ export class UploadService {
     }
   }
 
+  static async uploadRequestImage(id_request: number, fileBuffer: Buffer): Promise<string> {
+    try {
+      const optimizedBuffer = await sharp(fileBuffer).webp({ quality: 80 }).resize(1200, 1200, { fit: "inside", withoutEnlargement: true }).toBuffer();
+      const path = `requests/${id_request}/rack_image.webp`;
+      const file = bucket.file(path);
+
+      await file.save(optimizedBuffer, {
+        metadata: {
+          contentType: "image/webp",
+          cacheControl: "public, max-age=31536000",
+        },
+      });
+
+      return `https://storage.googleapis.com/${process.env.GCP_BUCKET_NAME}/${path}`;
+    } catch (error) {
+      console.error("Error al subir la imagen de la solicitud:", error);
+      throw new Error("Error al subir la imagen de la solicitud");
+    }
+  }
+
   static async deleteProductImage(id_client: number, id_product: number): Promise<void> {
     try {
       const path = `clients/${id_client}/products/${id_product}/main.webp`;

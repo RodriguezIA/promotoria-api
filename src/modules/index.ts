@@ -5,6 +5,7 @@ import storeRouter from './stores/store.routes'
 import channelsSalesRouter from './channel_sales/channel_sales.routes'
 import promoterRouter from './promoter/promoter.routes'
 import questionRouter from './questions/questions.route'
+import requestRouter from './requests/requests.routes'
 
 export { 
     clientRouter, 
@@ -13,5 +14,6 @@ export {
     storeRouter, 
     channelsSalesRouter, 
     promoterRouter,
-    questionRouter 
+    questionRouter,
+    requestRouter 
 }
