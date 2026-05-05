@@ -1,5 +1,5 @@
 import express from 'express';
-import { clientRouter, productRouter, userAdminRouter, storeRouter, channelsSalesRouter, promoterRouter, questionRouter } from '../modules';
+import { clientRouter, productRouter, userAdminRouter, storeRouter, channelsSalesRouter, promoterRouter, questionRouter, requestRouter } from '../modules';
 
 export const testApp = express();
 
@@ -13,3 +13,4 @@ testApp.use('/retailink-api/stores', storeRouter);
 testApp.use('/retailink-api/channel-sales', channelsSalesRouter);
 testApp.use('/retailink-api/promoters', promoterRouter);
 testApp.use('/retailink-api/questions', questionRouter);
+testApp.use('/retailink-api/requests', requestRouter);

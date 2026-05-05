@@ -162,6 +162,8 @@ model products {
   i_status    Int?      @default(1) @db.TinyInt
   dt_created  DateTime? @default(now()) @db.Timestamp(0)
   dt_updated  DateTime? @updatedAt      @db.Timestamp(0)
+
+  request_products request_products[]
 }
 
 model promoter_logs {
@@ -259,6 +261,7 @@ model questions {
   users            users              @relation(fields: [id_user], references: [id_user], map: "fk_question_user")
   questions_client questions_client[]
   question_options question_options[] @relation("QuestionOptions")
+  request_product_questions request_product_questions[]
 
   @@index([id_user], map: "fk_question_user")
 }
@@ -300,23 +303,34 @@ model request_logs {
 
 model request_product_questions {
   id_request_product_question Int      @id @default(autoincrement()) @db.UnsignedInt
-  id_request_product          Int
-  id_question                 Int
-  vc_question                 String?  @db.VarChar(255)
-  f_value                     Decimal  @db.Decimal(10, 2)
-  dt_register                 DateTime @db.DateTime(0)
-  dt_update                   DateTime @db.DateTime(0)
+  id_request_product          Int      @db.UnsignedInt
+  id_question                 Int      @db.UnsignedInt
+  dt_register                 DateTime @default(now()) @db.Timestamp(0)
+  dt_update                   DateTime @default(now()) @db.Timestamp(0)
   b_active                    Boolean  @default(true)
+
+  request_product request_products @relation(fields: [id_request_product], references: [id_request_product])
+  question        questions        @relation(fields: [id_question], references: [id_question])
+
+  @@index([id_request_product], map: "idx_request_product_question_rp")
+  @@index([id_question], map: "idx_request_product_question_question")
 }
 
 model request_products {
   id_request_product Int      @id @default(autoincrement()) @db.UnsignedInt
-  id_request         Int
+  id_request         Int      @db.UnsignedInt
   id_product         Int
-  f_subtotal         Decimal  @db.Decimal(10, 2)
-  dt_register        DateTime @db.DateTime(0)
-  dt_update          DateTime @db.DateTime(0)
+  dt_register        DateTime @default(now()) @db.Timestamp(0)
+  dt_update          DateTime @default(now()) @db.Timestamp(0)
   b_active           Boolean  @default(true)
+
+  request requests @relation(fields: [id_request], references: [id_request])
+  product products @relation(fields: [id_product], references: [id_product])
+  request_product_questions request_product_questions[]
+
+  @@unique([id_request, id_product], map: "uq_request_product")
+  @@index([id_request], map: "idx_request_products_request")
+  @@index([id_product], map: "idx_request_products_product")
 }
 
 model requests {
@@ -325,9 +339,13 @@ model requests {
   id_client   Int
   vc_name     String   @db.VarChar(255)
   f_value     Decimal  @db.Decimal(10, 2)
-  dt_register DateTime @db.DateTime(0)
-  dt_update   DateTime @db.DateTime(0)
-  id_status   Int
+  url_rack_image String?  @db.VarChar(500)
+  id_status   Int      @default(1)
+  b_active    Boolean  @default(true)
+  dt_register DateTime @default(now()) @db.Timestamp(0)
+  dt_update   DateTime @default(now()) @db.Timestamp(0)
+
+  request_products request_products[]
 }
 
 model service_logs {
