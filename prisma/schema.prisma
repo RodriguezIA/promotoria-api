@@ -45,7 +45,7 @@ model cities {
   addresses  addresses[]
 }
 
-/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+
 model client_logs {
   id_cliente_log Int      @id @default(autoincrement()) @db.UnsignedInt
   id_client      Int      @db.UnsignedInt
@@ -61,7 +61,7 @@ model client_logs {
   @@index([id_user], map: "idx_client_logs_user")
 }
 
-/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+
 model clients {
   id_client               Int                @id @default(autoincrement()) @db.UnsignedInt
   id_user                 Int                @db.UnsignedInt
@@ -80,6 +80,7 @@ model clients {
   client_logs             client_logs[]
   users                   users              @relation(fields: [id_user], references: [id_user], map: "fk_clients_user")
   questions_client        questions_client[]
+  orders                  orders[]
 
   @@index([i_status], map: "idx_clients_status")
   @@index([id_user], map: "idx_clients_user")
@@ -98,19 +99,6 @@ model countries {
   addresses  addresses[]
 }
 
-model folios {
-  id_folio       Int       @id @default(autoincrement()) @db.UnsignedInt
-  id_client      Int       @db.UnsignedInt
-  i_folio        Int       @default(0) @db.UnsignedInt
-  i_before_folio Int       @default(0) @db.UnsignedInt
-  i_next_folio   Int       @default(0) @db.UnsignedInt
-  i_type         Int       @db.UnsignedTinyInt
-  dt_register    DateTime? @default(now()) @db.DateTime(0)
-
-  @@index([id_client], map: "idx_client")
-  @@index([id_client, i_type], map: "idx_client_type")
-  @@index([id_client, i_type, i_folio], map: "idx_folio_lookup")
-}
 
 model order_logs {
   id_order_log Int      @id @default(autoincrement()) @db.UnsignedInt
@@ -123,20 +111,42 @@ model order_logs {
   i_status     Int      @default(1) @db.TinyInt
   dt_registro  DateTime @default(now()) @db.Timestamp(0)
 
+  order        orders   @relation(fields: [id_order], references: [id_order])
+
   @@index([id_negocio], map: "idx_negocio")
   @@index([id_order], map: "idx_order")
   @@index([id_usuario], map: "idx_usuario")
 }
 
 model orders {
-  id_order    Int      @id @default(autoincrement()) @db.UnsignedInt
+  id_order    Int            @id @default(autoincrement()) @db.UnsignedInt
   id_user     Int
   id_client   Int
-  id_request  Int
-  f_total     Decimal  @db.Decimal(10, 2)
-  dt_register DateTime @db.DateTime(0)
-  dt_update   DateTime @db.DateTime(0)
-  id_status   Int      @default(1)
+  f_total     Decimal        @db.Decimal(10, 2)
+  dt_register DateTime       @db.DateTime(0)
+  dt_update   DateTime       @db.DateTime(0)
+  id_status   Int            @default(1)
+
+  user         users           @relation(fields: [id_user], references: [id_user])
+  client       clients         @relation(fields: [id_client], references: [id_client])
+  order_logs   order_logs[]
+  order_requests order_requests[]
+}
+
+model order_requests {
+  id             Int      @id @default(autoincrement()) @db.UnsignedInt
+  id_order       Int      @db.UnsignedInt
+  id_request     Int      @db.UnsignedInt
+  id_status      Int?     // Estado propio de esta relación (opcional)
+  dt_register    DateTime @default(now()) @db.Timestamp(0)
+  dt_update      DateTime @updatedAt @db.Timestamp(0)
+
+  order   orders   @relation(fields: [id_order], references: [id_order])
+  request requests @relation(fields: [id_request], references: [id_request])
+
+  @@unique([id_order, id_request])   // Evita duplicados de la misma solicitud en una orden
+  @@index([id_order])
+  @@index([id_request])
 }
 
 model product_logs {
@@ -346,37 +356,9 @@ model requests {
   dt_update   DateTime @default(now()) @db.Timestamp(0)
 
   request_products request_products[]
+  order_requests   order_requests[]
 }
 
-model service_logs {
-  id_service_log Int      @id @default(autoincrement()) @db.UnsignedInt
-  id_service     Int      @default(0) @db.UnsignedInt
-  id_usuario     Int      @default(0) @db.UnsignedInt
-  id_promotor    Int      @default(0) @db.UnsignedInt
-  id_negocio     Int      @default(0) @db.UnsignedInt
-  id_pais        Int      @default(0) @db.UnsignedInt
-  vc_log         String   @db.VarChar(500)
-  i_status       Int      @default(1) @db.TinyInt
-  dt_registro    DateTime @default(now()) @db.Timestamp(0)
-
-  @@index([id_negocio], map: "idx_negocio")
-  @@index([id_service], map: "idx_service")
-  @@index([id_usuario], map: "idx_usuario")
-}
-
-model services {
-  id_service Int       @id @default(autoincrement()) @db.UnsignedInt
-  vc_folio   String    @db.VarChar(25)
-  id_client  Int       @db.UnsignedInt
-  id_user    Int       @db.UnsignedInt
-  id_status  Int       @db.UnsignedInt
-  dt_created DateTime? @default(now()) @db.DateTime(0)
-  dt_updated DateTime? @default(now()) @db.DateTime(0)
-
-  @@index([id_client], map: "idx_client")
-  @@index([vc_folio], map: "idx_folio")
-  @@index([id_status], map: "idx_status")
-}
 
 model states {
   id         Int      @id @default(autoincrement()) @db.UnsignedInt
@@ -391,16 +373,6 @@ model states {
   addresses  addresses[]
 }
 
-model status {
-  id_status      Int       @id @default(autoincrement()) @db.UnsignedInt
-  vc_name        String    @db.VarChar(25)
-  vc_description String?   @db.Text
-  id_client      Int       @default(0) @db.UnsignedInt
-  i_status       Int?      @default(1) @db.TinyInt
-  i_order        Int?      @default(0) @db.TinyInt
-  dt_register    DateTime? @default(now()) @db.DateTime(0)
-  dt_updated     DateTime? @default(now()) @db.DateTime(0)
-}
 
 /// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
 model store_logs {
@@ -437,15 +409,6 @@ model stores {
   @@index([id_channel_sale], map: "fk_store_channel")
 }
 
-model stores_clients {
-  id_store_client Int       @id @default(autoincrement())
-  id_store        Int
-  id_client       Int
-  id_user_creator Int
-  i_status        Int?      @default(1) @db.TinyInt
-  dt_created      DateTime? @default(now()) @db.Timestamp(0)
-  dt_updated      DateTime? @default(now()) @db.Timestamp(0)
-}
 
 model task_answers {
   id_task_answer              Int      @id @default(autoincrement()) @db.UnsignedInt
@@ -514,6 +477,7 @@ model users {
   store_logs             store_logs[]
   stores                 stores[]
   user_logs              user_logs[]
+  orders                 orders[]
 
   @@index([reset_password_token], map: "idx_reset_token")
   @@index([i_rol, i_status], map: "idx_users_rol_status")
