@@ -7,7 +7,7 @@ import express, { Express } from "express"
 import adminRouter from "./app_admin/index";
 import superadminRouter from "./app_superadmin/index";
 import mobileRouter from "./app_mobile/index";
-import { clientRouter, productRouter, userAdminRouter, storeRouter, channelsSalesRouter, promoterRouter, questionRouter, requestRouter } from './modules'
+import { clientRouter, productRouter, userAdminRouter, storeRouter, channelsSalesRouter, promoterRouter, questionRouter, requestRouter, orderRouter } from './modules'
 
 export const app: Express = express();
 const PORT = parseInt(process.env.PORT || "3000", 10);
@@ -30,6 +30,7 @@ app.use("/retailink-api/channel-sales", channelsSalesRouter);
 app.use("/retailink-api/promoters", promoterRouter);
 app.use("/retailink-api/questions", questionRouter);
 app.use("/retailink-api/requests", requestRouter);
+app.use("/retailink-api/orders", orderRouter);
 
 if (process.env.NODE_ENV !== 'test') {
   const startServer = async () => {

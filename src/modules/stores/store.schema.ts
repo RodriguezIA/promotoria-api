@@ -2,7 +2,7 @@ import { z } from 'zod';
 
 export const createAddressSchema = z.object({
   entity_type: z.string().min(1, 'entity_type es requerido'),
-  entity_id: z.number().int().positive('entity_id debe ser un entero positivo'),
+  entity_id: z.number().int(),
   id_country: z.number().int().positive('id_country es requerido'),
   id_state: z.number().int().positive('id_state es requerido'),
   id_city: z.number().int().positive('id_city es requerido'),
@@ -12,8 +12,8 @@ export const createAddressSchema = z.object({
   neighborhood: z.string().optional(),
   postal_code: z.string().min(1, 'postal_code es requerido'),
   address_references: z.string().optional(),
-  latitude: z.string().optional(),
-  longitude: z.string().optional(),
+  latitude: z.number().optional(),
+  longitude: z.number().optional(),
 });
 
 export const createStoreSchema = z.object({
