@@ -131,22 +131,41 @@ model orders {
   client       clients         @relation(fields: [id_client], references: [id_client])
   order_logs   order_logs[]
   order_requests order_requests[]
+  order_items    order_items[]
 }
 
 model order_requests {
   id             Int      @id @default(autoincrement()) @db.UnsignedInt
   id_order       Int      @db.UnsignedInt
   id_request     Int      @db.UnsignedInt
-  id_status      Int?     // Estado propio de esta relación (opcional)
+  id_status      Int?
   dt_register    DateTime @default(now()) @db.Timestamp(0)
   dt_update      DateTime @updatedAt @db.Timestamp(0)
 
   order   orders   @relation(fields: [id_order], references: [id_order])
   request requests @relation(fields: [id_request], references: [id_request])
 
-  @@unique([id_order, id_request])   // Evita duplicados de la misma solicitud en una orden
+  @@unique([id_order, id_request])
   @@index([id_order])
   @@index([id_request])
+}
+
+model order_items {
+  id_order_item Int      @id @default(autoincrement()) @db.UnsignedInt
+  id_order      Int      @db.UnsignedInt
+  id_request    Int      @db.UnsignedInt
+  id_store      Int      @db.UnsignedInt
+  f_value       Decimal  @db.Decimal(10, 2)
+  dt_register   DateTime @default(now()) @db.Timestamp(0)
+  dt_update     DateTime @default(now()) @db.Timestamp(0)
+
+  order   orders   @relation(fields: [id_order], references: [id_order])
+  request requests @relation(fields: [id_request], references: [id_request])
+  store   stores   @relation(fields: [id_store], references: [id_store])
+
+  @@index([id_order], map: "idx_order_items_order")
+  @@index([id_request], map: "idx_order_items_request")
+  @@index([id_store], map: "idx_order_items_store")
 }
 
 model product_logs {
@@ -357,6 +376,7 @@ model requests {
 
   request_products request_products[]
   order_requests   order_requests[]
+  order_items      order_items[]
 }
 
 
@@ -404,6 +424,7 @@ model stores {
   store_logs   store_logs[]
   sales_channel sales_channels? @relation(fields: [id_channel_sale], references: [id], map: "fk_store_channel")
   users        users        @relation(fields: [id_user], references: [id_user], map: "fk_store_user")
+  order_items  order_items[]
 
   @@index([id_user], map: "fk_store_user")
   @@index([id_channel_sale], map: "fk_store_channel")
@@ -434,6 +455,7 @@ model tasks {
   id_order             Int
   id_store             Int
   id_promoter          Int?
+  id_request           Int?     @db.UnsignedInt
   dt_register          DateTime @db.DateTime(0)
   dt_update            DateTime @db.DateTime(0)
   id_status            Int      @default(1)
