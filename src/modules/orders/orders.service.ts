@@ -54,17 +54,6 @@ export class Order {
                             f_value: reqValue
                         }
                     })
-
-                    await tx.tasks.create({
-                        data: {
-                            id_order: order.id_order,
-                            id_request: item.id_request,
-                            id_store,
-                            dt_register: now,
-                            dt_update: now,
-                            id_status: 1
-                        }
-                    })
                 }
             }
 

@@ -1,8 +1,13 @@
 import { Request, Response } from 'express'
+
+
 import { Order } from './orders.service'
+import { createTasksInSystem } from '../tasks/tasks.utils'
 import { CreateOrderDTO, UpdateOrderDTO, OrderFiltersDTO } from './orders.dtos'
 
+
 const orderService = new Order()
+
 
 function parseNumber(value: any): number | undefined {
     if (value === undefined || value === null || value === '') return undefined
@@ -20,6 +25,8 @@ export const createOrder = async (req: Request, res: Response) => {
         }
 
         const order = await orderService.createOrder(payload)
+
+        await createTasksInSystem(order.id_order)
 
         res.status(200).json({
             ok: true,

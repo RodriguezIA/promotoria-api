@@ -81,6 +81,9 @@ model clients {
   users                   users              @relation(fields: [id_user], references: [id_user], map: "fk_clients_user")
   questions_client        questions_client[]
   orders                  orders[]
+  requests                requests[]
+  products                products[]
+  tasks                   tasks[]
 
   @@index([i_status], map: "idx_clients_status")
   @@index([id_user], map: "idx_clients_user")
@@ -132,6 +135,7 @@ model orders {
   order_logs   order_logs[]
   order_requests order_requests[]
   order_items    order_items[]
+  tasks          tasks[]
 }
 
 model order_requests {
@@ -192,6 +196,7 @@ model products {
   dt_created  DateTime? @default(now()) @db.Timestamp(0)
   dt_updated  DateTime? @updatedAt      @db.Timestamp(0)
 
+  client           clients            @relation(fields: [id_client], references: [id_client])
   request_products request_products[]
 }
 
@@ -224,6 +229,7 @@ model promoters {
   isActive      Boolean   @default(true)
   latitude      Decimal?  @db.Decimal(10, 8)
   longitude     Decimal?  @db.Decimal(11, 8)
+  tasks         tasks[]
 }
 
 /// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
@@ -374,9 +380,11 @@ model requests {
   dt_register DateTime @default(now()) @db.Timestamp(0)
   dt_update   DateTime @default(now()) @db.Timestamp(0)
 
+  client           clients            @relation(fields: [id_client], references: [id_client])
   request_products request_products[]
   order_requests   order_requests[]
   order_items      order_items[]
+  tasks            tasks[]
 }
 
 
@@ -425,6 +433,7 @@ model stores {
   sales_channel sales_channels? @relation(fields: [id_channel_sale], references: [id], map: "fk_store_channel")
   users        users        @relation(fields: [id_user], references: [id_user], map: "fk_store_user")
   order_items  order_items[]
+  tasks        tasks[]
 
   @@index([id_user], map: "fk_store_user")
   @@index([id_channel_sale], map: "fk_store_channel")
@@ -452,14 +461,21 @@ model task_rejections {
 
 model tasks {
   id_task              Int      @id @default(autoincrement()) @db.UnsignedInt
-  id_order             Int
-  id_store             Int
-  id_promoter          Int?
+  id_client            Int      @db.UnsignedInt
+  id_order             Int      @db.UnsignedInt
+  id_store             Int      @db.UnsignedInt
+  id_promoter          Int?     @db.UnsignedInt
   id_request           Int?     @db.UnsignedInt
-  dt_register          DateTime @db.DateTime(0)
-  dt_update            DateTime @db.DateTime(0)
+  dt_register          DateTime @default(now()) @db.Timestamp(0)
+  dt_update            DateTime @default(now()) @db.Timestamp(0)
   id_status            Int      @default(1)
   i_notification_count Int      @default(0)
+
+  client   clients   @relation(fields: [id_client], references: [id_client])
+  order    orders    @relation(fields: [id_order], references: [id_order])
+  store    stores    @relation(fields: [id_store], references: [id_store])
+  promoter promoters? @relation(fields: [id_promoter], references: [id])
+  request  requests? @relation(fields: [id_request], references: [id_request])
 }
 
 /// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
