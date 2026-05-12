@@ -9,11 +9,11 @@ export interface UpdateTaskDTO {
     id_status?: number
 }
 
-export interface AssignPromoterDTO {
-    id_promoter: number
+export interface AnswerItemDTO {
+    id_request_product_question: number
+    vc_answer?: string | null
 }
 
-export interface AnswerTaskQuestionDTO {
-    id_request_product_question: number
-    vc_answer?: string
+export interface BatchAnswersDTO {
+    answers: AnswerItemDTO[]
 }
