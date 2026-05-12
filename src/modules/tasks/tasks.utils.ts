@@ -1,6 +1,4 @@
 import { prisma } from '../../core/prisma'
-
-
 import { Task } from './tasks.service'
 import { CreateTaskDTO } from './tasks.dtos'
 import { orderNotificationsQueue, startTaskNotifWorker } from '../../core/bullmq'
@@ -26,26 +24,21 @@ export async function createTasksInSystem(id_order: number){
             }
         })
 
-        order?.order_items.forEach(async(item) => {
-            console.log("tarea a crear en el sistema: ", item);
+        if (order?.order_items) {
+            for (const item of order.order_items) {
+                console.log("tarea a crear en el sistema: ", item);
 
-            const newTask: CreateTaskDTO = {
-                id_client: order.id_client,
-                id_order: item.id_order,
-                id_store: item.store.id_store,
-                id_request: item.request.id_request
-            }
-
-            const address = await prisma.addresses.findFirst({
-                where: {
-                    entity_type: 'store',
-                    entity_id: newTask.id_store
+                const newTask: CreateTaskDTO = {
+                    id_client: order.id_client,
+                    id_order: item.id_order,
+                    id_store: item.store.id_store,
+                    id_request: item.request.id_request
                 }
-            });
 
-            const task = await taskService.create(newTask)
-            console.log("tarea creada en el sistema: ", task);
-        });
+                const task = await taskService.create(newTask)
+                console.log("tarea creada en el sistema: ", task);
+            }
+        }
 
         startTaskNotifWorker(id_order, 1);
         await orderNotificationsQueue.add(

@@ -7,6 +7,7 @@ import promoterRouter from './promoter/promoter.routes'
 import questionRouter from './questions/questions.route'
 import requestRouter from './requests/requests.routes'
 import orderRouter from './orders/orders.routes'
+import taskRouter from './tasks/tasks.routes'
 
 export { 
     clientRouter, 
@@ -17,5 +18,6 @@ export {
     promoterRouter,
     questionRouter,
     requestRouter,
-    orderRouter 
+    orderRouter,
+    taskRouter,
 }

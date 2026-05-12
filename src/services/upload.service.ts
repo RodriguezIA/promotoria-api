@@ -102,4 +102,27 @@ export class UploadService {
       throw new Error("Error al subir la imagen")
     }
   }
+
+  static async uploadTaskAnswerImage(id_task: number, id_rpq: number, fileBuffer: Buffer): Promise<string> {
+    try {
+      const optimizedBuffer = await sharp(fileBuffer)
+        .webp({ quality: 80 })
+        .resize(1200, 1200, { fit: "inside", withoutEnlargement: true })
+        .toBuffer()
+      const path = `tasks/${id_task}/answers/${id_rpq}_${Date.now()}.webp`
+      const file = bucket.file(path)
+
+      await file.save(optimizedBuffer, {
+        metadata: {
+          contentType: "image/webp",
+          cacheControl: "public, max-age=31536000",
+        },
+      })
+
+      return `https://storage.googleapis.com/${process.env.GCP_BUCKET_NAME}/${path}`
+    } catch (error) {
+      console.error("f.uploadTaskAnswerImage: ", error)
+      throw new Error("Error al subir la imagen de la respuesta")
+    }
+  }
 }
