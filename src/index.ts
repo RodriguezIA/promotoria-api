@@ -9,7 +9,7 @@ import { initializeBullBoard } from "./queues/helpers/bullboard"
 import adminRouter from "./app_admin/index"
 import superadminRouter from "./app_superadmin/index"
 import mobileRouter from "./app_mobile/index"
-import { clientRouter, productRouter, userAdminRouter, storeRouter, channelsSalesRouter, promoterRouter, questionRouter, requestRouter, orderRouter } from './modules'
+import { clientRouter, productRouter, userAdminRouter, storeRouter, channelsSalesRouter, promoterRouter, questionRouter, requestRouter, orderRouter, taskRouter } from './modules'
 
 export const app: Express = express()
 const PORT = parseInt(process.env.PORT || "3000", 10)
@@ -41,6 +41,7 @@ app.use("/retailink-api/promoters", promoterRouter)
 app.use("/retailink-api/questions", questionRouter)
 app.use("/retailink-api/requests", requestRouter)
 app.use("/retailink-api/orders", orderRouter)
+app.use("/retailink-api/tasks", taskRouter)
 
 if (process.env.NODE_ENV !== 'test') {
   const startServer = async () => {

@@ -7,8 +7,11 @@ export const NOTIFICATION_CYCLES = [
 
 export type CicloConfig = typeof NOTIFICATION_CYCLES[number];
 
-export function getCicloConfig(ciclo: number): CicloConfig | null {
-    return NOTIFICATION_CYCLES.find(c => c.ciclo === ciclo) ?? null;
+export function getCicloConfig(ciclo: number): CicloConfig {
+    const direct = NOTIFICATION_CYCLES.find(c => c.ciclo === ciclo);
+    if (direct) return direct;
+    const last = NOTIFICATION_CYCLES[NOTIFICATION_CYCLES.length - 1];
+    return { ...last, ciclo } as CicloConfig;
 }
 
 // Intervalo entre push dentro de un ciclo

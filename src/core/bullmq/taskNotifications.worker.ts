@@ -38,6 +38,11 @@ export function startTaskNotifWorker(id_order: number, ciclo: number) {
                 return;
             }
 
+            await prisma.tasks.update({
+                where: { id_task },
+                data: { i_notification_count: { increment: 1 } }
+            });
+
             // 2. Obtener coordenadas de la tienda desde addresses
             const storeAddress = await prisma.addresses.findFirst({
                 where: {

@@ -2,6 +2,7 @@ import { Worker, Job } from "bullmq";
 import { connectionWorker } from "./conection";
 import { prisma } from "../prisma";
 import { getTaskNotifQueue } from "./taskNotification.queue";
+import { startTaskNotifWorker } from "./taskNotifications.worker";
 import { getCicloConfig } from "../../queues/helpers/cycles";
 
 export interface OrderNotifJobData {
@@ -26,6 +27,8 @@ const orderNotificationsWorker = new Worker(
             select: { id_task: true, id_store: true, id_request: true }
         });
 
+        console.log("[OrderNotif] Tareas sin promotor:", tareasSinPromotor.length)
+
         if (tareasSinPromotor.length === 0) {
             console.log(`[OrderNotif] Orden ${id_order} sin tareas pendientes, se omite.`);
             return;
@@ -42,6 +45,7 @@ const orderNotificationsWorker = new Worker(
 
         // Crear cola dinámica para esta orden+ciclo
         const taskQueue = getTaskNotifQueue(id_order, ciclo);
+        startTaskNotifWorker(id_order, ciclo);
 
         // Encolar un job por cada tarea sin promotor
         for (const tarea of tareasSinPromotor) {
@@ -60,21 +64,21 @@ const orderNotificationsWorker = new Worker(
             console.log(`[OrderNotif] Task ${tarea.id_task} encolada en ciclo ${ciclo}`);
         }
 
-        // Re-encolar la orden para el siguiente ciclo con delay
-        if (ciclo < 4) {
-            const nextCicloConfig = getCicloConfig(ciclo + 1);
-            if (nextCicloConfig) {
-                const { orderNotificationsQueue } = await import("./ordersNotification.queue");
-                await orderNotificationsQueue.add(
-                    `order_${id_order}_ciclo_${ciclo + 1}`,
-                    { id_order, ciclo: ciclo + 1 },
-                    {
-                        delay: nextCicloConfig.delayMs,
-                        jobId: `order_${id_order}_ciclo_${ciclo + 1}`, // evita duplicados
-                    }
-                );
-                console.log(`[OrderNotif] Orden ${id_order} re-encolada para ciclo ${ciclo + 1} en ${nextCicloConfig.delayMs}ms`);
-            }
+        // Re-encolar la orden para el siguiente ciclo con delay.
+        // A partir del ciclo 4 el radio ya no crece, pero se sigue encolando.
+        const nextCiclo = ciclo + 1;
+        const nextCicloConfig = getCicloConfig(nextCiclo);
+        if (nextCicloConfig) {
+            const { orderNotificationsQueue } = await import("./ordersNotification.queue");
+            await orderNotificationsQueue.add(
+                `order_${id_order}_ciclo_${nextCiclo}`,
+                { id_order, ciclo: nextCiclo },
+                {
+                    delay: nextCicloConfig.delayMs,
+                    jobId: `order_${id_order}_ciclo_${nextCiclo}`,
+                }
+            );
+            console.log(`[OrderNotif] Orden ${id_order} re-encolada para ciclo ${nextCiclo} en ${nextCicloConfig.delayMs}ms`);
         }
     },
     { connection: connectionWorker }

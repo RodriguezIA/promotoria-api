@@ -15,6 +15,8 @@ export function getTaskNotifQueue(id_order: number, ciclo: number): Queue {
         }
     });
 
+    console.log("[TaskNotif] Nueva cola dinámica creada:", queueName)
+
     registerDynamicQueue(queue);
     return queue;
 }

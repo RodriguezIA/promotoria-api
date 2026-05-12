@@ -4,3 +4,16 @@ export interface CreateTaskDTO {
     id_store: number
     id_request: number
 }
+
+export interface UpdateTaskDTO {
+    id_status?: number
+}
+
+export interface AnswerItemDTO {
+    id_request_product_question: number
+    vc_answer?: string | null
+}
+
+export interface BatchAnswersDTO {
+    answers: AnswerItemDTO[]
+}
