@@ -1,6 +1,6 @@
 import { Queue } from "bullmq";
 
-import { registerDynamicQueue } from '../../queues/helpers/bullboard.ts'
+import { registerDynamicQueue } from '../../queues/helpers/bullboard'
 import { connectionQueue } from "./conection";
 
 // Cola dinámica por orden + ciclo
