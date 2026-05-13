@@ -1,6 +1,4 @@
-import orderNotificationsWorker from "./orderNotifications.worker";
+import taskNotificationsWorker from './task-notifications.worker'
 
-export { orderNotificationsWorker };
-export { orderNotificationsQueue } from "./ordersNotification.queue";
-export { getTaskNotifQueue } from "./taskNotification.queue";
-export { startTaskNotifWorker } from "./taskNotifications.worker";
+export { taskNotificationsWorker }
+export { taskNotificationsQueue, startTaskNotificationScheduler } from './task-notifications.queue'

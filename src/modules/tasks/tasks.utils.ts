@@ -1,7 +1,6 @@
 import { prisma } from '../../core/prisma'
 import { Task } from './tasks.service'
 import { CreateTaskDTO } from './tasks.dtos'
-import { orderNotificationsQueue, startTaskNotifWorker } from '../../core/bullmq'
 
 
 export async function createTasksInSystem(id_order: number){
@@ -39,13 +38,6 @@ export async function createTasksInSystem(id_order: number){
                 console.log("tarea creada en el sistema: ", task);
             }
         }
-
-        startTaskNotifWorker(id_order, 1);
-        await orderNotificationsQueue.add(
-            `order_${id_order}_ciclo_1`,
-            { id_order, ciclo: 1 },
-            { jobId: `order_${id_order}_ciclo_1` }
-        );
 
     } catch (error) {
         return error
