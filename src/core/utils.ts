@@ -7,7 +7,8 @@ import { EmailService } from "./services/email/EmailService";
 
 import db from "../config/database";
 import { Database } from "./database";
-import { process_task_notificacions_queue } from "./bullmq/queue";
+import { taskNotificationsQueue } from "./bullmq/task-notifications.queue";
+import { TASK_NOTIF_QUEUE_NAME } from "./bullmq/task-notifications.queue";
 import { prisma } from "./prisma";
 
 
@@ -253,8 +254,8 @@ export class Utils {
 
   static async add_job_to_process_task_notificacions_queue(taskId: number): Promise<void> {
     try {
-      await process_task_notificacions_queue.add("send_task_notification", { taskId });
-      console.log(`Job added to task_notifications queue for task ${taskId}`);
+      await taskNotificationsQueue.add("send_task_notification", { taskId });
+      console.log(`Job added to ${TASK_NOTIF_QUEUE_NAME} queue for task ${taskId}`);
     } catch (error) {
       console.error("Error adding job to queue:", error);
       throw error;
