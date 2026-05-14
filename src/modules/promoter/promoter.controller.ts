@@ -59,7 +59,7 @@ export const loginPromoter = async(req: Request, res: Response) => {
 
         const { password, ...promoterWithoutPassword} = promoter
 
-        await promoterService.updateLastLogin(promoter.id)
+        await promoterService.updateLastLogin(promoter.id, body.fcm_token)
 
         res.status(200).json({
             ok: true,

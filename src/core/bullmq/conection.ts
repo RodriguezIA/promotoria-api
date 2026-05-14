@@ -16,7 +16,7 @@ export const connectionWorker = new IORedis({
 });
 
 // 👇 Agrega esto
-connectionWorker.on('connect', () => console.log('✅ Redis Worker conectado'));
-connectionWorker.on('error', (err) => console.error('❌ Redis Worker error:', err.message));
-connectionQueue.on('connect', () => console.log('✅ Redis Queue conectado'));
-connectionQueue.on('error', (err) => console.error('❌ Redis Queue error:', err.message));
+connectionWorker.on('connect', () => console.log('Redis Worker conectado'));
+connectionWorker.on('error', (err) => console.error('Redis Worker error:', err.message));
+connectionQueue.on('connect', () => console.log('Redis Queue conectado'));
+connectionQueue.on('error', (err) => console.error('Redis Queue error:', err.message));

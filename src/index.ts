@@ -3,7 +3,7 @@ import cors from "cors"
 import helmet from "helmet"
 import morgan from "morgan"
 import express, { Express } from "express"
-import { taskNotificationsQueue, startTaskNotificationScheduler } from "./core/bullmq"
+import { startTaskNotificacitonScheduler, queues } from "./core/bullmq"
 import { initializeBullBoard, serverAdapter } from "./queues/helpers/bullboard"
 
 import adminRouter from "./app_admin/index"
@@ -21,10 +21,9 @@ app.use(express.urlencoded({ extended: true }))
 app.use(morgan("dev"))
 
 // Bull Board UI
-initializeBullBoard([taskNotificationsQueue])
+initializeBullBoard(queues)
 app.use("/retailink-api/queues", serverAdapter.getRouter())
-
-startTaskNotificationScheduler()
+startTaskNotificacitonScheduler()
 
 app.use("/retailink-api/superadmin", superadminRouter)
 app.use("/retailink-api/admin", adminRouter)

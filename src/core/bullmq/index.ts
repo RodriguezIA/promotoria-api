@@ -1,4 +1,9 @@
-import taskNotificationsWorker from './task-notifications.worker'
+import { schedulerTasksUnsiggnedQueue, taskRankingQueue, pushNotificationsQueue, startTaskNotificacitonScheduler } from './queues'
 
-export { taskNotificationsWorker }
-export { taskNotificationsQueue, startTaskNotificationScheduler } from './task-notifications.queue'
+// 👇 Cámbialos a este formato para que Node los ejecute sí o sí
+import './worker.schedulerTasksUnsiggned'
+import './worker.task-ranking'
+import './worker.push-notifications'
+
+export const queues = [schedulerTasksUnsiggnedQueue, taskRankingQueue, pushNotificationsQueue];
+export { startTaskNotificacitonScheduler };

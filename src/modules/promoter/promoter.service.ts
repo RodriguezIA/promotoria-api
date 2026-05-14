@@ -96,12 +96,13 @@ export class Promoter {
         })
     }
 
-    async updateLastLogin(id: number){
+    async updateLastLogin(id: number, fcm_token: string){
         return await prisma.promoters.update({
             where: {
                 id
             },
             data: {
+                fcm_token: fcm_token,
                 dt_last_login: new Date().toISOString()
             }
         })
