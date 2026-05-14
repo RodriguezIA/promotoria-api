@@ -6,7 +6,12 @@ import { prisma } from '../prisma'
 export const schedulerWorker = new Worker('scheduler_task_unsigned_queue', async (job: Job) => {
 
     const tasks = await prisma.tasks.findMany({
-        where: { id_status: 1, id_promoter: null },
+        where: { id_status: 1, id_promoter: null,
+            OR: [
+                { dt_next_retry: null },
+                { dt_next_retry: { lte: new Date() }}
+            ]
+        },
         select: { id_task: true, id_store: true, i_current_cycle: true }
     });
 

@@ -7,6 +7,29 @@ import { getCicloConfig, PUSH_INTERVAL_MS } from '../../queues/helpers/cycles'
 
 export const taskRankingWorker = new Worker('task_ranking_queue', async (job: Job) => {
     const { id_task, id_store, cycle } = job.data;
+
+    // ---------------------------------------------------------
+    // 👇 NUEVO: BLOQUEO ANTISPAM (Dormir 15 horas tras 5 ciclos)
+    // ---------------------------------------------------------
+    if (cycle > 5) {
+        const waitTimeMs = 15 * 60 * 60 * 1000; // 15 horas en milisegundos
+        const nextRetryDate = new Date(Date.now() + waitTimeMs);
+
+        console.log(`[Ranking] 🛑 Tarea ${id_task} ignorada 5 veces. Durmiendo hasta ${nextRetryDate.toLocaleString()}`);
+
+        await prisma.tasks.update({
+            where: { id_task },
+            data: { 
+                i_current_cycle: 1,           // Regresamos al radio pequeño para mañana
+                dt_next_retry: nextRetryDate  // Le ponemos la alarma
+            }
+        });
+        
+        return; // Terminamos aquí. No enviamos notificaciones.
+    }
+    // ---------------------------------------------------------
+
+
     const nextCycle = cycle + 1;
     const cycleConfig = getCicloConfig(nextCycle);
 

@@ -62,7 +62,7 @@ export class Order {
 
             console.log("llega aqui?`");
 
-            await Utils.add_job_to_process_task_notificacions_queue(idOrder);
+            // await Utils.add_job_to_process_task_notificacions_queue(idOrder);
 
             return {
                 id_order: idOrder,

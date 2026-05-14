@@ -471,6 +471,7 @@ model tasks {
   id_status            Int      @default(1)
   i_notification_count Int      @default(0)
   i_current_cycle      Int      @default(0)
+  dt_next_retry        DateTime?
 
   client   clients   @relation(fields: [id_client], references: [id_client])
   order    orders    @relation(fields: [id_order], references: [id_order])
