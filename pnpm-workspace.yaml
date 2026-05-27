@@ -1,0 +1,11 @@
+allowBuilds:
+  '@firebase/util': true
+  '@prisma/engines': true
+  bcrypt: true
+  core-js: true
+  esbuild: true
+  msgpackr-extract: true
+  prisma: true
+  protobufjs: true
+  sharp: true
+  unrs-resolver: true

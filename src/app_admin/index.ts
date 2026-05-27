@@ -1,5 +1,5 @@
 import express, { Router, Request, Response } from "express";
-import * as XLSX from "xlsx";
+import ExcelJS from "exceljs";
 
 import { UserAdmin } from "./userAdmin";
 import { productAdmin } from "./productAdmin";
@@ -762,13 +762,34 @@ adminRouter.post("/stores/import-excel", uploadExcel.single("file"), async (req:
             return;
         }
 
-        // Leer Excel desde el buffer (memoria)
-        const workbook = XLSX.read(file.buffer, { type: "buffer" });
-        const sheetName = workbook.SheetNames[0];
-        const worksheet = workbook.Sheets[sheetName];
-        
-        // Convertir a JSON
-        const data: any[] = XLSX.utils.sheet_to_json(worksheet);
+        const workbook = new ExcelJS.Workbook();
+        await workbook.xlsx.load(file.buffer as unknown as ArrayBuffer);
+        const worksheet = workbook.worksheets[0];
+        if (!worksheet) {
+            res.status(400).json({
+                ok: false,
+                message: "El archivo Excel no tiene hojas",
+            });
+            return;
+        }
+
+        const data: any[] = [];
+        let headers: string[] = [];
+        worksheet.eachRow((row, rowNumber) => {
+            if (rowNumber === 1) {
+                headers = row.values as string[];
+                headers = headers.map((h: string | undefined) => (h != null ? String(h).trim() : ""));
+                return;
+            }
+            const obj: Record<string, any> = {};
+            row.eachCell({ includeEmpty: true }, (cell, colNumber) => {
+                const header = headers[colNumber - 1];
+                if (header) {
+                    obj[header] = cell.value != null ? cell.value : "";
+                }
+            });
+            data.push(obj);
+        });
 
         if (data.length === 0) {
             res.status(400).json({
