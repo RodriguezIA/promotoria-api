@@ -66,7 +66,7 @@ importers:
         specifier: ^9.0.2
         version: 9.0.3
       module-alias:
-        specifier: ^2.2.3
+        specifier: ^2.3.4
         version: 2.3.4
       morgan:
         specifier: ^1.10.0

@@ -2,7 +2,8 @@ module.exports = {
   apps: [
     {
       name: "retailink-api",
-      script: "dist/index.js",
+      script: "src/index.ts",
+      interpreter: "node_modules/.bin/tsx",
       instances: 1,
       exec_mode: "fork",
       autorestart: true,
