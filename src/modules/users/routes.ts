@@ -5,8 +5,13 @@ import { createUserSchema } from './user.schema'
 
 const userAdminRouter = Router()
 
+// RUTAS ESTATICAS
 userAdminRouter.post('/', authMiddleware, validateBody(createUserSchema), createUser)
-userAdminRouter.get('/:id_client', authMiddleware, getAllUsersByClientId)
 userAdminRouter.get('/refresh-token', refreshToken)
+
+// RUTAS DINAMICAS
+userAdminRouter.get('/:id_client', authMiddleware, getAllUsersByClientId)
+
+
 
 export default userAdminRouter
