@@ -1,6 +1,8 @@
-import { Request, Response } from 'express';
+import { Request, Response } from 'express'
+
 import { UserAdminDTO } from "./user.service"
 import { LogsDTO } from "../logs/logs.dto"
+import { Utils } from '../../core/utils'
 
 const userAdminDTO = new UserAdminDTO();
 const logsDTO = new LogsDTO();
@@ -75,4 +77,37 @@ export const createUser =  async (req: Request, res: Response) => {
     });
   }
 
+}
+
+export const refreshToken = async(req: Request, res: Response) => {
+  try {
+    const authHeader = req.headers['authorization'];
+    const token = authHeader && authHeader.split(' ')[1];
+
+    if (!token) {
+      return res.status(401).json({
+        ok: false,
+        error: 1,
+        data: null,
+        message: "No se proporcionó un token." 
+      });
+    }
+
+    const verification = Utils.verify_token(token);
+
+    return res.status(200).json({
+      ok: true,
+      error: 0,
+      data: verification,
+      message: 'Token válido'
+    });
+  } catch(error){
+    console.error(error);
+    res.status(500).json({
+      ok: false,
+      error: 1,
+      data: null,
+      message: 'Error token invalido'
+    });
+  }
 }
