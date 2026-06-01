@@ -6,7 +6,8 @@ import { createUserSchema } from './user.schema'
 const userAdminRouter = Router()
 
 userAdminRouter.post('/', authMiddleware, validateBody(createUserSchema), createUser)
-userAdminRouter.get('/:id_client', authMiddleware, getAllUsersByClientId)
 userAdminRouter.get('/refresh-token', refreshToken)
+
+userAdminRouter.get('/:id_client', authMiddleware, getAllUsersByClientId)
 
 export default userAdminRouter
