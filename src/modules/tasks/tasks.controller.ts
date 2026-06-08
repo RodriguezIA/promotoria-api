@@ -6,6 +6,21 @@ import { UploadService } from '../../services/upload.service'
 
 const taskService = new Task()
 
+export const assignPromoterToTask = async (req: Request, res: Response) => {
+    const { id_task } = req.params
+    const { id_promoter } = req.body
+    if (!id_promoter) {
+        res.status(400).json({ ok: false, error: 1, data: null, message: 'id_promoter es requerido' })
+        return
+    }
+    try {
+        const task = await taskService.assignPromoter(Number(id_task), Number(id_promoter))
+        res.status(200).json({ ok: true, error: 0, data: task, message: 'Promotor asignado exitosamente' })
+    } catch (error) {
+        res.status(500).json({ ok: false, error: 1, data: null, message: (error as any).message || 'Error al asignar promotor' })
+    }
+}
+
 export const createTask = async (req: Request, res: Response) => {
     const body: CreateTaskDTO = req.body
     try {

@@ -8,6 +8,16 @@ import { CreatePromoterDTO,  LoginPromoterDTO, TokenPromoterPayload } from './pr
 
 const promoterService = new Promoter();
 
+export const getPromoters = async (req: Request, res: Response) => {
+    try {
+        const promoters = await promoterService.getPromoters()
+        const safePromoters = promoters.map(({ password, ...p }) => p)
+        res.status(200).json({ ok: true, error: 0, data: safePromoters, message: 'Promotores obtenidos exitosamente' })
+    } catch (error) {
+        res.status(500).json({ ok: false, error: 1, data: null, message: 'Error al obtener los promotores' })
+    }
+}
+
 
 export const createPromoter = async (req: Request, res: Response) => {
     try {

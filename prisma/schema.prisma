@@ -8,43 +8,47 @@ datasource db {
 }
 
 model addresses {
-  id                 Int      @id @default(autoincrement()) @db.UnsignedInt
-  entity_type        String   @db.VarChar(50)
-  entity_id          Int      @db.UnsignedInt
-  id_country         Int      @db.UnsignedInt
-  id_state           Int      @db.UnsignedInt
-  id_city            Int      @db.UnsignedInt
-  street             String   @db.VarChar(150)
-  ext_number         String   @db.VarChar(20)
-  int_number         String?  @db.VarChar(20)
-  neighborhood       String?  @db.VarChar(100)
-  postal_code        String   @db.VarChar(20)
-  address_references String?  @db.Text
-  latitude           Decimal? @db.Decimal(10, 8)
-  longitude          Decimal? @db.Decimal(11, 8)
-  is_active          Boolean  @default(true)
-  created_at         DateTime @default(now()) @db.Timestamp(0)
-  updated_at         DateTime @default(now()) @db.Timestamp(0)
-
+  id                 Int       @id @default(autoincrement()) @db.UnsignedInt
+  entity_type        String    @db.VarChar(50)
+  entity_id          Int       @db.UnsignedInt
+  id_country         Int       @db.UnsignedInt
+  id_state           Int       @db.UnsignedInt
+  id_city            Int       @db.UnsignedInt
+  street             String    @db.VarChar(150)
+  ext_number         String    @db.VarChar(20)
+  int_number         String?   @db.VarChar(20)
+  neighborhood       String?   @db.VarChar(100)
+  postal_code        String    @db.VarChar(20)
+  address_references String?   @db.Text
+  latitude           Decimal?  @db.Decimal(10, 8)
+  longitude          Decimal?  @db.Decimal(11, 8)
+  is_active          Boolean   @default(true)
+  created_at         DateTime  @default(now()) @db.Timestamp(0)
+  updated_at         DateTime  @default(now()) @db.Timestamp(0)
+  city               cities    @relation(fields: [id_city], references: [id])
   country            countries @relation(fields: [id_country], references: [id])
   state              states    @relation(fields: [id_state], references: [id])
-  city               cities    @relation(fields: [id_city], references: [id])
+
+  @@index([id_city], map: "addresses_id_city_fkey")
+  @@index([id_country], map: "addresses_id_country_fkey")
+  @@index([id_state], map: "addresses_id_state_fkey")
 }
 
 model cities {
-  id         Int      @id @default(autoincrement()) @db.UnsignedInt
-  id_country Int      @db.UnsignedInt
-  id_state   Int      @db.UnsignedInt
-  name       String   @db.VarChar(100)
-  is_active  Boolean  @default(true)
-  created_at DateTime @default(now()) @db.Timestamp(0)
-  updated_at DateTime @default(now()) @db.Timestamp(0)
-
+  id         Int         @id @default(autoincrement()) @db.UnsignedInt
+  id_country Int         @db.UnsignedInt
+  id_state   Int         @db.UnsignedInt
+  name       String      @db.VarChar(100)
+  is_active  Boolean     @default(true)
+  created_at DateTime    @default(now()) @db.Timestamp(0)
+  updated_at DateTime    @default(now()) @db.Timestamp(0)
+  addresses  addresses[]
   country    countries   @relation(fields: [id_country], references: [id])
   state      states      @relation(fields: [id_state], references: [id])
-  addresses  addresses[]
-}
 
+  @@index([id_country], map: "cities_id_country_fkey")
+  @@index([id_state], map: "cities_id_state_fkey")
+}
 
 model client_logs {
   id_cliente_log Int      @id @default(autoincrement()) @db.UnsignedInt
@@ -60,7 +64,6 @@ model client_logs {
   @@index([id_client], map: "fk_logs_client")
   @@index([id_user], map: "idx_client_logs_user")
 }
-
 
 model clients {
   id_client               Int                @id @default(autoincrement()) @db.UnsignedInt
@@ -79,10 +82,10 @@ model clients {
   vc_url_situacion_fiscal String?            @db.VarChar(500)
   client_logs             client_logs[]
   users                   users              @relation(fields: [id_user], references: [id_user], map: "fk_clients_user")
-  questions_client        questions_client[]
   orders                  orders[]
-  requests                requests[]
   products                products[]
+  questions_client        questions_client[]
+  requests                requests[]
   tasks                   tasks[]
 
   @@index([i_status], map: "idx_clients_status")
@@ -90,18 +93,16 @@ model clients {
 }
 
 model countries {
-  id         Int      @id @default(autoincrement()) @db.UnsignedInt
-  name       String   @db.VarChar(100)
-  phone_code String   @db.VarChar(10)
-  is_active  Boolean  @default(true)
-  created_at DateTime @default(now()) @db.Timestamp(0)
-  updated_at DateTime @default(now()) @db.Timestamp(0)
-
-  states     states[]
-  cities     cities[]
+  id         Int         @id @default(autoincrement()) @db.UnsignedInt
+  name       String      @db.VarChar(100)
+  phone_code String      @db.VarChar(10)
+  is_active  Boolean     @default(true)
+  created_at DateTime    @default(now()) @db.Timestamp(0)
+  updated_at DateTime    @default(now()) @db.Timestamp(0)
   addresses  addresses[]
+  cities     cities[]
+  states     states[]
 }
-
 
 model order_logs {
   id_order_log Int      @id @default(autoincrement()) @db.UnsignedInt
@@ -113,7 +114,6 @@ model order_logs {
   vc_log       String   @db.VarChar(500)
   i_status     Int      @default(1) @db.TinyInt
   dt_registro  DateTime @default(now()) @db.Timestamp(0)
-
   order        orders   @relation(fields: [id_order], references: [id_order])
 
   @@index([id_negocio], map: "idx_negocio")
@@ -122,32 +122,33 @@ model order_logs {
 }
 
 model orders {
-  id_order    Int            @id @default(autoincrement()) @db.UnsignedInt
-  id_user     Int            @db.UnsignedInt
-  id_client   Int            @db.UnsignedInt
-  f_total     Decimal        @db.Decimal(10, 2)
-  dt_register DateTime       @db.DateTime(0)
-  dt_update   DateTime       @db.DateTime(0)
-  id_status   Int            @default(1)
-
-  user         users           @relation(fields: [id_user], references: [id_user])
-  client       clients         @relation(fields: [id_client], references: [id_client])
-  order_logs   order_logs[]
-  order_requests order_requests[]
+  id_order       Int              @id @default(autoincrement()) @db.UnsignedInt
+  id_user        Int              @db.UnsignedInt
+  id_client      Int              @db.UnsignedInt
+  f_total        Decimal          @db.Decimal(10, 2)
+  dt_register    DateTime         @db.DateTime(0)
+  dt_update      DateTime         @db.DateTime(0)
+  id_status      Int              @default(1)
   order_items    order_items[]
+  order_logs     order_logs[]
+  order_requests order_requests[]
+  client         clients          @relation(fields: [id_client], references: [id_client])
+  user           users            @relation(fields: [id_user], references: [id_user])
   tasks          tasks[]
+
+  @@index([id_client], map: "orders_id_client_fkey")
+  @@index([id_user], map: "orders_id_user_fkey")
 }
 
 model order_requests {
-  id             Int      @id @default(autoincrement()) @db.UnsignedInt
-  id_order       Int      @db.UnsignedInt
-  id_request     Int      @db.UnsignedInt
-  id_status      Int?
-  dt_register    DateTime @default(now()) @db.Timestamp(0)
-  dt_update      DateTime @updatedAt @db.Timestamp(0)
-
-  order   orders   @relation(fields: [id_order], references: [id_order])
-  request requests @relation(fields: [id_request], references: [id_request])
+  id          Int      @id @default(autoincrement()) @db.UnsignedInt
+  id_order    Int      @db.UnsignedInt
+  id_request  Int      @db.UnsignedInt
+  id_status   Int?
+  dt_register DateTime @default(now()) @db.Timestamp(0)
+  dt_update   DateTime @updatedAt @db.Timestamp(0)
+  order       orders   @relation(fields: [id_order], references: [id_order])
+  request     requests @relation(fields: [id_request], references: [id_request])
 
   @@unique([id_order, id_request])
   @@index([id_order])
@@ -162,10 +163,9 @@ model order_items {
   f_value       Decimal  @db.Decimal(10, 2)
   dt_register   DateTime @default(now()) @db.Timestamp(0)
   dt_update     DateTime @default(now()) @db.Timestamp(0)
-
-  order   orders   @relation(fields: [id_order], references: [id_order])
-  request requests @relation(fields: [id_request], references: [id_request])
-  store   stores   @relation(fields: [id_store], references: [id_store])
+  order         orders   @relation(fields: [id_order], references: [id_order])
+  request       requests @relation(fields: [id_request], references: [id_request])
+  store         stores   @relation(fields: [id_store], references: [id_store])
 
   @@index([id_order], map: "idx_order_items_order")
   @@index([id_request], map: "idx_order_items_request")
@@ -182,22 +182,23 @@ model product_logs {
   vc_log         String    @default("") @db.VarChar(500)
   i_status       Boolean?  @default(true)
   dt_register    DateTime? @default(now()) @db.DateTime(0)
-  dt_updated     DateTime? @updatedAt      @db.Timestamp(0)
+  dt_updated     DateTime? @updatedAt @db.Timestamp(0)
 }
 
 model products {
-  id_product  Int       @id @default(autoincrement())
-  id_user     Int       @db.UnsignedInt
-  id_client   Int       @db.UnsignedInt
-  name        String    @db.VarChar(255)
-  description String?   @db.Text
-  vc_image    String?   @db.VarChar(500)
-  i_status    Int?      @default(1) @db.TinyInt
-  dt_created  DateTime? @default(now()) @db.Timestamp(0)
-  dt_updated  DateTime? @updatedAt      @db.Timestamp(0)
-
+  id_product       Int                @id @default(autoincrement())
+  id_user          Int                @db.UnsignedInt
+  id_client        Int                @db.UnsignedInt
+  name             String             @db.VarChar(255)
+  description      String?            @db.Text
+  vc_image         String?            @db.VarChar(500)
+  i_status         Int?               @default(1) @db.TinyInt
+  dt_created       DateTime?          @default(now()) @db.Timestamp(0)
+  dt_updated       DateTime?          @default(now()) @updatedAt @db.Timestamp(0)
   client           clients            @relation(fields: [id_client], references: [id_client])
   request_products request_products[]
+
+  @@index([id_client], map: "products_id_client_fkey")
 }
 
 model promoter_logs {
@@ -240,7 +241,7 @@ model question_client_logs {
   log                    String           @db.VarChar(1000)
   i_status               Int              @default(1) @db.TinyInt
   dt_register            DateTime         @default(now()) @db.Timestamp(0)
-  dt_updated             DateTime         @updatedAt      @db.Timestamp(0)
+  dt_updated             DateTime         @default(now()) @updatedAt @db.Timestamp(0)
   questions_client       questions_client @relation(fields: [id_question_client], references: [id_question_client], map: "fk_question_client_logs_question_client")
   users                  users            @relation(fields: [id_user], references: [id_user], map: "fk_question_client_logs_user")
 
@@ -273,8 +274,7 @@ model question_options {
   option_order         Int?      @default(0)
   i_status             Boolean?  @default(true)
   dt_register          DateTime? @default(now()) @db.DateTime(0)
-  dt_updated           DateTime? @updatedAt @db.DateTime(0)
-
+  dt_updated           DateTime? @default(now()) @updatedAt @db.DateTime(0)
   questions            questions @relation("QuestionOptions", fields: [id_question], references: [id_question], map: "fk_option_question")
 
   @@index([id_question], map: "fk_option_question")
@@ -282,20 +282,20 @@ model question_options {
 
 /// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
 model questions {
-  id_question      Int                @id @default(autoincrement()) @db.UnsignedInt
-  id_user          Int                @db.UnsignedInt
-  question         String             @db.VarChar(1000)
-  i_status         Int                @default(1) @db.TinyInt
-  dt_register      DateTime           @default(now()) @db.Timestamp(0)
-  dt_updated       DateTime           @updatedAt      @db.Timestamp(0)
-  question_type    String?            @default("open") @db.VarChar(20)
-  min_value        Decimal?           @db.Decimal(10, 2)
-  max_value        Decimal?           @db.Decimal(10, 2)
-  max_photos       Int?               @default(1)
-  question_logs    question_logs[]
-  users            users              @relation(fields: [id_user], references: [id_user], map: "fk_question_user")
-  questions_client questions_client[]
-  question_options question_options[] @relation("QuestionOptions")
+  id_question               Int                         @id @default(autoincrement()) @db.UnsignedInt
+  id_user                   Int                         @db.UnsignedInt
+  question                  String                      @db.VarChar(1000)
+  i_status                  Int                         @default(1) @db.TinyInt
+  dt_register               DateTime                    @default(now()) @db.Timestamp(0)
+  dt_updated                DateTime                    @default(now()) @updatedAt @db.Timestamp(0)
+  question_type             String?                     @default("open") @db.VarChar(20)
+  min_value                 Decimal?                    @db.Decimal(10, 2)
+  max_value                 Decimal?                    @db.Decimal(10, 2)
+  max_photos                Int?                        @default(1)
+  question_logs             question_logs[]
+  question_options          question_options[]          @relation("QuestionOptions")
+  users                     users                       @relation(fields: [id_user], references: [id_user], map: "fk_question_user")
+  questions_client          questions_client[]
   request_product_questions request_product_questions[]
 
   @@index([id_user], map: "fk_question_user")
@@ -303,17 +303,17 @@ model questions {
 
 /// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
 model questions_client {
-  id_question_client    Int                    @id @default(autoincrement()) @db.UnsignedInt
-  id_question           Int                    @db.UnsignedInt
-  id_client             Int                    @db.UnsignedInt
-  id_user               Int                    @db.UnsignedInt
-  i_status              Int                    @default(1) @db.TinyInt
-  dt_register           DateTime               @default(now()) @db.Timestamp(0)
-  dt_updated            DateTime               @updatedAt      @db.Timestamp(0)
-  question_client_logs  question_client_logs[]
-  clients               clients                @relation(fields: [id_client], references: [id_client], map: "fk_question_client_client")
-  questions             questions              @relation(fields: [id_question], references: [id_question], map: "fk_question_client_question")
-  users                 users                  @relation(fields: [id_user], references: [id_user], map: "fk_question_client_user")
+  id_question_client   Int                    @id @default(autoincrement()) @db.UnsignedInt
+  id_question          Int                    @db.UnsignedInt
+  id_client            Int                    @db.UnsignedInt
+  id_user              Int                    @db.UnsignedInt
+  i_status             Int                    @default(1) @db.TinyInt
+  dt_register          DateTime               @default(now()) @db.Timestamp(0)
+  dt_updated           DateTime               @default(now()) @updatedAt @db.Timestamp(0)
+  question_client_logs question_client_logs[]
+  clients              clients                @relation(fields: [id_client], references: [id_client], map: "fk_question_client_client")
+  questions            questions              @relation(fields: [id_question], references: [id_question], map: "fk_question_client_question")
+  users                users                  @relation(fields: [id_user], references: [id_user], map: "fk_question_client_user")
 
   @@index([id_client], map: "fk_question_client_client")
   @@index([id_question], map: "fk_question_client_question")
@@ -337,31 +337,29 @@ model request_logs {
 }
 
 model request_product_questions {
-  id_request_product_question Int      @id @default(autoincrement()) @db.UnsignedInt
-  id_request_product          Int      @db.UnsignedInt
-  id_question                 Int      @db.UnsignedInt
-  dt_register                 DateTime @default(now()) @db.Timestamp(0)
-  dt_update                   DateTime @default(now()) @db.Timestamp(0)
-  b_active                    Boolean  @default(true)
-
-  request_product request_products @relation(fields: [id_request_product], references: [id_request_product])
-  question        questions        @relation(fields: [id_question], references: [id_question])
+  id_request_product_question Int              @id @default(autoincrement()) @db.UnsignedInt
+  id_request_product          Int              @db.UnsignedInt
+  id_question                 Int              @db.UnsignedInt
+  dt_register                 DateTime         @default(now()) @db.Timestamp(0)
+  dt_update                   DateTime         @default(now()) @db.Timestamp(0)
+  b_active                    Boolean          @default(true)
+  question                    questions        @relation(fields: [id_question], references: [id_question])
+  request_product             request_products @relation(fields: [id_request_product], references: [id_request_product])
 
   @@index([id_request_product], map: "idx_request_product_question_rp")
   @@index([id_question], map: "idx_request_product_question_question")
 }
 
 model request_products {
-  id_request_product Int      @id @default(autoincrement()) @db.UnsignedInt
-  id_request         Int      @db.UnsignedInt
-  id_product         Int
-  dt_register        DateTime @default(now()) @db.Timestamp(0)
-  dt_update          DateTime @default(now()) @db.Timestamp(0)
-  b_active           Boolean  @default(true)
-
-  request requests @relation(fields: [id_request], references: [id_request])
-  product products @relation(fields: [id_product], references: [id_product])
+  id_request_product        Int                         @id @default(autoincrement()) @db.UnsignedInt
+  id_request                Int                         @db.UnsignedInt
+  id_product                Int
+  dt_register               DateTime                    @default(now()) @db.Timestamp(0)
+  dt_update                 DateTime                    @default(now()) @db.Timestamp(0)
+  b_active                  Boolean                     @default(true)
   request_product_questions request_product_questions[]
+  product                   products                    @relation(fields: [id_product], references: [id_product])
+  request                   requests                    @relation(fields: [id_request], references: [id_request])
 
   @@unique([id_request, id_product], map: "uq_request_product")
   @@index([id_request], map: "idx_request_products_request")
@@ -369,38 +367,38 @@ model request_products {
 }
 
 model requests {
-  id_request  Int      @id @default(autoincrement()) @db.UnsignedInt
-  id_user     Int      @db.UnsignedInt
-  id_client   Int      @db.UnsignedInt
-  vc_name     String   @db.VarChar(255)
-  f_value     Decimal  @db.Decimal(10, 2)
-  url_rack_image String?  @db.VarChar(500)
-  id_status   Int      @default(1)
-  b_active    Boolean  @default(true)
-  dt_register DateTime @default(now()) @db.Timestamp(0)
-  dt_update   DateTime @default(now()) @db.Timestamp(0)
-
-  client           clients            @relation(fields: [id_client], references: [id_client])
-  request_products request_products[]
-  order_requests   order_requests[]
+  id_request       Int                @id @default(autoincrement()) @db.UnsignedInt
+  id_user          Int                @db.UnsignedInt
+  id_client        Int                @db.UnsignedInt
+  vc_name          String             @db.VarChar(255)
+  f_value          Decimal            @db.Decimal(10, 2)
+  dt_register      DateTime           @default(now()) @db.Timestamp(0)
+  dt_update        DateTime           @default(now()) @db.Timestamp(0)
+  id_status        Int                @default(1)
+  b_active         Boolean            @default(true)
+  url_rack_image   String?            @db.VarChar(500)
   order_items      order_items[]
+  order_requests   order_requests[]
+  request_products request_products[]
+  client           clients            @relation(fields: [id_client], references: [id_client])
   tasks            tasks[]
-}
 
+  @@index([id_client], map: "requests_id_client_fkey")
+}
 
 model states {
-  id         Int      @id @default(autoincrement()) @db.UnsignedInt
-  id_country Int      @db.UnsignedInt
-  name       String   @db.VarChar(100)
-  is_active  Boolean  @default(true)
-  created_at DateTime @default(now()) @db.Timestamp(0)
-  updated_at DateTime @default(now()) @db.Timestamp(0)
-
-  country    countries   @relation(fields: [id_country], references: [id])
-  cities     cities[]
+  id         Int         @id @default(autoincrement()) @db.UnsignedInt
+  id_country Int         @db.UnsignedInt
+  name       String      @db.VarChar(100)
+  is_active  Boolean     @default(true)
+  created_at DateTime    @default(now()) @db.Timestamp(0)
+  updated_at DateTime    @default(now()) @db.Timestamp(0)
   addresses  addresses[]
-}
+  cities     cities[]
+  country    countries   @relation(fields: [id_country], references: [id])
 
+  @@index([id_country], map: "states_id_country_fkey")
+}
 
 /// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
 model store_logs {
@@ -420,25 +418,23 @@ model store_logs {
 
 /// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
 model stores {
-  id_store     Int          @id @default(autoincrement()) @db.UnsignedInt
-  id_user      Int          @db.UnsignedInt
-  id_channel_sale Int?      @db.UnsignedInt
-  name         String       @db.VarChar(100)
-  store_code   String?      @db.VarChar(50)
-  i_status     Int          @default(1) @db.TinyInt
-  dt_register  DateTime     @default(now()) @db.Timestamp(0)
-  dt_updated   DateTime     @default(now()) @db.Timestamp(0)
-
-  store_logs   store_logs[]
-  sales_channel sales_channels? @relation(fields: [id_channel_sale], references: [id], map: "fk_store_channel")
-  users        users        @relation(fields: [id_user], references: [id_user], map: "fk_store_user")
-  order_items  order_items[]
-  tasks        tasks[]
+  id_store        Int             @id @default(autoincrement()) @db.UnsignedInt
+  id_user         Int             @db.UnsignedInt
+  id_channel_sale Int?            @db.UnsignedInt
+  name            String          @db.VarChar(100)
+  store_code      String?         @db.VarChar(50)
+  i_status        Int             @default(1) @db.TinyInt
+  dt_register     DateTime        @default(now()) @db.Timestamp(0)
+  dt_updated      DateTime        @default(now()) @db.Timestamp(0)
+  order_items     order_items[]
+  store_logs      store_logs[]
+  sales_channel   sales_channels? @relation(fields: [id_channel_sale], references: [id], map: "fk_store_channel")
+  users           users           @relation(fields: [id_user], references: [id_user], map: "fk_store_user")
+  tasks           tasks[]
 
   @@index([id_user], map: "fk_store_user")
   @@index([id_channel_sale], map: "fk_store_channel")
 }
-
 
 model task_answers {
   id_task_answer              Int      @id @default(autoincrement()) @db.UnsignedInt
@@ -460,24 +456,29 @@ model task_rejections {
 }
 
 model tasks {
-  id_task              Int      @id @default(autoincrement()) @db.UnsignedInt
-  id_client            Int      @db.UnsignedInt
-  id_order             Int      @db.UnsignedInt
-  id_store             Int      @db.UnsignedInt
-  id_promoter          Int?     @db.UnsignedInt
-  id_request           Int?     @db.UnsignedInt
-  dt_register          DateTime @default(now()) @db.Timestamp(0)
-  dt_update            DateTime @default(now()) @db.Timestamp(0)
-  id_status            Int      @default(1)
-  i_notification_count Int      @default(0)
-  i_current_cycle      Int      @default(0)
+  id_task              Int        @id @default(autoincrement()) @db.UnsignedInt
+  id_order             Int        @db.UnsignedInt
+  id_store             Int        @db.UnsignedInt
+  id_promoter          Int?       @db.UnsignedInt
+  dt_register          DateTime   @default(now()) @db.Timestamp(0)
+  dt_update            DateTime   @default(now()) @db.Timestamp(0)
+  id_status            Int        @default(1)
+  i_notification_count Int        @default(0)
+  id_request           Int?       @db.UnsignedInt
+  id_client            Int        @db.UnsignedInt
+  i_current_cycle      Int        @default(0)
   dt_next_retry        DateTime?
+  client               clients    @relation(fields: [id_client], references: [id_client])
+  order                orders     @relation(fields: [id_order], references: [id_order])
+  promoter             promoters? @relation(fields: [id_promoter], references: [id])
+  request              requests?  @relation(fields: [id_request], references: [id_request])
+  store                stores     @relation(fields: [id_store], references: [id_store])
 
-  client   clients   @relation(fields: [id_client], references: [id_client])
-  order    orders    @relation(fields: [id_order], references: [id_order])
-  store    stores    @relation(fields: [id_store], references: [id_store])
-  promoter promoters? @relation(fields: [id_promoter], references: [id])
-  request  requests? @relation(fields: [id_request], references: [id_request])
+  @@index([id_client], map: "tasks_id_client_fkey")
+  @@index([id_order], map: "tasks_id_order_fkey")
+  @@index([id_promoter], map: "tasks_id_promoter_fkey")
+  @@index([id_request], map: "tasks_id_request_fkey")
+  @@index([id_store], map: "tasks_id_store_fkey")
 }
 
 /// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
@@ -509,7 +510,8 @@ model users {
   id_client              Int                    @default(0) @db.UnsignedInt
   id_user_creator        Int                    @default(0) @db.UnsignedInt
   client_logs            client_logs[]
-  clients                clients[]              @relation(map: "fk_clients_user")
+  clients                clients[]
+  orders                 orders[]
   question_client_logs   question_client_logs[]
   question_logs          question_logs[]
   questions              questions[]
@@ -517,18 +519,16 @@ model users {
   store_logs             store_logs[]
   stores                 stores[]
   user_logs              user_logs[]
-  orders                 orders[]
 
   @@index([reset_password_token], map: "idx_reset_token")
   @@index([i_rol, i_status], map: "idx_users_rol_status")
 }
 
 model sales_channels {
-  id Int @id @default(autoincrement()) @db.UnsignedInt
-  name String
+  id          Int      @id @default(autoincrement()) @db.UnsignedInt
+  name        String
   description String?
-  url_image String?
-  is_active Boolean @default(true)
-
-  stores stores[]
+  url_image   String?
+  is_active   Boolean  @default(true)
+  stores      stores[]
 }
