@@ -14,6 +14,7 @@ import {
     getTaskChecklist,
     answerTaskQuestions,
     completeTask,
+    assignPromoterToTask,
 } from './tasks.controller'
 
 const taskRouter = Router()
@@ -37,5 +38,6 @@ taskRouter.get('/:id_task/checklist', authMiddleware, getTaskChecklist)
 taskRouter.post('/:id_task/answers', authMiddleware, uploadAny.any(), answerTaskQuestions)
 
 taskRouter.post('/:id_task/complete', authMiddleware, completeTask)
+taskRouter.put('/:id_task/assign', authMiddleware, assignPromoterToTask)
 
 export default taskRouter
