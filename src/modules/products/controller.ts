@@ -53,6 +53,39 @@ export const getProductsByClientId = async (req: Request, res: Response) => {
     }
 }
 
+export const getProductsPaginated = async (req: Request, res: Response) => {
+    const { id_client } = req.params;
+
+    const parseNumber = (value: any): number | undefined => {
+        if (value === undefined || value === null || value === '') return undefined;
+        const num = Number(value);
+        return isNaN(num) ? undefined : num;
+    };
+
+    try {
+        const result = await productService.getProductsPaginated(Number(id_client), {
+            page: parseNumber(req.query.page),
+            limit: parseNumber(req.query.limit),
+            search: typeof req.query.search === 'string' ? req.query.search : undefined,
+        });
+
+        res.json({
+            ok: true,
+            error: 0,
+            data: result,
+            message: 'Productos obtenidos exitosamente'
+        });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({
+            ok: false,
+            error: 1,
+            data: null,
+            message: 'Error al obtener los productos'
+        });
+    }
+}
+
 export const getProductById = async (req: Request, res: Response) => {
     const { id_product } = req.params;
     try {

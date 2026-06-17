@@ -38,6 +38,46 @@ export class Product {
         });
     }
 
+    async getProductsPaginated(
+        id_client: number,
+        opts: { page?: number; limit?: number; search?: string }
+    ) {
+        const page = opts.page && opts.page > 0 ? opts.page : 1;
+        const limit = opts.limit && opts.limit > 0 ? opts.limit : 12;
+        const skip = (page - 1) * limit;
+
+        const where: any = {
+            id_client,
+            i_status: 1,
+        };
+
+        // MySQL compara case-insensitive por la collation (_ci), no se usa `mode`.
+        const search = opts.search?.trim();
+        if (search) {
+            where.name = { contains: search };
+        }
+
+        const [products, total] = await Promise.all([
+            prisma.products.findMany({
+                where,
+                skip,
+                take: limit,
+                orderBy: { name: 'asc' },
+            }),
+            prisma.products.count({ where }),
+        ]);
+
+        return {
+            data: products,
+            meta: {
+                total,
+                page,
+                limit,
+                totalPages: Math.ceil(total / limit),
+            },
+        };
+    }
+
     async getProductById(id_product: number){
         return await prisma.products.findUnique({
             where: {
