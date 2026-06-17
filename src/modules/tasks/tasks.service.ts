@@ -1,16 +1,22 @@
 import { prisma } from '../../core/prisma'
 import { CreateTaskDTO, UpdateTaskDTO, AnswerItemDTO } from './tasks.dtos'
+import { generateFolio } from '../../services/folio.service'
 
 export class Task {
 
     async create(data: CreateTaskDTO) {
-        return await prisma.tasks.create({
-            data: {
-                id_client: data.id_client,
-                id_order: data.id_order,
-                id_store: data.id_store,
-                id_request: data.id_request,
-            }
+        return await prisma.$transaction(async (tx) => {
+            const vc_folio = await generateFolio(tx, data.id_client, 'tasks')
+
+            return tx.tasks.create({
+                data: {
+                    id_client: data.id_client,
+                    id_order: data.id_order,
+                    id_store: data.id_store,
+                    id_request: data.id_request,
+                    vc_folio,
+                }
+            })
         })
     }
 
@@ -19,10 +25,10 @@ export class Task {
             where: { id_task },
             include: {
                 client: { select: { id_client: true, name: true } },
-                order: { select: { id_order: true, f_total: true, id_status: true } },
+                order: { select: { id_order: true, vc_folio: true, f_total: true, id_status: true } },
                 store: { select: { id_store: true, name: true, store_code: true } },
                 promoter: { select: { id: true, name: true, lastname: true, phone: true, email: true } },
-                request: { select: { id_request: true, vc_name: true, url_rack_image: true, f_value: true } }
+                request: { select: { id_request: true, vc_folio: true, vc_name: true, url_rack_image: true, f_value: true } }
             }
         })
         if (!task) return null
@@ -51,10 +57,10 @@ export class Task {
             where,
             include: {
                 client: { select: { id_client: true, name: true, vc_initialism: true } },
-                order: { select: { id_order: true, f_total: true } },
+                order: { select: { id_order: true, vc_folio: true, f_total: true } },
                 store: { select: { id_store: true, name: true } },
                 promoter: { select: { id: true, name: true, lastname: true, phone: true } },
-                request: { select: { id_request: true, vc_name: true } }
+                request: { select: { id_request: true, vc_folio: true, vc_name: true } }
             },
             orderBy: { dt_register: 'desc' }
         })
@@ -70,15 +76,15 @@ export class Task {
         return await prisma.tasks.findMany({
             where,
             select: {
-                id_task: true, id_status: true, dt_register: true, i_notification_count: true,
+                id_task: true, vc_folio: true, id_status: true, dt_register: true, i_notification_count: true,
                 store: {
                     select: { id_store: true, name: true, store_code: true }
                 },
                 request: {
-                    select: { id_request: true, vc_name: true, url_rack_image: true }
+                    select: { id_request: true, vc_folio: true, vc_name: true, url_rack_image: true }
                 },
                 order: {
-                    select: { id_order: true, f_total: true }
+                    select: { id_order: true, vc_folio: true, f_total: true }
                 },
                 client: {
                     select: { id_client: true, name: true }
@@ -98,7 +104,7 @@ export class Task {
             include: {
                 store: { select: { id_store: true, name: true } },
                 promoter: { select: { id: true, name: true, lastname: true, phone: true } },
-                request: { select: { id_request: true, vc_name: true } }
+                request: { select: { id_request: true, vc_folio: true, vc_name: true } }
             }
         })
     }
@@ -135,7 +141,7 @@ export class Task {
             data: { id_promoter, id_status: 2 },
             include: {
                 store: { select: { id_store: true, name: true } },
-                request: { select: { id_request: true, vc_name: true } },
+                request: { select: { id_request: true, vc_folio: true, vc_name: true } },
             }
         })
     }
@@ -160,13 +166,13 @@ export class Task {
         const task = await prisma.tasks.findUnique({
             where: { id_task },
             select: {
-                id_task: true, id_status: true, dt_register: true,
+                id_task: true, vc_folio: true, id_status: true, dt_register: true,
                 id_client: true, id_order: true, id_request: true, id_promoter: true, id_store: true,
                 i_notification_count: true,
                 store: { select: { id_store: true, name: true, store_code: true } },
                 request: {
                     select: {
-                        id_request: true, vc_name: true, url_rack_image: true, f_value: true,
+                        id_request: true, vc_folio: true, vc_name: true, url_rack_image: true, f_value: true,
                         request_products: {
                             where: { b_active: true },
                             select: {

@@ -87,6 +87,7 @@ model clients {
   questions_client        questions_client[]
   requests                requests[]
   tasks                   tasks[]
+  folios                  folios[]
 
   @@index([i_status], map: "idx_clients_status")
   @@index([id_user], map: "idx_clients_user")
@@ -125,6 +126,7 @@ model orders {
   id_order       Int              @id @default(autoincrement()) @db.UnsignedInt
   id_user        Int              @db.UnsignedInt
   id_client      Int              @db.UnsignedInt
+  vc_folio       String?          @unique(map: "uq_orders_folio") @db.VarChar(50)
   f_total        Decimal          @db.Decimal(10, 2)
   dt_register    DateTime         @db.DateTime(0)
   dt_update      DateTime         @db.DateTime(0)
@@ -189,6 +191,7 @@ model products {
   id_product       Int                @id @default(autoincrement())
   id_user          Int                @db.UnsignedInt
   id_client        Int                @db.UnsignedInt
+  vc_folio         String?            @unique(map: "uq_products_folio") @db.VarChar(50)
   name             String             @db.VarChar(255)
   description      String?            @db.Text
   vc_image         String?            @db.VarChar(500)
@@ -370,6 +373,7 @@ model requests {
   id_request       Int                @id @default(autoincrement()) @db.UnsignedInt
   id_user          Int                @db.UnsignedInt
   id_client        Int                @db.UnsignedInt
+  vc_folio         String?            @unique(map: "uq_requests_folio") @db.VarChar(50)
   vc_name          String             @db.VarChar(255)
   f_value          Decimal            @db.Decimal(10, 2)
   dt_register      DateTime           @default(now()) @db.Timestamp(0)
@@ -460,6 +464,7 @@ model tasks {
   id_order             Int        @db.UnsignedInt
   id_store             Int        @db.UnsignedInt
   id_promoter          Int?       @db.UnsignedInt
+  vc_folio             String?    @unique(map: "uq_tasks_folio") @db.VarChar(50)
   dt_register          DateTime   @default(now()) @db.Timestamp(0)
   dt_update            DateTime   @default(now()) @db.Timestamp(0)
   id_status            Int        @default(1)
@@ -522,6 +527,19 @@ model users {
 
   @@index([reset_password_token], map: "idx_reset_token")
   @@index([i_rol, i_status], map: "idx_users_rol_status")
+}
+
+model folios {
+  id_folio        Int      @id @default(autoincrement()) @db.UnsignedInt
+  id_client       Int      @db.UnsignedInt
+  vc_entity       String   @db.VarChar(30)
+  i_current_folio Int      @default(0) @db.UnsignedInt
+  dt_register     DateTime @default(now()) @db.Timestamp(0)
+  dt_updated      DateTime @default(now()) @updatedAt @db.Timestamp(0)
+  client          clients  @relation(fields: [id_client], references: [id_client], map: "fk_folios_client")
+
+  @@unique([id_client, vc_entity], map: "uq_folios_client_entity")
+  @@index([id_client], map: "idx_folios_client")
 }
 
 model sales_channels {

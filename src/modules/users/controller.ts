@@ -95,6 +95,8 @@ export const refreshToken = async(req: Request, res: Response) => {
 
     const verification = Utils.verify_token(token);
 
+    console.log("token verification", verification);
+
     return res.status(200).json({
       ok: true,
       error: 0,

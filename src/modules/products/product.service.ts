@@ -1,14 +1,18 @@
 import { prisma } from '../../core/prisma';
 import { createProductPayload } from './product.dto';
+import { generateFolio } from '../../services/folio.service';
 
 export class Product {
 
     async createProduct(newProductPayload: createProductPayload){
         return await prisma.$transaction(async (prisma) => {
+            const vc_folio = await generateFolio(prisma, newProductPayload.id_client, 'products');
+
             const product = await prisma.products.create({
                 data: {
                     id_user: newProductPayload.id_user,
                     id_client: newProductPayload.id_client,
+                    vc_folio,
                     name: newProductPayload.name,
                     description: newProductPayload.description || '',
                     vc_image: newProductPayload.vc_image || '',

@@ -4,15 +4,19 @@ import {
     UpdateRequestDTO,
     RequestFiltersDTO,
 } from './requests.dtos'
+import { generateFolio } from '../../services/folio.service'
 
 export class Request {
 
     async createRequest(data: CreateRequestDTO) {
         return await prisma.$transaction(async (tx) => {
+            const vc_folio = await generateFolio(tx, data.id_client, 'requests')
+
             const request = await tx.requests.create({
                 data: {
                     id_user: data.id_user,
                     id_client: data.id_client,
+                    vc_folio,
                     vc_name: data.vc_name,
                     f_value: data.f_value,
                     url_rack_image: data.url_rack_image,
@@ -70,6 +74,7 @@ export class Request {
                             product: {
                                 select: {
                                     id_product: true,
+                                    vc_folio: true,
                                     name: true,
                                     vc_image: true,
                                 }
@@ -114,6 +119,7 @@ export class Request {
                         product: {
                             select: {
                                 id_product: true,
+                                vc_folio: true,
                                 name: true,
                                 vc_image: true,
                             }

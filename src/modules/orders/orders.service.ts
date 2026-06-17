@@ -1,5 +1,6 @@
 import { prisma } from '../../core/prisma'
 import { CreateOrderDTO, UpdateOrderDTO, OrderFiltersDTO } from './orders.dtos'
+import { generateFolio } from '../../services/folio.service'
 
 export class Order {
 
@@ -32,10 +33,13 @@ export class Order {
 
             const now = new Date()
 
+            const vc_folio = await generateFolio(tx, data.id_client, 'orders')
+
             const order = await tx.orders.create({
                 data: {
                     id_user: data.id_user,
                     id_client: data.id_client,
+                    vc_folio,
                     f_total: total,
                     dt_register: now,
                     dt_update: now,
@@ -93,7 +97,7 @@ export class Order {
                     order_items: {
                         include: {
                             request: {
-                                select: { id_request: true, vc_name: true, f_value: true }
+                                select: { id_request: true, vc_folio: true, vc_name: true, f_value: true }
                             },
                             store: {
                                 select: { id_store: true, name: true }
@@ -123,7 +127,7 @@ export class Order {
                 order_items: {
                     include: {
                         request: {
-                            select: { id_request: true, vc_name: true, f_value: true }
+                            select: { id_request: true, vc_folio: true, vc_name: true, f_value: true }
                         },
                         store: {
                             select: { id_store: true, name: true }
