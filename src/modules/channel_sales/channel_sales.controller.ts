@@ -2,7 +2,7 @@ import {Request, Response} from 'express'
 
 import { SalesChannel } from './channel_sales.service'
 import { salesChannelsDTOCreate } from './channel_sales.dto'
-import { UploadService } from '../../services/upload.service'
+import { StorageService } from '../../services/storage.service'
 
 const salesChannelService = new SalesChannel();
 
@@ -13,8 +13,14 @@ export const createSaleChannel = async(req: Request, res: Response) => {
         const result = await salesChannelService.create(body);
 
         if (req.file) {
-            const image_url = await UploadService.uploadSaleChannelImage(result.id, req.file.buffer, req.file.originalname, req.file.mimetype);
-            await salesChannelService.updateImage(result.id, image_url);
+            const { url } = await StorageService.uploadAsset({
+                entity: 'sale_channel',
+                entity_id: result.id,
+                buffer: req.file.buffer,
+                mime: req.file.mimetype,
+                originalName: req.file.originalname,
+            });
+            await salesChannelService.updateImage(result.id, url);
         }
 
         res.status(201).json({
@@ -90,8 +96,14 @@ export const updateSaleChannel = async(req: Request, res: Response) => {
         const result = await salesChannelService.update(Number(id_channel), body)
 
         if (req.file) {
-            const image_url = await UploadService.uploadSaleChannelImage(Number(id_channel), req.file.buffer, req.file.originalname, req.file.mimetype);
-            await salesChannelService.updateImage(Number(id_channel), image_url);
+            const { url } = await StorageService.uploadAsset({
+                entity: 'sale_channel',
+                entity_id: Number(id_channel),
+                buffer: req.file.buffer,
+                mime: req.file.mimetype,
+                originalName: req.file.originalname,
+            });
+            await salesChannelService.updateImage(Number(id_channel), url);
         }
 
         res.status(200).json({

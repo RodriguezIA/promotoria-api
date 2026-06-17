@@ -34,6 +34,26 @@ model addresses {
   @@index([id_state], map: "addresses_id_state_fkey")
 }
 
+/// Registro no-destructivo de cada archivo subido al bucket (imágenes/docs).
+/// Una entidad puede tener varias versiones; la vigente es is_active = true.
+/// Nunca se borra: las versiones viejas quedan como is_active = false.
+model assets {
+  id_asset    Int      @id @default(autoincrement()) @db.UnsignedInt
+  id_client   Int?     @db.UnsignedInt
+  entity_type String   @db.VarChar(50)
+  entity_id   Int      @db.UnsignedInt
+  vc_folio    String?  @db.VarChar(50)
+  bucket_path String   @db.VarChar(500)
+  vc_url      String   @db.VarChar(500)
+  vc_mime     String?  @db.VarChar(100)
+  i_size      Int?
+  id_user     Int?     @db.UnsignedInt
+  is_active   Boolean  @default(true)
+  created_at  DateTime @default(now()) @db.Timestamp(0)
+
+  @@index([id_client, entity_type, entity_id, is_active], map: "idx_assets_entity")
+}
+
 model cities {
   id         Int         @id @default(autoincrement()) @db.UnsignedInt
   id_country Int         @db.UnsignedInt

@@ -2,7 +2,7 @@ import { Request, Response } from 'express'
 
 import { Task } from './tasks.service'
 import { CreateTaskDTO, UpdateTaskDTO } from './tasks.dtos'
-import { UploadService } from '../../services/upload.service'
+import { StorageService } from '../../services/storage.service'
 
 const taskService = new Task()
 
@@ -158,9 +158,13 @@ export const answerTaskQuestions = async (req: Request, res: Response) => {
                 const match = file.fieldname.match(/^image_(\d+)$/)
                 if (match) {
                     const rpqId = Number(match[1])
-                    const url = await UploadService.uploadTaskAnswerImage(
-                        Number(id_task), rpqId, file.buffer
-                    )
+                    const { url } = await StorageService.uploadAsset({
+                        entity: 'task_answer',
+                        entity_id: Number(id_task),
+                        extraRef: rpqId,
+                        buffer: file.buffer,
+                        mime: file.mimetype,
+                    })
                     imageUrls.set(rpqId, url)
                 }
             }

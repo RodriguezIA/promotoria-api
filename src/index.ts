@@ -10,11 +10,16 @@ import adminRouter from "./app_admin/index"
 import superadminRouter from "./app_superadmin/index"
 import mobileRouter from "./app_mobile/index"
 import { clientRouter, productRouter, userAdminRouter, storeRouter, channelsSalesRouter, promoterRouter, questionRouter, requestRouter, orderRouter, taskRouter } from './modules'
+import { setupSwagger } from "./config/swagger"
 
 export const app: Express = express()
 const PORT = parseInt(process.env.PORT || "3000", 10)
 
 app.use(cors())
+
+// Documentación Swagger (antes de helmet para evitar bloqueos de CSP en la UI).
+setupSwagger(app)
+
 app.use(helmet())
 app.use(express.json())
 app.use(express.urlencoded({ extended: true }))

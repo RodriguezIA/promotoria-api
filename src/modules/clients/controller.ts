@@ -3,7 +3,7 @@ import { Request, Response, } from 'express'
 import { Utils } from '../../core/utils'
 import { Client } from './client.service'
 import { createClientData } from './client.dto'
-import { UploadService } from '../../services/upload.service'
+import { StorageService } from '../../services/storage.service'
 
 
 const clientService = new Client();
@@ -106,12 +106,15 @@ export const uploadClientDoc = async (req: Request, res: Response) => {
   }
 
   try {
-    const url = await UploadService.uploadClientDoc(
-      Number(id_client),
-      req.file.buffer,
-      req.file.originalname,
-      req.file.mimetype
-    );
+    const { url } = await StorageService.uploadAsset({
+      entity: 'client_doc',
+      entity_id: Number(id_client),
+      buffer: req.file.buffer,
+      mime: req.file.mimetype,
+      id_client: Number(id_client),
+      originalName: req.file.originalname,
+      optimize: false, // documentos (PDF/imagen) se guardan tal cual
+    });
 
     await clientService.updateSituacionFiscal(Number(id_client), url); // 👈
 
