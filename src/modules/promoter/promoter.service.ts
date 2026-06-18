@@ -32,15 +32,25 @@ export class Promoter {
     }
 
     async getPromoters(){
-        return await prisma.promoters.findMany()
+        const promoters = await prisma.promoters.findMany()
+        if (!promoters.length) return []
+        const ids = promoters.map(p => p.id)
+        const images = await prisma.assets.findMany({
+            where: { entity_type: 'promoter', entity_id: { in: ids }, is_active: true },
+            select: { entity_id: true, vc_url: true },
+        })
+        const imageMap = new Map(images.map(img => [img.entity_id, img.vc_url]))
+        return promoters.map(p => ({ ...p, vc_profile_image: imageMap.get(p.id) ?? null }))
     }
 
     async getPromoterById(id: number){
-        return await prisma.promoters.findUnique({
-            where: {
-                id
-            }
+        const promoter = await prisma.promoters.findUnique({ where: { id } })
+        if (!promoter) return null
+        const asset = await prisma.assets.findFirst({
+            where: { entity_type: 'promoter', entity_id: id, is_active: true },
+            select: { vc_url: true },
         })
+        return { ...promoter, vc_profile_image: asset?.vc_url ?? null }
     }
 
     async getPromoterByPhone(phone: string){
@@ -155,6 +165,11 @@ export class Promoter {
         const isValid = await bcrypt.compare(plainPassword, promoter.password);
         if (!isValid) return null;
 
-        return { promoter, field };
+        const asset = await prisma.assets.findFirst({
+            where: { entity_type: 'promoter', entity_id: promoter.id, is_active: true },
+            select: { vc_url: true },
+        })
+
+        return { promoter: { ...promoter, vc_profile_image: asset?.vc_url ?? null }, field };
     }
 }

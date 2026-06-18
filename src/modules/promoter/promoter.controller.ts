@@ -1,8 +1,8 @@
 import { Request, Response } from 'express'
 
-
 import { Utils } from '../../core/utils'
 import { Promoter } from './promoter.service'
+import { StorageService } from '../../services/storage.service'
 import { CreatePromoterDTO,  LoginPromoterDTO, TokenPromoterPayload } from './promoter.dtos'
 
 
@@ -105,6 +105,46 @@ export const updateLocationPromoter = async(req: Request, res: Response) => {
             error: 1,
             data: null,
             message: "Error al actualizar la ubicación del promotor",
+        })
+    }
+}
+
+export const uploadPromoterProfileImage = async (req: Request, res: Response) => {
+    try {
+        const id = parseInt(req.params.id as string)
+        if (isNaN(id)) {
+            return res.status(400).json({ ok: false, error: 1, data: null, message: 'ID de promotor inválido' })
+        }
+        if (!req.file) {
+            return res.status(400).json({ ok: false, error: 1, data: null, message: 'Se requiere una imagen' })
+        }
+
+        const promoter = await promoterService.getPromoterById(id)
+        if (!promoter) {
+            return res.status(404).json({ ok: false, error: 1, data: null, message: 'Promotor no encontrado' })
+        }
+
+        const { url, vc_folio } = await StorageService.uploadAsset({
+            entity: 'promoter',
+            entity_id: id,
+            buffer: req.file.buffer,
+            mime: req.file.mimetype,
+            optimize: { maxW: 400, maxH: 400, quality: 85 },
+        })
+
+        res.status(200).json({
+            ok: true,
+            error: 0,
+            data: { url, vc_folio },
+            message: 'Imagen de perfil actualizada exitosamente',
+        })
+    } catch (error) {
+        console.error('Error en uploadPromoterProfileImage:', error)
+        res.status(500).json({
+            ok: false,
+            error: 1,
+            data: null,
+            message: 'Error al subir la imagen de perfil',
         })
     }
 }

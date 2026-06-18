@@ -1,5 +1,6 @@
 import { prisma } from '../../core/prisma'
 import { salesChannelsDTOCreate } from './channel_sales.dto'
+import { resolveImages } from '../../core/asset-resolver'
 
 export class SalesChannel {
     public async create(newChannel: salesChannelsDTOCreate ){
@@ -9,18 +10,19 @@ export class SalesChannel {
     }
 
     public async getList(){
-        return await prisma.sales_channels.findMany({
-            where: { is_active: true }
-        })
+        const channels = await prisma.sales_channels.findMany({ where: { is_active: true } });
+        const assetMap = await resolveImages('sale_channel', channels.map(c => c.id));
+        return channels.map(c => ({ ...c, url_image: assetMap.get(c.id) ?? c.url_image }));
     }
 
     public async getById(id: number){
-        return await prisma.sales_channels.findFirst({
+        const channel = await prisma.sales_channels.findFirst({
             where: { id, is_active: true },
-            include: {
-                stores: {}
-            }
-        })
+            include: { stores: {} }
+        });
+        if (!channel) return null;
+        const assetMap = await resolveImages('sale_channel', [id]);
+        return { ...channel, url_image: assetMap.get(id) ?? channel.url_image };
     }
 
     public async update(id: number, channel: salesChannelsDTOCreate){

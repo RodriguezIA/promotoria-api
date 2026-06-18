@@ -5,6 +5,7 @@ import {
     RequestFiltersDTO,
 } from './requests.dtos'
 import { generateFolio } from '../../services/folio.service'
+import { resolveImages } from '../../core/asset-resolver'
 
 export class Request {
 
@@ -98,8 +99,24 @@ export class Request {
             prisma.requests.count({ where })
         ])
 
+        const requestIds = requests.map(r => r.id_request);
+        const productIds = [...new Set(requests.flatMap(r => r.request_products.map(rp => rp.product.id_product)))];
+        const [requestAssets, productAssets] = await Promise.all([
+            resolveImages('request', requestIds),
+            resolveImages('product', productIds),
+        ]);
+
+        const data = requests.map(r => ({
+            ...r,
+            url_rack_image: requestAssets.get(r.id_request) ?? r.url_rack_image,
+            request_products: r.request_products.map(rp => ({
+                ...rp,
+                product: { ...rp.product, vc_image: productAssets.get(rp.product.id_product) ?? rp.product.vc_image },
+            })),
+        }));
+
         return {
-            data: requests,
+            data,
             meta: {
                 total,
                 page,
@@ -110,7 +127,7 @@ export class Request {
     }
 
     async getRequestById(id_request: number) {
-        return await prisma.requests.findUnique({
+        const request = await prisma.requests.findUnique({
             where: { id_request },
             include: {
                 request_products: {
@@ -140,6 +157,22 @@ export class Request {
                 }
             }
         })
+        if (!request) return null;
+
+        const productIds = request.request_products.map(rp => rp.product.id_product);
+        const [requestAssets, productAssets] = await Promise.all([
+            resolveImages('request', [id_request]),
+            resolveImages('product', productIds),
+        ]);
+
+        return {
+            ...request,
+            url_rack_image: requestAssets.get(id_request) ?? request.url_rack_image,
+            request_products: request.request_products.map(rp => ({
+                ...rp,
+                product: { ...rp.product, vc_image: productAssets.get(rp.product.id_product) ?? rp.product.vc_image },
+            })),
+        };
     }
 
     async updateRequest(id_request: number, data: UpdateRequestDTO) {

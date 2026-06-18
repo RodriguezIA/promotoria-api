@@ -34,7 +34,8 @@ export type AssetEntity =
   | "request"
   | "sale_channel"
   | "task_answer"
-  | "client_doc";
+  | "client_doc"
+  | "promoter";
 
 const ENTITY_SEGMENT: Record<AssetEntity, string> = {
   product: "products",
@@ -42,6 +43,7 @@ const ENTITY_SEGMENT: Record<AssetEntity, string> = {
   sale_channel: "sale_channels",
   task_answer: "task_answers",
   client_doc: "docs",
+  promoter: "promoters",
 };
 
 interface OptimizeOpts {
@@ -77,6 +79,7 @@ export interface UploadAssetResult {
   url: string;
   path: string;
   id_asset: number;
+  vc_folio: string;
 }
 
 function slugify(value: string): string {
@@ -127,7 +130,7 @@ export class StorageService {
     const url = `https://storage.googleapis.com/${process.env.GCP_BUCKET_NAME}/${objectPath}`;
 
     // Registro no-destructivo: marca la versión anterior como inactiva e inserta la nueva.
-    const id_asset = await prisma.$transaction(async (tx) => {
+    const { id_asset, vc_folio } = await prisma.$transaction(async (tx) => {
       await tx.assets.updateMany({
         where: {
           entity_type: input.entity,
@@ -142,7 +145,6 @@ export class StorageService {
           id_client: input.id_client ?? null,
           entity_type: input.entity,
           entity_id: input.entity_id,
-          vc_folio: input.folio ?? null,
           bucket_path: objectPath,
           vc_url: url,
           vc_mime: contentType,
@@ -153,10 +155,16 @@ export class StorageService {
         select: { id_asset: true },
       });
 
-      return created.id_asset;
+      const assetFolio = `AST-${created.id_asset.toString().padStart(8, '0')}`;
+      await tx.assets.update({
+        where: { id_asset: created.id_asset },
+        data: { vc_folio: assetFolio },
+      });
+
+      return { id_asset: created.id_asset, vc_folio: assetFolio };
     });
 
-    return { url, path: objectPath, id_asset };
+    return { url, path: objectPath, id_asset, vc_folio };
   }
 
   private static buildKey(input: UploadAssetInput, ext: string): string {

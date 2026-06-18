@@ -1,6 +1,7 @@
 import { prisma } from '../../core/prisma'
 import { CreateTaskDTO, UpdateTaskDTO, AnswerItemDTO } from './tasks.dtos'
 import { generateFolio } from '../../services/folio.service'
+import { resolveImages } from '../../core/asset-resolver'
 
 export class Task {
 
@@ -33,17 +34,25 @@ export class Task {
         })
         if (!task) return null
 
-        const storeAddress = await prisma.addresses.findFirst({
-            where: { entity_type: 'store', entity_id: task.id_store, is_active: true },
-            select: {
-                street: true, ext_number: true, int_number: true,
-                neighborhood: true, postal_code: true, address_references: true,
-                latitude: true, longitude: true,
-                city: { select: { id: true, name: true } },
-                state: { select: { id: true, name: true } },
-            }
-        })
-        return { ...task, storeAddress }
+        const [storeAddress, requestAssets] = await Promise.all([
+            prisma.addresses.findFirst({
+                where: { entity_type: 'store', entity_id: task.id_store, is_active: true },
+                select: {
+                    street: true, ext_number: true, int_number: true,
+                    neighborhood: true, postal_code: true, address_references: true,
+                    latitude: true, longitude: true,
+                    city: { select: { id: true, name: true } },
+                    state: { select: { id: true, name: true } },
+                }
+            }),
+            task.id_request ? resolveImages('request', [task.id_request]) : Promise.resolve(new Map<number, string>()),
+        ])
+
+        const request = task.request && task.id_request
+            ? { ...task.request, url_rack_image: requestAssets.get(task.id_request) ?? task.request.url_rack_image }
+            : task.request;
+
+        return { ...task, request, storeAddress }
     }
 
     async getAll(filters?: { id_client?: number; id_order?: number; id_promoter?: number; id_status?: number }) {
@@ -73,10 +82,11 @@ export class Task {
             where.id_status = { in: [1, 2, 3] }
         }
 
-        return await prisma.tasks.findMany({
+        const tasks = await prisma.tasks.findMany({
             where,
             select: {
                 id_task: true, vc_folio: true, id_status: true, dt_register: true, i_notification_count: true,
+                id_request: true,
                 store: {
                     select: { id_store: true, name: true, store_code: true }
                 },
@@ -92,6 +102,16 @@ export class Task {
             },
             orderBy: { dt_register: 'desc' }
         })
+
+        const requestIds = tasks.filter(t => t.id_request).map(t => t.id_request!);
+        const requestAssets = await resolveImages('request', requestIds);
+
+        return tasks.map(t => ({
+            ...t,
+            request: t.request
+                ? { ...t.request, url_rack_image: requestAssets.get(t.request.id_request) ?? t.request.url_rack_image }
+                : null,
+        }));
     }
 
     async assignPromoter(id_task: number, id_promoter: number) {
@@ -227,7 +247,31 @@ export class Task {
             })
         }
 
-        return { ...task, storeAddress, myAnswers }
+        const productIds = task.request?.request_products.map(rp => rp.product.id_product) ?? [];
+        const rpqIds = myAnswers.map((a: any) => a.id_request_product_question);
+        const [requestAssets, productAssets, answerAssets] = await Promise.all([
+            task.id_request ? resolveImages('request', [task.id_request]) : Promise.resolve(new Map<number, string>()),
+            resolveImages('product', productIds),
+            resolveImages('task_answer', rpqIds),
+        ]);
+
+        const resolvedRequest = task.request && task.id_request
+            ? {
+                ...task.request,
+                url_rack_image: requestAssets.get(task.id_request) ?? task.request.url_rack_image,
+                request_products: task.request.request_products.map(rp => ({
+                    ...rp,
+                    product: { ...rp.product, vc_image: productAssets.get(rp.product.id_product) ?? rp.product.vc_image },
+                })),
+            }
+            : task.request;
+
+        const resolvedAnswers = myAnswers.map((a: any) => ({
+            ...a,
+            vc_image_url: answerAssets.get(a.id_request_product_question) ?? a.vc_image_url,
+        }));
+
+        return { ...task, request: resolvedRequest, storeAddress, myAnswers: resolvedAnswers }
     }
 
     async answerTaskQuestions(

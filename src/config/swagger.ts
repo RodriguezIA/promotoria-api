@@ -121,14 +121,32 @@ const options: swaggerJsdoc.Options = {
 
 export const swaggerSpec = swaggerJsdoc(options) as Record<string, unknown>;
 
+function basicAuthMiddleware(req: Request, res: Response, next: () => void): void {
+  const authHeader = req.headers.authorization
+
+  if (authHeader && authHeader.startsWith("Basic ")) {
+    const base64 = authHeader.slice(6)
+    const decoded = Buffer.from(base64, "base64").toString("utf-8")
+    const [user, pass] = decoded.split(":")
+
+    if (user === "promotoria" && pass === "promotoria-api") {
+      return next()
+    }
+  }
+
+  res.setHeader("WWW-Authenticate", 'Basic realm="Promotoria API Docs"')
+  res.status(401).send("Acceso no autorizado")
+}
+
 export function setupSwagger(app: Express): void {
   app.use(
     "/retailink-api/docs",
+    basicAuthMiddleware,
     swaggerUi.serve,
     swaggerUi.setup(swaggerSpec, { customSiteTitle: "Promotoria API Docs" }),
   );
 
-  app.get("/retailink-api/docs.json", (_req: Request, res: Response) => {
+  app.get("/retailink-api/docs.json", basicAuthMiddleware, (_req: Request, res: Response) => {
     res.json(swaggerSpec);
   });
 }

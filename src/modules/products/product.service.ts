@@ -1,6 +1,7 @@
 import { prisma } from '../../core/prisma';
 import { createProductPayload } from './product.dto';
 import { generateFolio } from '../../services/folio.service';
+import { resolveImages } from '../../core/asset-resolver';
 
 export class Product {
 
@@ -34,12 +35,11 @@ export class Product {
     }
 
     async getProductsByClientId(id_client: number) {
-        return await prisma.products.findMany({
-            where: {
-                id_client: id_client,
-                i_status: 1
-            },
+        const products = await prisma.products.findMany({
+            where: { id_client, i_status: 1 },
         });
+        const assetMap = await resolveImages('product', products.map(p => p.id_product));
+        return products.map(p => ({ ...p, vc_image: assetMap.get(p.id_product) ?? p.vc_image }));
     }
 
     async getProductsPaginated(
@@ -71,8 +71,10 @@ export class Product {
             prisma.products.count({ where }),
         ]);
 
+        const assetMap = await resolveImages('product', products.map(p => p.id_product));
+
         return {
-            data: products,
+            data: products.map(p => ({ ...p, vc_image: assetMap.get(p.id_product) ?? p.vc_image })),
             meta: {
                 total,
                 page,
@@ -83,11 +85,10 @@ export class Product {
     }
 
     async getProductById(id_product: number){
-        return await prisma.products.findUnique({
-            where: {
-                id_product: id_product
-            }
-        })
+        const product = await prisma.products.findUnique({ where: { id_product } });
+        if (!product) return null;
+        const assetMap = await resolveImages('product', [id_product]);
+        return { ...product, vc_image: assetMap.get(id_product) ?? product.vc_image };
     }
 
     async updateProductImage(id_product: number, image_url: string) {

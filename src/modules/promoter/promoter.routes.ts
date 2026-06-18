@@ -1,7 +1,8 @@
 import { Router } from 'express'
 import { authMiddleware, validateBody } from '../../core/middleware'
-import { updateLocationPromoter, createPromoter, loginPromoter, getPromoters } from './promoter.controller'
+import { updateLocationPromoter, createPromoter, loginPromoter, getPromoters, uploadPromoterProfileImage } from './promoter.controller'
 import { createPromoterSchema, loginPromoterSchema, updateLocationPromoterSchema } from './promoter.schema'
+import { upload } from '../../core/middleware/upload.middleware'
 
 const promoterRouter = Router()
 
@@ -40,56 +41,33 @@ const promoterRouter = Router()
  */
 promoterRouter.get('/', authMiddleware, getPromoters)
 promoterRouter.post('/', validateBody(createPromoterSchema), createPromoter)
+promoterRouter.post('/login', loginPromoter)
+promoterRouter.put('/update-location', validateBody(updateLocationPromoterSchema), updateLocationPromoter)
 
 /**
  * @openapi
- * /promoters/login:
+ * /promoters/{id}/profile-image:
  *   post:
  *     tags: [Promoters]
- *     summary: Login de promotor (app móvil)
- *     security: []
+ *     summary: Subir imagen de perfil del promotor
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: integer }
  *     requestBody:
  *       required: true
  *       content:
- *         application/json:
+ *         multipart/form-data:
  *           schema:
  *             type: object
- *             required: [termino, password, fcm_token]
  *             properties:
- *               termino: { type: string, description: "Email o teléfono" }
- *               password: { type: string }
- *               fcm_token: { type: string }
- *               latitude: { type: number }
- *               longitude: { type: number }
+ *               image: { type: string, format: binary }
  *     responses:
- *       200: { description: "Login correcto. Devuelve token + datos del promotor." }
+ *       200: { description: "Imagen de perfil actualizada." }
  *       400: { description: "Datos inválidos." }
- *       401: { description: "Credenciales incorrectas." }
+ *       404: { description: "Promotor no encontrado." }
  */
-promoterRouter.post('/login', validateBody(loginPromoterSchema), loginPromoter)
-
-/**
- * @openapi
- * /promoters/update-location:
- *   put:
- *     tags: [Promoters]
- *     summary: Actualizar ubicación del promotor
- *     security: []
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             required: [id, latitude, longitude]
- *             properties:
- *               id: { type: integer }
- *               latitude: { type: number }
- *               longitude: { type: number }
- *     responses:
- *       200: { description: "Ubicación actualizada." }
- *       400: { description: "Datos inválidos." }
- */
-promoterRouter.put('/update-location', validateBody(updateLocationPromoterSchema), updateLocationPromoter)
+promoterRouter.post('/:id/profile-image', authMiddleware, upload.single('image'), uploadPromoterProfileImage)
 
 export default promoterRouter
