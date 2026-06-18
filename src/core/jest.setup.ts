@@ -29,3 +29,13 @@ jest.mock('../services/upload.service', () => ({
     uploadSaleChannelImage: jest.fn().mockResolvedValue('https://fake-url.com/channel.png'),
   },
 }));
+
+jest.mock('../services/storage.service', () => ({
+  StorageService: {
+    uploadAsset: jest.fn().mockResolvedValue({
+      url: 'https://fake-url.com/asset.webp',
+      path: 'fake/path/asset.webp',
+      id_asset: 1,
+    }),
+  },
+}));

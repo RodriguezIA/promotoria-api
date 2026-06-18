@@ -1,6 +1,6 @@
 import { Request, Response } from 'express'
 import { Request as RequestService } from './requests.service'
-import { UploadService } from '../../services/upload.service'
+import { StorageService } from '../../services/storage.service'
 import { CreateRequestDTO, UpdateRequestDTO, RequestFiltersDTO } from './requests.dtos'
 
 const requestService = new RequestService()
@@ -27,28 +27,32 @@ export const createRequest = async (req: Request, res: Response) => {
         const body = req.body
         const products = parseProducts(body.products)
 
-        let url_rack_image = body.url_rack_image
-
-        if (req.file) {
-            const tempRequestId = Date.now()
-            url_rack_image = await UploadService.uploadRequestImage(tempRequestId, req.file.buffer)
-        }
+        const id_user = parseNumber(body.id_user)!
+        const id_client = parseNumber(body.id_client)!
 
         const payload: CreateRequestDTO = {
-            id_user: parseNumber(body.id_user)!,
-            id_client: parseNumber(body.id_client)!,
+            id_user,
+            id_client,
             vc_name: body.vc_name,
             f_value: parseNumber(body.f_value)!,
-            url_rack_image,
+            url_rack_image: body.url_rack_image,
             products,
         }
 
         const request = await requestService.createRequest(payload)
 
+        // Subimos la imagen una sola vez, ya con el id real (sin archivos temporales).
         if (req.file && request.id_request) {
-            const finalUrl = await UploadService.uploadRequestImage(request.id_request, req.file.buffer)
-            await requestService.updateRequest(request.id_request, { url_rack_image: finalUrl })
-            request.url_rack_image = finalUrl
+            const { url } = await StorageService.uploadAsset({
+                entity: 'request',
+                entity_id: request.id_request,
+                buffer: req.file.buffer,
+                mime: req.file.mimetype,
+                id_client,
+                id_user,
+            })
+            await requestService.updateRequest(request.id_request, { url_rack_image: url })
+            request.url_rack_image = url
         }
 
         res.status(200).json({
@@ -153,7 +157,15 @@ export const updateRequest = async (req: Request, res: Response) => {
         let url_rack_image = body.url_rack_image
 
         if (req.file) {
-            url_rack_image = await UploadService.uploadRequestImage(Number(id_request), req.file.buffer)
+            const { url } = await StorageService.uploadAsset({
+                entity: 'request',
+                entity_id: Number(id_request),
+                buffer: req.file.buffer,
+                mime: req.file.mimetype,
+                id_client: existing.id_client,
+                id_user: parseNumber(body.id_user) ?? existing.id_user,
+            })
+            url_rack_image = url
         } else if (!url_rack_image) {
             url_rack_image = existing.url_rack_image ?? undefined
         }

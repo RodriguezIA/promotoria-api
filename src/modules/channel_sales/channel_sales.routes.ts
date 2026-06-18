@@ -31,8 +31,86 @@ const validateMultipartData = (schema: ZodSchema) => {
   };
 };
 
+/**
+ * @openapi
+ * /channel-sales:
+ *   post:
+ *     tags: [Sales Channels]
+ *     summary: Crear canal de venta
+ *     security: []
+ *     description: Multipart. El campo `data` es un JSON string con los datos; `file` es la imagen opcional.
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         multipart/form-data:
+ *           schema:
+ *             type: object
+ *             required: [data]
+ *             properties:
+ *               data:
+ *                 type: string
+ *                 description: 'JSON string. Ej: {"name":"Autoservicio","description":"..."}'
+ *               file: { type: string, format: binary }
+ *     responses:
+ *       201: { description: "Canal creado." }
+ *       400: { description: "Datos inválidos." }
+ *   get:
+ *     tags: [Sales Channels]
+ *     summary: Listar canales de venta
+ *     security: []
+ *     responses:
+ *       200: { description: "Lista de canales." }
+ */
 channelsSalesRouter.post('/', uploadAny.single('file'), validateMultipartData(createChannelSalesSchema), createSaleChannel);
 channelsSalesRouter.get('/', getSalesChannelList);
+
+/**
+ * @openapi
+ * /channel-sales/{id_channel}:
+ *   get:
+ *     tags: [Sales Channels]
+ *     summary: Obtener un canal de venta
+ *     security: []
+ *     parameters:
+ *       - in: path
+ *         name: id_channel
+ *         required: true
+ *         schema: { type: integer }
+ *     responses:
+ *       200: { description: "Canal encontrado." }
+ *       500: { $ref: '#/components/responses/ServerError' }
+ *   put:
+ *     tags: [Sales Channels]
+ *     summary: Actualizar un canal de venta
+ *     security: []
+ *     parameters:
+ *       - in: path
+ *         name: id_channel
+ *         required: true
+ *         schema: { type: integer }
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         multipart/form-data:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               data: { type: string, description: "JSON string con los campos a actualizar" }
+ *               file: { type: string, format: binary }
+ *     responses:
+ *       200: { description: "Canal actualizado." }
+ *   delete:
+ *     tags: [Sales Channels]
+ *     summary: Eliminar un canal de venta
+ *     security: []
+ *     parameters:
+ *       - in: path
+ *         name: id_channel
+ *         required: true
+ *         schema: { type: integer }
+ *     responses:
+ *       200: { description: "Canal eliminado." }
+ */
 channelsSalesRouter.get('/:id_channel', getSaleChannel);
 channelsSalesRouter.put('/:id_channel', uploadAny.single('file'), validateMultipartData(updateChannelSalesSchema), updateSaleChannel);
 channelsSalesRouter.delete('/:id_channel', deleteSaleChannel);

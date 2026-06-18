@@ -3,17 +3,59 @@ import { Request, Response } from 'express'
 
 import { Product } from "./product.service"
 import { createProductPayload } from './product.dto'
-import { UploadService } from '../../services/upload.service'
+import { StorageService } from '../../services/storage.service'
 
 
 const productService = new Product();
 
+function parseNumber(value: any): number | undefined {
+    if (value === undefined || value === null || value === '') return undefined;
+    const num = Number(value);
+    return isNaN(num) ? undefined : num;
+}
 
+// Crea el producto y (si viene archivo) sube su imagen en el MISMO request multipart.
 export const createProduct = async (req: Request, res: Response) => {
-    const body: createProductPayload = req.body;
+    const body = req.body;
+
+    const id_user = parseNumber(body.id_user);
+    const id_client = parseNumber(body.id_client);
+    const name = typeof body.name === 'string' ? body.name.trim() : '';
+
+    if (!name || !id_user || !id_client) {
+        res.status(400).json({
+            ok: false,
+            error: 1,
+            data: null,
+            message: 'name, id_user e id_client son requeridos'
+        });
+        return;
+    }
 
     try {
-        const product = await productService.createProduct(body);
+        const payload: createProductPayload = {
+            id_user,
+            id_client,
+            name,
+            description: body.description,
+        };
+
+        const product = await productService.createProduct(payload);
+
+        if (req.file && product.id_product) {
+            const { url } = await StorageService.uploadAsset({
+                entity: 'product',
+                entity_id: product.id_product,
+                buffer: req.file.buffer,
+                mime: req.file.mimetype,
+                id_client: payload.id_client,
+                id_user: payload.id_user,
+                optimize: { maxW: 800, maxH: 800, quality: 80 },
+            });
+            await productService.updateProductImage(product.id_product, url);
+            product.vc_image = url;
+        }
+
         res.json({
             ok: true,
             error: 0,
@@ -143,7 +185,14 @@ export const updateProductImage = async (req: Request, res: Response) => {
     }
 
     try {
-        const url = await UploadService.uploadProductImage(Number(id_client), Number(id_product), req.file.buffer);
+        const { url } = await StorageService.uploadAsset({
+            entity: 'product',
+            entity_id: Number(id_product),
+            buffer: req.file.buffer,
+            mime: req.file.mimetype,
+            id_client: Number(id_client),
+            optimize: { maxW: 800, maxH: 800, quality: 80 },
+        });
 
         const product = await productService.updateProductImage(Number(id_product), url);
 
