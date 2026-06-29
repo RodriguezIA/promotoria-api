@@ -209,13 +209,25 @@ export class Request {
                             requestProductId = created.id_request_product
                         }
                     } else {
-                        const created = await tx.request_products.create({
-                            data: {
-                                id_request,
-                                id_product: product.id_product,
-                            }
+                        const existingAny = await tx.request_products.findFirst({
+                            where: { id_request, id_product: product.id_product }
                         })
-                        requestProductId = created.id_request_product
+
+                        if (existingAny) {
+                            await tx.request_products.update({
+                                where: { id_request_product: existingAny.id_request_product },
+                                data: { b_active: true, dt_update: new Date() }
+                            })
+                            requestProductId = existingAny.id_request_product
+                        } else {
+                            const created = await tx.request_products.create({
+                                data: {
+                                    id_request,
+                                    id_product: product.id_product,
+                                }
+                            })
+                            requestProductId = created.id_request_product
+                        }
                     }
 
                     if (product.questions) {
@@ -255,12 +267,23 @@ export class Request {
                                 }
                             }
 
-                            await tx.request_product_questions.create({
-                                data: {
-                                    id_request_product: requestProductId,
-                                    id_question: question.id_question,
-                                }
+                            const existingQAny = await tx.request_product_questions.findFirst({
+                                where: { id_request_product: requestProductId, id_question: question.id_question }
                             })
+
+                            if (existingQAny) {
+                                await tx.request_product_questions.update({
+                                    where: { id_request_product_question: existingQAny.id_request_product_question },
+                                    data: { b_active: true, dt_update: new Date() }
+                                })
+                            } else {
+                                await tx.request_product_questions.create({
+                                    data: {
+                                        id_request_product: requestProductId,
+                                        id_question: question.id_question,
+                                    }
+                                })
+                            }
                         }
                     }
                 }
