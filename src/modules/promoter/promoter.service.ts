@@ -1,7 +1,7 @@
 import bcrypt from 'bcrypt'
 import { prisma } from '../../core/prisma'
 
-import { CreatePromoterDTO } from './promoter.dtos'
+import { CreatePromoterDTO, CreatePromoterBankAccountDTO, UpdatePromoterBankAccountDTO } from './promoter.dtos'
 
 export class Promoter {
 
@@ -172,4 +172,59 @@ export class Promoter {
 
         return { promoter: { ...promoter, vc_profile_image: asset?.vc_url ?? null }, field };
     }
+
+    async createBankAccount(id_promoter: number, data: CreatePromoterBankAccountDTO) {
+        return await prisma.promoter_bank_accounts.create({
+            data: {
+                id_promoter,
+                account_holder_name: data.account_holder_name,
+                account_type: data.account_type,
+                clabe: data.account_type === 'CLABE' ? data.clabe : null,
+                card_number: data.account_type === 'CARD' ? data.card_number : null,
+                bank_name: data.bank_name,
+            },
+        })
+    }
+
+    async getBankAccountsByPromoter(id_promoter: number) {
+        return await prisma.promoter_bank_accounts.findMany({
+            where: { id_promoter, dt_deleted: null },
+            orderBy: { dt_register: 'desc' },
+        })
+    }
+
+    async getBankAccountById(id: number, id_promoter: number) {
+        return await prisma.promoter_bank_accounts.findFirst({
+            where: { id, id_promoter, dt_deleted: null },
+        })
+    }
+
+    async updateBankAccount(id: number, data: UpdatePromoterBankAccountDTO) {
+        return await prisma.promoter_bank_accounts.update({
+            where: { id },
+            data: {
+                ...data,
+                ...(data.account_type === 'CLABE' ? { card_number: null } : {}),
+                ...(data.account_type === 'CARD' ? { clabe: null } : {}),
+                dt_updated: new Date(),
+            },
+        })
+    }
+
+    async softDeleteBankAccount(id: number) {
+        return await prisma.promoter_bank_accounts.update({
+            where: { id },
+            data: { dt_deleted: new Date() },
+        })
+    }
+
+    // async updatePromoterImage(id: number, imageUrl: string) {
+    //     return await prisma.promoters.update({
+    //         where: { id },
+    //         data: {
+    //             vc_image: imageUrl,
+    //             dt_updated: new Date().toISOString()
+    //         }
+    //     })
+    // }
 }

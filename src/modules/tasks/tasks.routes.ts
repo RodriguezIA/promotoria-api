@@ -15,6 +15,7 @@ import {
     answerTaskQuestions,
     completeTask,
     assignPromoterToTask,
+    getNearbyTasks,
 } from './tasks.controller'
 
 const taskRouter = Router()
@@ -33,6 +34,25 @@ const taskRouter = Router()
  */
 // Mobile/Promotor: mis tareas (debe ir antes de /:id_task)
 taskRouter.get('/my', authMiddleware, getMyTasks)
+
+/**
+ * @openapi
+ * /tasks/nearby:
+ *   get:
+ *     tags: [Tasks]
+ *     summary: Tareas disponibles cerca del promotor (radio 1 km)
+ *     description: >
+ *       Devuelve tareas sin promotor asignado (id_status=1) dentro de 1 km
+ *       de las coordenadas enviadas. Excluye tareas ya rechazadas por el promotor.
+ *     parameters:
+ *       - { in: query, name: lat, required: true, schema: { type: number }, description: "Latitud actual del promotor" }
+ *       - { in: query, name: lng, required: true, schema: { type: number }, description: "Longitud actual del promotor" }
+ *     responses:
+ *       200: { description: "Lista de tareas cercanas disponibles." }
+ *       400: { description: "lat y lng son requeridos." }
+ *       401: { $ref: '#/components/responses/Unauthorized' }
+ */
+taskRouter.get('/nearby', authMiddleware, getNearbyTasks)
 
 /**
  * @openapi

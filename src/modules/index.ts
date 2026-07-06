@@ -8,16 +8,18 @@ import questionRouter from './questions/questions.route'
 import requestRouter from './requests/requests.routes'
 import orderRouter from './orders/orders.routes'
 import taskRouter from './tasks/tasks.routes'
+import financeRouter from './finance/finance.routes'
 
-export { 
-    clientRouter, 
-    userAdminRouter, 
-    productRouter, 
-    storeRouter, 
-    channelsSalesRouter, 
+export {
+    clientRouter,
+    userAdminRouter,
+    productRouter,
+    storeRouter,
+    channelsSalesRouter,
     promoterRouter,
     questionRouter,
     requestRouter,
     orderRouter,
     taskRouter,
+    financeRouter,
 }

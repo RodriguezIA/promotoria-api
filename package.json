@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "main": "index.js",
   "type": "module",
+  "packageManager": "pnpm@11.5.2",
   "scripts": {
     "test": "jest",
     "test:watch": "jest --watch",
@@ -90,8 +91,5 @@
     "tsx": "^4.21.0",
     "typescript": "^5.8.3",
     "vitest": "^4.1.4"
-  },
-  "pnpm": {
-    "overrides": {}
   }
 }

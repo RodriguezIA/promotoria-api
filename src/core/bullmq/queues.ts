@@ -11,6 +11,9 @@ export const taskRankingQueue = new Queue('task_ranking_queue', {connection: con
 //  3 QUEUE de push notifications
 export const pushNotificationsQueue = new Queue('push_notification_queue', {connection: connectionQueue})
 
+//  4 QUEUE de facturación semanal (cobros a clientes + pagos a promotores)
+export const billingQueue = new Queue('billing_queue', { connection: connectionQueue })
+
 
 export async function startTaskNotificacitonScheduler(): Promise<void> {
     const REPEAT_INTERVAL_MS = process.env.NODE_ENV === 'production' ? 30 * 60_000 : 60_000;
@@ -24,4 +27,20 @@ export async function startTaskNotificacitonScheduler(): Promise<void> {
     });
 
     console.log(`[Queues] Scheduler configurado cada ${REPEAT_INTERVAL_MS / 1000}s`);
+}
+
+export async function startBillingScheduler(): Promise<void> {
+    // Semanal en producción; en desarrollo cada 6h. La generación es idempotente
+    // (solo procesa tareas completadas que aún no han sido cobradas/pagadas).
+    const REPEAT_INTERVAL_MS = process.env.NODE_ENV === 'production' ? 7 * 24 * 60 * 60_000 : 6 * 60 * 60_000;
+
+    await billingQueue.add('weekly_billing', {}, {
+        repeat: {
+            every: REPEAT_INTERVAL_MS,
+            immediately: false,
+        },
+        jobId: 'billing_cron_job',
+    });
+
+    console.log(`[Queues] Billing scheduler configurado cada ${REPEAT_INTERVAL_MS / 1000}s`);
 }

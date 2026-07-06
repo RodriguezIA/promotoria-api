@@ -2,6 +2,7 @@ import { prisma } from '../../core/prisma'
 import { CreateTaskDTO, UpdateTaskDTO, AnswerItemDTO } from './tasks.dtos'
 import { generateFolio } from '../../services/folio.service'
 import { resolveImages } from '../../core/asset-resolver'
+import { haversineMeters } from '../../queues/helpers/haversine'
 
 export class Task {
 
@@ -118,9 +119,12 @@ export class Task {
         const task = await prisma.tasks.findUnique({ where: { id_task } })
         if (!task) throw new Error('Tarea no encontrada')
 
+        const promoter = await prisma.promoters.findUnique({ where: { id: id_promoter } })
+        if (!promoter) throw new Error('Promotor no encontrado')
+
         return await prisma.tasks.update({
             where: { id_task },
-            data: { id_promoter, dt_update: new Date() },
+            data: { id_promoter, id_status: 2, dt_update: new Date() },
             include: {
                 store: { select: { id_store: true, name: true } },
                 promoter: { select: { id: true, name: true, lastname: true, phone: true } },
@@ -335,5 +339,62 @@ export class Task {
             where: { id_task },
             data: { id_status: 3 }
         })
+    }
+
+    async getNearbyAvailableTasks(id_promoter: number, lat: number, lng: number, radiusMeters = 1000) {
+        const [tasks, rejections] = await Promise.all([
+            prisma.tasks.findMany({
+                where: {
+                    id_status: 1,
+                    id_promoter: null,
+                    OR: [{ dt_next_retry: null }, { dt_next_retry: { lte: new Date() } }],
+                },
+                select: {
+                    id_task: true, vc_folio: true, id_status: true, dt_register: true,
+                    id_store: true, id_request: true,
+                    store: { select: { id_store: true, name: true, store_code: true } },
+                    request: { select: { id_request: true, vc_folio: true, vc_name: true, url_rack_image: true, f_value: true } },
+                    order: { select: { id_order: true, vc_folio: true, f_total: true } },
+                    client: { select: { id_client: true, name: true } },
+                },
+                orderBy: { dt_register: 'desc' },
+            }),
+            prisma.task_rejections.findMany({
+                where: { id_promoter },
+                select: { id_task: true },
+            }),
+        ])
+
+        const rejectedSet = new Set(rejections.map(r => r.id_task))
+        const eligible = tasks.filter(t => !rejectedSet.has(t.id_task))
+
+        if (eligible.length === 0) return []
+
+        const storeIds = [...new Set(eligible.map(t => t.id_store))]
+        const addresses = await prisma.addresses.findMany({
+            where: { entity_type: 'store', entity_id: { in: storeIds }, is_active: true },
+            select: { entity_id: true, latitude: true, longitude: true, street: true, ext_number: true, neighborhood: true, postal_code: true },
+        })
+        const addressByStore = new Map(addresses.map(a => [a.entity_id, a]))
+
+        const nearby = eligible.filter(t => {
+            const addr = addressByStore.get(t.id_store)
+            if (!addr?.latitude || !addr?.longitude) return false
+            const dist = haversineMeters(lat, lng, Number(addr.latitude), Number(addr.longitude))
+            return dist <= radiusMeters
+        })
+
+        if (nearby.length === 0) return []
+
+        const requestIds = nearby.filter(t => t.id_request).map(t => t.id_request!)
+        const requestAssets = await resolveImages('request', requestIds)
+
+        return nearby.map(t => ({
+            ...t,
+            storeAddress: addressByStore.get(t.id_store) ?? null,
+            request: t.request
+                ? { ...t.request, url_rack_image: requestAssets.get(t.request.id_request) ?? t.request.url_rack_image }
+                : null,
+        }))
     }
 }

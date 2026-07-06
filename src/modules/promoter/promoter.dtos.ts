@@ -38,3 +38,21 @@ export interface TokenPromoterPayload {
     phone: string
     email?: string
 }
+
+export type PromoterAccountType = 'CLABE' | 'CARD'
+
+export interface CreatePromoterBankAccountDTO {
+    account_holder_name: string
+    account_type: PromoterAccountType
+    clabe?: string
+    card_number?: string
+    bank_name: string
+}
+
+export interface UpdatePromoterBankAccountDTO {
+    account_holder_name?: string
+    account_type?: PromoterAccountType
+    clabe?: string
+    card_number?: string
+    bank_name?: string
+}

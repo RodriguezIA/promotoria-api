@@ -202,3 +202,21 @@ export const completeTask = async (req: Request, res: Response) => {
         res.status(status).json({ ok: false, error: 1, data: null, message: msg, error_backend: msg })
     }
 }
+
+export const getNearbyTasks = async (req: Request, res: Response) => {
+    const id_promoter = req.user!.id
+    const lat = parseFloat(req.query.lat as string)
+    const lng = parseFloat(req.query.lng as string)
+
+    if (isNaN(lat) || isNaN(lng)) {
+        res.status(400).json({ ok: false, error: 1, data: null, message: 'lat y lng son requeridos y deben ser números válidos' })
+        return
+    }
+
+    try {
+        const tasks = await taskService.getNearbyAvailableTasks(id_promoter, lat, lng)
+        res.status(200).json({ ok: true, error: 0, data: tasks, message: `${tasks.length} tarea(s) disponibles cerca de ti` })
+    } catch (error) {
+        res.status(500).json({ ok: false, error: 1, data: null, message: 'Error al buscar tareas cercanas', error_backend: (error as any).message })
+    }
+}

@@ -253,7 +253,8 @@ model promoters {
   isActive      Boolean   @default(true)
   latitude      Decimal?  @db.Decimal(10, 8)
   longitude     Decimal?  @db.Decimal(11, 8)
-  tasks         tasks[]
+  tasks                  tasks[]
+  promoter_bank_accounts promoter_bank_accounts[]
 }
 
 /// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
@@ -493,6 +494,8 @@ model tasks {
   id_client            Int        @db.UnsignedInt
   i_current_cycle      Int        @default(0)
   dt_next_retry        DateTime?
+  id_invoice           Int?       @db.UnsignedInt
+  id_promoter_payment  Int?       @db.UnsignedInt
   client               clients    @relation(fields: [id_client], references: [id_client])
   order                orders     @relation(fields: [id_order], references: [id_order])
   promoter             promoters? @relation(fields: [id_promoter], references: [id])
@@ -504,6 +507,8 @@ model tasks {
   @@index([id_promoter], map: "tasks_id_promoter_fkey")
   @@index([id_request], map: "tasks_id_request_fkey")
   @@index([id_store], map: "tasks_id_store_fkey")
+  @@index([id_invoice], map: "idx_tasks_invoice")
+  @@index([id_promoter_payment], map: "idx_tasks_promoter_payment")
 }
 
 /// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
@@ -562,6 +567,126 @@ model folios {
   @@index([id_client], map: "idx_folios_client")
 }
 
+// ==================== FINANZAS ====================
+
+/// Configuración financiera global (fila única). El % de promotor es global.
+model finance_settings {
+  id_finance_settings        Int      @id @default(autoincrement()) @db.UnsignedInt
+  f_promoter_pct             Decimal  @default(50.00) @db.Decimal(5, 2)
+  i_default_period_days      Int      @default(7)
+  i_default_billing_weekday  Int      @default(1)
+  i_default_payment_due_days Int      @default(7)
+  dt_update                  DateTime @default(now()) @updatedAt @db.Timestamp(0)
+}
+
+/// Override del período de cobro por cliente (si no existe, usa finance_settings).
+model client_billing_config {
+  id_client_billing_config Int      @id @default(autoincrement()) @db.UnsignedInt
+  id_client                Int      @unique(map: "uq_client_billing_config_client") @db.UnsignedInt
+  i_period_days            Int      @default(7)
+  i_billing_weekday        Int      @default(1)
+  i_payment_due_days       Int      @default(7)
+  b_active                 Boolean  @default(true)
+  dt_register              DateTime @default(now()) @db.Timestamp(0)
+  dt_update                DateTime @default(now()) @updatedAt @db.Timestamp(0)
+}
+
+/// Factura/cobro semanal por cliente (agrupa tareas completadas del período).
+/// i_status: 1=pendiente 2=en_revision 3=aceptado(pagado) 4=rechazado 5=atrasado
+model client_invoices {
+  id_invoice       Int                @id @default(autoincrement()) @db.UnsignedInt
+  id_client        Int                @db.UnsignedInt
+  vc_folio         String?            @unique(map: "uq_invoices_folio") @db.VarChar(50)
+  dt_period_start  DateTime           @db.Date
+  dt_period_end    DateTime           @db.Date
+  dt_due           DateTime           @db.Date
+  f_total          Decimal            @default(0.00) @db.Decimal(12, 2)
+  i_status         Int                @default(1)
+  dt_paid          DateTime?          @db.Timestamp(0)
+  b_active         Boolean            @default(true)
+  dt_register      DateTime           @default(now()) @db.Timestamp(0)
+  dt_update        DateTime           @default(now()) @updatedAt @db.Timestamp(0)
+  invoice_items    invoice_items[]
+  invoice_payments invoice_payments[]
+
+  @@index([id_client], map: "idx_invoices_client")
+  @@index([i_status], map: "idx_invoices_status")
+}
+
+/// Desglose de una factura por pedido/campaña.
+model invoice_items {
+  id_invoice_item   Int             @id @default(autoincrement()) @db.UnsignedInt
+  id_invoice        Int             @db.UnsignedInt
+  id_order          Int             @db.UnsignedInt
+  id_request        Int?            @db.UnsignedInt
+  i_completed_tasks Int             @default(0)
+  f_subtotal        Decimal         @default(0.00) @db.Decimal(12, 2)
+  dt_register       DateTime        @default(now()) @db.Timestamp(0)
+  invoice           client_invoices @relation(fields: [id_invoice], references: [id_invoice])
+
+  @@index([id_invoice], map: "idx_invoice_items_invoice")
+}
+
+/// Comprobante de pago que sube el cliente (en revisión hasta validar).
+/// i_status: 1=en_revision 2=aceptado 3=rechazado
+model invoice_payments {
+  id_invoice_payment Int             @id @default(autoincrement()) @db.UnsignedInt
+  id_invoice         Int             @db.UnsignedInt
+  id_user            Int             @db.UnsignedInt
+  f_amount           Decimal         @db.Decimal(12, 2)
+  vc_method          String          @db.VarChar(30)
+  vc_reference       String?         @db.VarChar(255)
+  vc_receipt_url     String?         @db.VarChar(500)
+  vc_notes           String?         @db.Text
+  i_status           Int             @default(1)
+  vc_review_notes    String?         @db.Text
+  id_reviewed_by     Int?            @db.UnsignedInt
+  dt_reviewed        DateTime?       @db.Timestamp(0)
+  dt_register        DateTime        @default(now()) @db.Timestamp(0)
+  dt_update          DateTime        @default(now()) @updatedAt @db.Timestamp(0)
+  invoice            client_invoices @relation(fields: [id_invoice], references: [id_invoice])
+
+  @@index([id_invoice], map: "idx_invoice_payments_invoice")
+}
+
+/// Pago semanal a un promotor (agrupa tareas completadas del período).
+/// i_status: 1=pendiente 2=pagado
+model promoter_payments {
+  id_promoter_payment    Int                      @id @default(autoincrement()) @db.UnsignedInt
+  id_promoter            Int                      @db.UnsignedInt
+  dt_period_start        DateTime                 @db.Date
+  dt_period_end          DateTime                 @db.Date
+  i_completed_tasks      Int                      @default(0)
+  f_amount               Decimal                  @default(0.00) @db.Decimal(12, 2)
+  i_status               Int                      @default(1)
+  vc_method              String?                  @db.VarChar(30)
+  vc_reference           String?                  @db.VarChar(255)
+  vc_notes               String?                  @db.Text
+  dt_paid                DateTime?                @db.Timestamp(0)
+  id_paid_by             Int?                     @db.UnsignedInt
+  b_active               Boolean                  @default(true)
+  dt_register            DateTime                 @default(now()) @db.Timestamp(0)
+  dt_update              DateTime                 @default(now()) @updatedAt @db.Timestamp(0)
+  promoter_payment_items promoter_payment_items[]
+
+  @@index([id_promoter], map: "idx_promoter_payments_promoter")
+  @@index([i_status], map: "idx_promoter_payments_status")
+}
+
+/// Desglose de un pago a promotor por pedido/campaña.
+model promoter_payment_items {
+  id_promoter_payment_item Int               @id @default(autoincrement()) @db.UnsignedInt
+  id_promoter_payment      Int               @db.UnsignedInt
+  id_order                 Int               @db.UnsignedInt
+  id_request               Int?              @db.UnsignedInt
+  i_completed_tasks        Int               @default(0)
+  f_subtotal               Decimal           @default(0.00) @db.Decimal(12, 2)
+  dt_register              DateTime          @default(now()) @db.Timestamp(0)
+  promoter_payment         promoter_payments @relation(fields: [id_promoter_payment], references: [id_promoter_payment])
+
+  @@index([id_promoter_payment], map: "idx_promoter_payment_items_payment")
+}
+
 model sales_channels {
   id          Int      @id @default(autoincrement()) @db.UnsignedInt
   name        String
@@ -569,4 +694,25 @@ model sales_channels {
   url_image   String?
   is_active   Boolean  @default(true)
   stores      stores[]
+}
+
+enum promoter_account_type {
+  CLABE
+  CARD
+}
+
+model promoter_bank_accounts {
+  id                  Int                   @id @default(autoincrement()) @db.UnsignedInt
+  id_promoter         Int                   @db.UnsignedInt
+  account_holder_name String                @db.VarChar(255)
+  account_type        promoter_account_type
+  clabe               String?               @db.VarChar(18)
+  card_number         String?               @db.VarChar(20)
+  bank_name           String                @db.VarChar(255)
+  dt_register         DateTime              @default(now()) @db.Timestamp(0)
+  dt_updated          DateTime              @default(now()) @updatedAt @db.Timestamp(0)
+  dt_deleted          DateTime?             @db.Timestamp(0)
+  promoter            promoters             @relation(fields: [id_promoter], references: [id])
+
+  @@index([id_promoter], map: "idx_promoter_bank_accounts_promoter")
 }
