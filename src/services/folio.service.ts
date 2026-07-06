@@ -5,6 +5,7 @@ export const FOLIO_ENTITIES = {
     requests: 'SOL',
     orders: 'PED',
     tasks: 'TAR',
+    invoices: 'FAC',
 } as const;
 
 export type FolioEntity = keyof typeof FOLIO_ENTITIES;

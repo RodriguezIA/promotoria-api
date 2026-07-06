@@ -98,9 +98,12 @@ export class Task {
         const task = await prisma.tasks.findUnique({ where: { id_task } })
         if (!task) throw new Error('Tarea no encontrada')
 
+        const promoter = await prisma.promoters.findUnique({ where: { id: id_promoter } })
+        if (!promoter) throw new Error('Promotor no encontrado')
+
         return await prisma.tasks.update({
             where: { id_task },
-            data: { id_promoter, dt_update: new Date() },
+            data: { id_promoter, id_status: 2, dt_update: new Date() },
             include: {
                 store: { select: { id_store: true, name: true } },
                 promoter: { select: { id: true, name: true, lastname: true, phone: true } },

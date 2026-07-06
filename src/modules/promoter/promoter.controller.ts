@@ -3,7 +3,7 @@ import { Request, Response } from 'express'
 
 import { Utils } from '../../core/utils'
 import { Promoter } from './promoter.service'
-import { CreatePromoterDTO,  LoginPromoterDTO, TokenPromoterPayload } from './promoter.dtos'
+import { CreatePromoterDTO, LoginPromoterDTO, TokenPromoterPayload, CreatePromoterBankAccountDTO, UpdatePromoterBankAccountDTO } from './promoter.dtos'
 
 
 const promoterService = new Promoter();
@@ -18,6 +18,15 @@ export const getPromoters = async (req: Request, res: Response) => {
     }
 }
 
+export const getPromoterById = async (req: Request, res: Response) => {
+    try {
+        const id = Number(req.params.id)
+        const promoter = await promoterService.getPromoterById(id)
+        res.status(200).json({ ok: true, error: 0, data: promoter, message: 'Promotor obtenido exitosamente' })
+    } catch (error) {
+        res.status(500).json({ ok: false, error: 1, data: null, message: 'Error al obtener el promotor' })
+    }
+}
 
 export const createPromoter = async (req: Request, res: Response) => {
     try {
@@ -105,6 +114,128 @@ export const updateLocationPromoter = async(req: Request, res: Response) => {
             error: 1,
             data: null,
             message: "Error al actualizar la ubicación del promotor",
+        })
+    }
+}
+
+export const getPromoterBankAccounts = async (req: Request, res: Response) => {
+    try {
+        const id_promoter = Number(req.params.id_promoter)
+        const accounts = await promoterService.getBankAccountsByPromoter(id_promoter)
+        res.status(200).json({ ok: true, error: 0, data: accounts, message: 'Cuentas bancarias obtenidas exitosamente' })
+    } catch (error) {
+        console.error('f.getPromoterBankAccounts: ', error)
+        res.status(500).json({ ok: false, error: 1, data: null, message: 'Error al obtener las cuentas bancarias' })
+    }
+}
+
+export const createPromoterBankAccount = async (req: Request, res: Response) => {
+    try {
+        const id_promoter = Number(req.params.id_promoter)
+        const promoter = await promoterService.getPromoterById(id_promoter)
+        if (!promoter) {
+            return res.status(404).json({ ok: false, error: 1, data: null, message: 'Promotor no encontrado' })
+        }
+        const body: CreatePromoterBankAccountDTO = req.body
+        const account = await promoterService.createBankAccount(id_promoter, body)
+        res.status(201).json({ ok: true, error: 0, data: account, message: 'Cuenta bancaria creada exitosamente' })
+    } catch (error) {
+        console.error('f.createPromoterBankAccount: ', error)
+        res.status(500).json({ ok: false, error: 1, data: null, message: 'Error al crear la cuenta bancaria' })
+    }
+}
+
+export const getPromoterBankAccount = async (req: Request, res: Response) => {
+    try {
+        const id_promoter = Number(req.params.id_promoter)
+        const id_account = Number(req.params.id_account)
+        const account = await promoterService.getBankAccountById(id_account, id_promoter)
+        if (!account) {
+            return res.status(404).json({ ok: false, error: 1, data: null, message: 'Cuenta bancaria no encontrada' })
+        }
+        res.status(200).json({ ok: true, error: 0, data: account, message: 'Cuenta bancaria obtenida exitosamente' })
+    } catch (error) {
+        console.error('f.getPromoterBankAccount: ', error)
+        res.status(500).json({ ok: false, error: 1, data: null, message: 'Error al obtener la cuenta bancaria' })
+    }
+}
+
+export const updatePromoterBankAccount = async (req: Request, res: Response) => {
+    try {
+        const id_promoter = Number(req.params.id_promoter)
+        const id_account = Number(req.params.id_account)
+        const existing = await promoterService.getBankAccountById(id_account, id_promoter)
+        if (!existing) {
+            return res.status(404).json({ ok: false, error: 1, data: null, message: 'Cuenta bancaria no encontrada' })
+        }
+        const body: UpdatePromoterBankAccountDTO = req.body
+        const updated = await promoterService.updateBankAccount(id_account, body)
+        res.status(200).json({ ok: true, error: 0, data: updated, message: 'Cuenta bancaria actualizada exitosamente' })
+    } catch (error) {
+        console.error('f.updatePromoterBankAccount: ', error)
+        res.status(500).json({ ok: false, error: 1, data: null, message: 'Error al actualizar la cuenta bancaria' })
+    }
+}
+
+export const deletePromoterBankAccount = async (req: Request, res: Response) => {
+    try {
+        const id_promoter = Number(req.params.id_promoter)
+        const id_account = Number(req.params.id_account)
+        const existing = await promoterService.getBankAccountById(id_account, id_promoter)
+        if (!existing) {
+            return res.status(404).json({ ok: false, error: 1, data: null, message: 'Cuenta bancaria no encontrada' })
+        }
+        await promoterService.softDeleteBankAccount(id_account)
+        res.status(200).json({ ok: true, error: 0, data: null, message: 'Cuenta bancaria eliminada exitosamente' })
+    } catch (error) {
+        console.error('f.deletePromoterBankAccount: ', error)
+        res.status(500).json({ ok: false, error: 1, data: null, message: 'Error al eliminar la cuenta bancaria' })
+    }
+}
+export const updatePromoterImage = async (req: Request, res: Response) => {
+    const { id_promoter } = req.params
+
+    if (!req.file) {
+        return res.status(400).json({ ok: false, error: 1, data: null, message: 'No se recibió archivo' })
+    }
+
+    try {
+        const id_promoter_num = Number(id_promoter)
+
+        // Verificar que el promotor existe
+        const promoter = await promoterService.getPromoterById(id_promoter_num)
+        if (!promoter) {
+            return res.status(404).json({ ok: false, error: 1, data: null, message: 'Promotor no encontrado' })
+        }
+
+        // Subir imagen a GCS y registrar en tabla assets usando StorageService
+        const { StorageService } = await import('../../services/storage.service')
+        const { url, id_asset } = await StorageService.uploadAsset({
+            entity: 'promoter',
+            entity_id: id_promoter_num,
+            buffer: req.file.buffer,
+            mime: req.file.mimetype,
+            id_user: id_promoter_num,
+            optimize: { maxW: 500, maxH: 500, quality: 85 },
+        })
+
+        // Actualizar URL de imagen en base de datos
+        const updatedPromoter = await promoterService.updatePromoterImage(id_promoter_num, url)
+        const { password, ...promoterWithoutPassword } = updatedPromoter
+
+        res.status(200).json({
+            ok: true,
+            error: 0,
+            data: { ...promoterWithoutPassword, vc_image: url, id_asset },
+            message: 'Imagen de perfil actualizada exitosamente'
+        })
+    } catch (error) {
+        console.error('f.updatePromoterImage: ', error)
+        res.status(500).json({
+            ok: false,
+            error: 1,
+            data: null,
+            message: 'Error al actualizar la imagen del promotor'
         })
     }
 }
