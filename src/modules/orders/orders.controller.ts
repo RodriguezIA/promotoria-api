@@ -138,6 +138,30 @@ export const updateOrder = async (req: Request, res: Response) => {
     }
 }
 
+export const closeOrder = async (req: Request, res: Response) => {
+    try {
+        const { id_order } = req.params
+        const id_user = req.user?.id || 0
+        const order = await orderService.closeOrder(Number(id_order), id_user)
+
+        res.status(200).json({
+            ok: true,
+            error: 0,
+            data: order,
+            message: 'Pedido cerrado exitosamente'
+        })
+    } catch (error) {
+        console.error('CLOSE ORDER ERROR:', (error as any).message)
+        res.status(409).json({
+            ok: false,
+            error: 1,
+            data: null,
+            message: (error as any).message || 'Error al cerrar el pedido',
+            error_backend: error
+        })
+    }
+}
+
 export const deleteOrder = async (req: Request, res: Response) => {
     try {
         const { id_order } = req.params

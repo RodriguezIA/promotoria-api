@@ -1,11 +1,13 @@
 import { Router } from 'express'
-import { authMiddleware } from '../../core/middleware'
+import { authMiddleware, requireRole } from '../../core/middleware'
+import { ROLES } from '../../core/constants/status.constants'
 import {
     createOrder,
     getAllOrders,
     getOrderById,
     updateOrder,
-    deleteOrder
+    deleteOrder,
+    closeOrder
 } from './orders.controller'
 
 const orderRouter = Router()
@@ -105,5 +107,24 @@ orderRouter.get('/', authMiddleware, getAllOrders)
 orderRouter.get('/:id_order', authMiddleware, getOrderById)
 orderRouter.put('/:id_order', authMiddleware, updateOrder)
 orderRouter.delete('/:id_order', authMiddleware, deleteOrder)
+
+/**
+ * @openapi
+ * /orders/{id_order}/close:
+ *   patch:
+ *     tags: [Orders]
+ *     summary: Cerrar un pedido (requisito para poder cobrarlo a un cliente)
+ *     parameters:
+ *       - in: path
+ *         name: id_order
+ *         required: true
+ *         schema: { type: integer }
+ *     responses:
+ *       200: { description: "Pedido cerrado." }
+ *       401: { $ref: '#/components/responses/Unauthorized' }
+ *       403: { description: "Solo un Super usuario puede cerrar pedidos." }
+ *       409: { description: "El pedido no está en estatus creado." }
+ */
+orderRouter.patch('/:id_order/close', authMiddleware, requireRole(ROLES.SUPER), closeOrder)
 
 export default orderRouter

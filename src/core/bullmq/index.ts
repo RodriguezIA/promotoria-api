@@ -4,7 +4,6 @@ import { schedulerTasksUnsiggnedQueue, taskRankingQueue, pushNotificationsQueue,
 import './worker.schedulerTasksUnsiggned'
 import './worker.task-ranking'
 import './worker.push-notifications'
-import './worker.billing'
 
 export const queues = [schedulerTasksUnsiggnedQueue, taskRankingQueue, pushNotificationsQueue, billingQueue];
 export { startTaskNotificacitonScheduler, startBillingScheduler };

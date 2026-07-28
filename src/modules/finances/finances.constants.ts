@@ -1,0 +1,13 @@
+export const CLIENT_CHARGE_STATUS = {
+  PENDIENTE_PAGO: 1,
+  EN_VALIDACION: 2,
+  OBSERVADO: 3,
+  PAGADO: 4,
+  CANCELADO: 5,
+} as const
+
+export const PROMOTER_PAYMENT_STATUS = {
+  POR_PAGAR: 1,
+  PAGADO: 2,
+  CANCELADO: 3,
+} as const

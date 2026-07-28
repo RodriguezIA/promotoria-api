@@ -35,7 +35,9 @@ export type AssetEntity =
   | "sale_channel"
   | "task_answer"
   | "client_doc"
-  | "promoter";
+  | "promoter"
+  | "client_charge"
+  | "promoter_payment";
 
 const ENTITY_SEGMENT: Record<AssetEntity, string> = {
   product: "products",
@@ -44,6 +46,8 @@ const ENTITY_SEGMENT: Record<AssetEntity, string> = {
   task_answer: "task_answers",
   client_doc: "docs",
   promoter: "promoters",
+  client_charge: "client_charges",
+  promoter_payment: "promoter_payments",
 };
 
 interface OptimizeOpts {

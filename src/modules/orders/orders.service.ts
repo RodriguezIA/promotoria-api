@@ -1,6 +1,7 @@
 import { prisma } from '../../core/prisma'
 import { CreateOrderDTO, UpdateOrderDTO, OrderFiltersDTO } from './orders.dtos'
 import { generateFolio } from '../../services/folio.service'
+import { ORDER_STATUS } from '../../core/constants/status.constants'
 
 export class Order {
 
@@ -175,6 +176,35 @@ export class Order {
             })
 
             return { id_order, deleted: true }
+        })
+    }
+
+    async closeOrder(id_order: number, id_user: number) {
+        return await prisma.$transaction(async (tx) => {
+            const order = await tx.orders.findUnique({ where: { id_order } })
+            if (!order) {
+                throw new Error('Pedido no encontrado')
+            }
+            if (order.id_status !== ORDER_STATUS.CREADO) {
+                throw new Error('Solo se puede cerrar un pedido que está en estatus creado')
+            }
+
+            const updated = await tx.orders.update({
+                where: { id_order },
+                data: { id_status: ORDER_STATUS.CERRADO, dt_update: new Date() }
+            })
+
+            await tx.order_logs.create({
+                data: {
+                    id_order,
+                    id_usuario: id_user,
+                    vc_log: 'Pedido cerrado',
+                    i_status: 1,
+                    dt_registro: new Date()
+                }
+            })
+
+            return updated
         })
     }
 }
