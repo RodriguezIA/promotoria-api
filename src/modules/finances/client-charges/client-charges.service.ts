@@ -88,7 +88,7 @@ export class ClientCharges {
         const tasks = await this.findEligibleTasks(input.dt_start, input.dt_end, input.id_client)
         const byClient = this.groupByClientAndOrder(tasks)
 
-        const createdCharges = []
+        const createdCharges: Awaited<ReturnType<typeof prisma.client_charges.create>>[] = []
         for (const [id_client, byOrder] of byClient) {
             const charge = await prisma.$transaction(async (tx) => {
                 const allTasksForClient: EligibleTask[] = []

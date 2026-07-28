@@ -92,7 +92,7 @@ export class PromoterPayments {
         const tasks = await this.findEligibleTasks(input.dt_start, input.dt_end, commissionPct, input.id_promoter)
         const byPromoter = this.groupByPromoter(tasks)
 
-        const createdPayments = []
+        const createdPayments: Awaited<ReturnType<typeof prisma.promoter_payments.create>>[] = []
         for (const [id_promoter, promoterTasks] of byPromoter) {
             const payment = await prisma.$transaction(async (tx) => {
                 const f_total = promoterTasks.reduce((sum, t) => sum + t.f_amount, 0)
