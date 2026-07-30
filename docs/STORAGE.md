@@ -41,8 +41,12 @@ Segmentos por entidad (`entity_type` → carpeta):
 | `product`      | `products`      | sí (800) | `clients/2/products/77/1718580000000-a1b2c3.webp` |
 | `request`      | `requests`      | sí (1200)| `clients/2/requests/14/1718580000000-a1b2c3.webp` |
 | `sale_channel` | `sale_channels` | sí (1200)| `sale_channels/5/1718580000000-a1b2c3.webp` |
-| `task_answer`  | `task_answers`  | sí (1200)| `task_answers/30/991_1718580000000-a1b2c3.webp` (extraRef = id_rpq) |
+| `task_answer`  | `task_answers`  | sí (1200)| `task_answers/{id_task_answer}/991_1718580000000-a1b2c3.webp` (entity_id = id_task_answer, extraRef = id_rpq) |
+| `task_arrangement` | `task_arrangements` | sí (1200) | `task_arrangements/{id_task}/1718580000000-a1b2c3.webp` (entity_id = id_task) |
 | `client_doc`   | `docs`          | no       | `clients/2/docs/2/situacion-fiscal_1718580000000-a1b2c3.pdf` |
+
+> Detalle del flujo de guardado incremental del checklist (respuestas + foto de
+> acomodo) en [CHECKLIST_EVIDENCE.md](./CHECKLIST_EVIDENCE.md).
 
 ## Tabla `assets`
 
@@ -114,7 +118,7 @@ const { url, path, id_asset } = await StorageService.uploadAsset({
 | `POST /requests` / `PUT /requests/:id` | `id_user`, `id_client`, `vc_name`, `f_value`, `products` (JSON string), `rackImage?` |
 | `POST /channels-sales` / `PUT /channels-sales/:id` | `name`, `description`, `file?` |
 | `POST /clients/:id_client/docs` | `file` |
-| `POST /tasks/:id_task/answers` | `answers` (JSON string), `image_{id_rpq}` (uno por respuesta con foto) |
+| `POST /tasks/:id_task/answers` | `answers?` (JSON string, opcional si hay archivos), `arrangement_photo?`, `image_{id_rpq}?` (uno por respuesta con foto) |
 
 ## Legacy
 

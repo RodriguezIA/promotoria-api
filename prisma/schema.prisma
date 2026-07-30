@@ -472,6 +472,8 @@ model task_answers {
   vc_answer                   String?  @db.Text
   vc_image_url                String?  @db.VarChar(255)
   dt_register                 DateTime @db.DateTime(0)
+
+  @@unique([id_task, id_promoter, id_request_product_question], map: "uq_task_answers")
 }
 
 model task_rejections {

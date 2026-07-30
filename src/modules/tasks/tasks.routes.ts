@@ -2,21 +2,7 @@ import { Router } from 'express'
 
 import { authMiddleware } from '../../core/middleware'
 import { uploadAny } from '../../core/middleware/upload.middleware'
-import {
-    createTask,
-    getMyTasks,
-    getTaskById,
-    getTasks,
-    updateTask,
-    deleteTask,
-    acceptTask,
-    rejectTask,
-    getTaskChecklist,
-    answerTaskQuestions,
-    completeTask,
-    assignPromoterToTask,
-    getNearbyTasks,
-} from './tasks.controller'
+import { createTask,getMyTasks, getTaskById, getTasks, updateTask, deleteTask, acceptTask, rejectTask, getTaskChecklist, answerTaskQuestions, completeTask, assignPromoterToTask, getNearbyTasks } from './tasks.controller'
 
 const taskRouter = Router()
 
@@ -172,10 +158,14 @@ taskRouter.get('/:id_task/checklist', authMiddleware, getTaskChecklist)
  * /tasks/{id_task}/answers:
  *   post:
  *     tags: [Tasks]
- *     summary: Enviar respuestas del checklist (con imágenes opcionales)
+ *     summary: Guardado incremental del checklist (respuestas + fotos opcionales)
  *     description: >
- *       Multipart. `answers` es un JSON string con el arreglo de respuestas.
- *       Cada imagen va en un campo `image_{id_request_product_question}`.
+ *       Multipart. `answers` es un JSON string con el arreglo de respuestas; puede
+ *       omitirse o venir como `[]` **si** se envía al menos un archivo (foto de
+ *       acomodo o de alguna pregunta). Cada imagen de pregunta va en un campo
+ *       `image_{id_request_product_question}`; la foto de acomodo de la tarea va
+ *       en el campo `arrangement_photo`. Upsert idempotente por
+ *       `(id_task, id_promoter, id_request_product_question)`.
  *     parameters:
  *       - { in: path, name: id_task, required: true, schema: { type: integer } }
  *     requestBody:
@@ -184,15 +174,20 @@ taskRouter.get('/:id_task/checklist', authMiddleware, getTaskChecklist)
  *         multipart/form-data:
  *           schema:
  *             type: object
- *             required: [answers]
  *             properties:
  *               answers:
  *                 type: string
- *                 description: 'JSON string. Ej: [{"id_request_product_question":12,"vc_answer":"Sí"}]'
+ *                 description: >
+ *                   JSON string. Ej: [{"id_request_product_question":12,"vc_answer":"Sí"}].
+ *                   Puede omitirse o ser "[]" si se envía arrangement_photo y/o image_{id}.
+ *               arrangement_photo: { type: string, format: binary, description: "Foto de acomodo de la tarea (página 0)" }
  *               image_12: { type: string, format: binary, description: "Imagen para la respuesta del rpq 12 (campo dinámico)" }
  *     responses:
- *       200: { description: "Respuestas guardadas." }
- *       400: { description: "answers inválido." }
+ *       200:
+ *         description: >
+ *           Respuestas guardadas. `data` = { answers: [...filas upserteadas...],
+ *           arrangement_photo_url: string|null }.
+ *       400: { description: "answers inválido, o no se envió ni respuestas ni archivos." }
  *       403: { description: "La tarea no está asignada al promotor." }
  *       401: { $ref: '#/components/responses/Unauthorized' }
  *

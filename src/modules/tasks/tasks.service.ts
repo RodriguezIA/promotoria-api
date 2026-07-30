@@ -3,6 +3,7 @@ import { CreateTaskDTO, UpdateTaskDTO, AnswerItemDTO } from './tasks.dtos'
 import { generateFolio } from '../../services/folio.service'
 import { resolveImages } from '../../core/asset-resolver'
 import { haversineMeters } from '../../queues/helpers/haversine'
+import { StorageService } from '../../services/storage.service'
 
 export class Task {
 
@@ -252,11 +253,12 @@ export class Task {
         }
 
         const productIds = task.request?.request_products.map(rp => rp.product.id_product) ?? [];
-        const rpqIds = myAnswers.map((a: any) => a.id_request_product_question);
-        const [requestAssets, productAssets, answerAssets] = await Promise.all([
+        const answerIds = myAnswers.map((a: any) => a.id_task_answer);
+        const [requestAssets, productAssets, answerAssets, arrangementAssets] = await Promise.all([
             task.id_request ? resolveImages('request', [task.id_request]) : Promise.resolve(new Map<number, string>()),
             resolveImages('product', productIds),
-            resolveImages('task_answer', rpqIds),
+            resolveImages('task_answer', answerIds),
+            resolveImages('task_arrangement', [id_task]),
         ]);
 
         const resolvedRequest = task.request && task.id_request
@@ -272,17 +274,24 @@ export class Task {
 
         const resolvedAnswers = myAnswers.map((a: any) => ({
             ...a,
-            vc_image_url: answerAssets.get(a.id_request_product_question) ?? a.vc_image_url,
+            vc_image_url: answerAssets.get(a.id_task_answer) ?? a.vc_image_url,
         }));
 
-        return { ...task, request: resolvedRequest, storeAddress, myAnswers: resolvedAnswers }
+        return {
+            ...task,
+            request: resolvedRequest,
+            storeAddress,
+            myAnswers: resolvedAnswers,
+            arrangement_photo_url: arrangementAssets.get(id_task) ?? null,
+        }
     }
 
     async answerTaskQuestions(
         id_task: number,
         id_promoter: number,
         answers: AnswerItemDTO[],
-        imageUrls: Map<number, string>
+        images: Map<number, { buffer: Buffer; mime: string }>,
+        arrangementPhoto?: { buffer: Buffer; mime: string }
     ) {
         const task = await prisma.tasks.findUnique({
             where: { id_task },
@@ -291,40 +300,88 @@ export class Task {
         if (!task) throw new Error('Tarea no encontrada')
         if (task.id_promoter !== id_promoter) throw new Error('No tienes asignada esta tarea')
 
-        const results: any[] = []
+        const results = await prisma.$transaction(async (tx) => {
+            const rows: any[] = []
 
-        for (const item of answers) {
-            const vc_image_url = imageUrls.get(item.id_request_product_question) ?? null
-
-            const existing = await prisma.task_answers.findFirst({
-                where: { id_task, id_promoter, id_request_product_question: item.id_request_product_question }
-            })
-
-            if (existing) {
-                const updated = await prisma.task_answers.update({
-                    where: { id_task_answer: existing.id_task_answer },
-                    data: {
-                        vc_answer: item.vc_answer ?? existing.vc_answer,
-                        ...(vc_image_url !== null && { vc_image_url }),
-                    }
-                })
-                results.push(updated)
-            } else {
-                const created = await prisma.task_answers.create({
-                    data: {
+            for (const item of answers) {
+                const result = await tx.task_answers.upsert({
+                    where: {
+                        id_task_id_promoter_id_request_product_question: {
+                            id_task,
+                            id_promoter,
+                            id_request_product_question: item.id_request_product_question,
+                        }
+                    },
+                    update: {
+                        ...(item.vc_answer !== null && item.vc_answer !== undefined && { vc_answer: item.vc_answer }),
+                    },
+                    create: {
                         id_task,
                         id_promoter,
                         id_request_product_question: item.id_request_product_question,
                         vc_answer: item.vc_answer ?? null,
-                        vc_image_url,
                         dt_register: new Date(),
                     }
                 })
-                results.push(created)
+                rows.push(result)
+            }
+
+            return rows
+        })
+
+        for (const [rpqId, file] of images) {
+            const existing = results.find(r => r.id_request_product_question === rpqId)
+
+            const answerRow = await prisma.task_answers.upsert({
+                where: {
+                    id_task_id_promoter_id_request_product_question: {
+                        id_task,
+                        id_promoter,
+                        id_request_product_question: rpqId,
+                    }
+                },
+                update: {},
+                create: {
+                    id_task,
+                    id_promoter,
+                    id_request_product_question: rpqId,
+                    vc_answer: null,
+                    dt_register: new Date(),
+                }
+            })
+
+            const { url } = await StorageService.uploadAsset({
+                entity: 'task_answer',
+                entity_id: answerRow.id_task_answer,
+                extraRef: rpqId,
+                buffer: file.buffer,
+                mime: file.mime,
+            })
+
+            const updated = await prisma.task_answers.update({
+                where: { id_task_answer: answerRow.id_task_answer },
+                data: { vc_image_url: url },
+            })
+
+            if (existing) {
+                existing.vc_image_url = url
+            } else {
+                results.push(updated)
             }
         }
 
-        return results
+        let arrangement_photo_url: string | null = null
+        if (arrangementPhoto) {
+            const { url } = await StorageService.uploadAsset({
+                entity: 'task_arrangement',
+                entity_id: id_task,
+                buffer: arrangementPhoto.buffer,
+                mime: arrangementPhoto.mime,
+            })
+            arrangement_photo_url = url
+        }
+
+        return { answers: results, arrangement_photo_url }
     }
 
     async completeTask(id_task: number, id_promoter: number) {

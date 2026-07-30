@@ -34,6 +34,7 @@ export type AssetEntity =
   | "request"
   | "sale_channel"
   | "task_answer"
+  | "task_arrangement"
   | "client_doc"
   | "promoter"
   | "client_charge"
@@ -44,6 +45,7 @@ const ENTITY_SEGMENT: Record<AssetEntity, string> = {
   request: "requests",
   sale_channel: "sale_channels",
   task_answer: "task_answers",
+  task_arrangement: "task_arrangements",
   client_doc: "docs",
   promoter: "promoters",
   client_charge: "client_charges",
