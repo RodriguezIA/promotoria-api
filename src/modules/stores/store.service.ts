@@ -54,7 +54,13 @@ export class Store {
             })
 
             const logs = await prisma.store_logs.findMany({
-                where: { id_store }
+                where: { id_store },
+                orderBy: { dt_register: 'desc' },
+                include: {
+                    users: {
+                        select: { name: true, lastname: true }
+                    }
+                }
             })
 
 
