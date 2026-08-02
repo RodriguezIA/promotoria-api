@@ -1,4 +1,5 @@
 import { Request, Response, NextFunction } from "express";
+import multer from "multer";
 import { logger } from "../services/logger.service";
 
 export class AppError extends Error {
@@ -48,36 +49,49 @@ export const responseLogger = (
   next();
 };
 
-// Middleware global de manejo de errores (debe ir al final de todos los middlewares)
+// Middleware global de manejo de errores (debe ir al final de todos los middlewares, después de todas las rutas)
 export const errorHandler = (
   err: Error | AppError,
   req: Request,
   res: Response,
-  _next: NextFunction
+  next: NextFunction
 ): void => {
-  const statusCode = "statusCode" in err ? err.statusCode : 500;
-  const message = err.message || "Internal Server Error";
+  // Si ya se enviaron cabeceras, delegar al manejador por defecto de Express
+  if (res.headersSent) {
+    next(err);
+    return;
+  }
 
-  // Log del error
-  logger.httpError(
-    statusCode,
-    message,
-    {
-      method: req.method,
-      originalUrl: req.originalUrl,
-      ip: req.ip || req.socket?.remoteAddress,
-      user: (req as Request & { user?: { id: string | number } }).user,
-    },
-    err
-  );
+  // Errores de Multer (subida de archivos: fotos de tareas, excel, etc.)
+  if (err instanceof multer.MulterError) {
+    if (err.code === "LIMIT_FILE_SIZE") {
+      res.status(413).json({
+        ok: false,
+        error: 1,
+        data: null,
+        message: "La imagen supera el tamaño máximo permitido (10MB). Intenta de nuevo.",
+      });
+      return;
+    }
 
-  // Respuesta al cliente
-  res.status(statusCode).json({
+    res.status(400).json({
+      ok: false,
+      error: 1,
+      data: null,
+      message: err.message,
+    });
+    return;
+  }
+
+  // Cualquier otro error no controlado
+  console.error(`[errorHandler] ${req.method} ${req.originalUrl}:`, err);
+
+  res.status(500).json({
     ok: false,
-    error: message,
-    ...(process.env.NODE_ENV !== "production" && {
-      stack: err.stack,
-    }),
+    error: 1,
+    data: null,
+    message: "Error interno del servidor",
+    error_backend: err.message,
   });
 };
 

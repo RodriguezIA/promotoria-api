@@ -10,6 +10,7 @@ import adminRouter from "./app_admin/index"
 import superadminRouter from "./app_superadmin/index"
 import mobileRouter from "./app_mobile/index"
 import { clientRouter, productRouter, userAdminRouter, storeRouter, channelsSalesRouter, promoterRouter, questionRouter, requestRouter, orderRouter, taskRouter, financesRouter } from './modules'
+import { errorHandler } from "./core/middleware"
 import { setupSwagger } from "./config/swagger"
 
 export const app: Express = express()
@@ -45,6 +46,9 @@ app.use("/retailink-api/requests", requestRouter)
 app.use("/retailink-api/orders", orderRouter)
 app.use("/retailink-api/tasks", taskRouter)
 app.use("/retailink-api/finances", financesRouter)
+
+// Manejo global de errores (multer, no controlados): debe ir después de todas las rutas.
+app.use(errorHandler)
 
 if (process.env.NODE_ENV !== 'test') {
   const startServer = async () => {
