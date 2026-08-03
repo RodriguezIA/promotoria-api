@@ -258,6 +258,7 @@ model promoters {
   tasks                  tasks[]
   promoter_bank_accounts promoter_bank_accounts[]
   payments               promoter_payments[]
+  task_rejections        task_rejections[]
 }
 
 /// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
@@ -480,9 +481,16 @@ model task_rejections {
   id_rejection Int       @id @default(autoincrement())
   id_task      Int
   id_promoter  Int
+  /// 'rejected' = el promotor rechazó la oferta; 'timeout' = se le desvinculó
+  /// automáticamente por no iniciar la tarea a tiempo tras "en camino".
+  reason       String    @default("rejected") @db.VarChar(20)
   dt_register  DateTime? @default(now()) @db.DateTime(0)
+  task         tasks     @relation(fields: [id_task], references: [id_task], map: "fk_task_rejections_task")
+  promoter     promoters @relation(fields: [id_promoter], references: [id], map: "fk_task_rejections_promoter")
 
   @@unique([id_task, id_promoter], map: "uq_task_promoter")
+  @@index([id_task], map: "idx_task_rejections_task")
+  @@index([id_promoter], map: "idx_task_rejections_promoter")
 }
 
 model tasks {
@@ -508,6 +516,7 @@ model tasks {
   store                stores     @relation(fields: [id_store], references: [id_store])
   charge_tasks         client_charge_tasks[]
   payment_tasks        promoter_payment_tasks[]
+  task_rejections      task_rejections[]
 
   @@index([id_client], map: "tasks_id_client_fkey")
   @@index([id_order], map: "tasks_id_order_fkey")

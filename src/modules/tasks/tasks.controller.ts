@@ -77,6 +77,18 @@ export const getMyTasks = async (req: Request, res: Response) => {
     }
 }
 
+export const getMyTaskHistory = async (req: Request, res: Response) => {
+    try {
+        const id_promoter = req.user!.id
+        const { reason } = req.query
+        const validReason = reason === 'rejected' || reason === 'timeout' ? reason : undefined
+        const history = await taskService.getPromoterTaskHistory(id_promoter, validReason)
+        res.status(200).json({ ok: true, error: 0, data: history, message: 'Historial de tareas obtenido exitosamente' })
+    } catch (error) {
+        res.status(500).json({ ok: false, error: 1, data: null, message: 'Error al obtener el historial de tareas', error_backend: (error as any).message })
+    }
+}
+
 export const updateTask = async (req: Request, res: Response) => {
     const { id_task } = req.params
     try {

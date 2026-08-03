@@ -2,7 +2,7 @@ import { Router } from 'express'
 
 import { authMiddleware } from '../../core/middleware'
 import { uploadAny } from '../../core/middleware/upload.middleware'
-import { createTask,getMyTasks, getTaskById, getTasks, updateTask, deleteTask, acceptTask, rejectTask, getTaskChecklist, answerTaskQuestions, completeTask, assignPromoterToTask, getNearbyTasks } from './tasks.controller'
+import { createTask,getMyTasks, getMyTaskHistory, getTaskById, getTasks, updateTask, deleteTask, acceptTask, rejectTask, getTaskChecklist, answerTaskQuestions, completeTask, assignPromoterToTask, getNearbyTasks } from './tasks.controller'
 
 const taskRouter = Router()
 
@@ -20,6 +20,21 @@ const taskRouter = Router()
  */
 // Mobile/Promotor: mis tareas (debe ir antes de /:id_task)
 taskRouter.get('/my', authMiddleware, getMyTasks)
+
+/**
+ * @openapi
+ * /tasks/my/history:
+ *   get:
+ *     tags: [Tasks]
+ *     summary: Historial de tareas rechazadas/canceladas del promotor autenticado
+ *     parameters:
+ *       - { in: query, name: reason, schema: { type: string, enum: [rejected, timeout] }, description: "Filtra por motivo; si se omite regresa ambos." }
+ *     responses:
+ *       200: { description: "Historial de task_rejections del promotor, con datos de tienda y solicitud." }
+ *       401: { $ref: '#/components/responses/Unauthorized' }
+ */
+// Debe ir antes de /:id_task
+taskRouter.get('/my/history', authMiddleware, getMyTaskHistory)
 
 /**
  * @openapi

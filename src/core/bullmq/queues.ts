@@ -14,6 +14,9 @@ export const pushNotificationsQueue = new Queue('push_notification_queue', {conn
 //  4 QUEUE de facturación semanal (cobros a clientes + pagos a promotores)
 export const billingQueue = new Queue('billing_queue', { connection: connectionQueue })
 
+//  5 QUEUE de timeout de tareas "en camino" (2h sin iniciar tarea = se reasigna)
+export const enRouteTimeoutQueue = new Queue('en_route_timeout_queue', { connection: connectionQueue })
+
 
 export async function startTaskNotificacitonScheduler(): Promise<void> {
     const REPEAT_INTERVAL_MS = process.env.NODE_ENV === 'production' ? 30 * 60_000 : 60_000;
@@ -27,6 +30,21 @@ export async function startTaskNotificacitonScheduler(): Promise<void> {
     });
 
     console.log(`[Queues] Scheduler configurado cada ${REPEAT_INTERVAL_MS / 1000}s`);
+}
+
+export async function startEnRouteTimeoutScheduler(): Promise<void> {
+    // Cada 10 min alcanza sobra para una ventana de 2h; no hace falta más precisión.
+    const REPEAT_INTERVAL_MS = 10 * 60_000;
+
+    await enRouteTimeoutQueue.add('check_en_route_timeouts', {}, {
+        repeat: {
+            every: REPEAT_INTERVAL_MS,
+            immediately: true
+        },
+        jobId: 'en_route_timeout_cron_job',
+    });
+
+    console.log(`[Queues] Timeout de "en camino" configurado cada ${REPEAT_INTERVAL_MS / 1000}s`);
 }
 
 export async function startBillingScheduler(): Promise<void> {

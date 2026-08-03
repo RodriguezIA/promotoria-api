@@ -159,7 +159,10 @@ export class Task {
     async update(id_task: number, data: UpdateTaskDTO) {
         return await prisma.tasks.update({
             where: { id_task },
-            data: { ...(data.id_status !== undefined && { id_status: data.id_status }) }
+            data: {
+                ...(data.id_status !== undefined && { id_status: data.id_status }),
+                dt_update: new Date(),
+            }
         })
     }
 
@@ -206,7 +209,27 @@ export class Task {
         })
         if (existing) return existing
 
-        return await prisma.task_rejections.create({ data: { id_task, id_promoter } })
+        return await prisma.task_rejections.create({ data: { id_task, id_promoter, reason: 'rejected' } })
+    }
+
+    async getPromoterTaskHistory(id_promoter: number, reason?: 'rejected' | 'timeout') {
+        return await prisma.task_rejections.findMany({
+            where: {
+                id_promoter,
+                ...(reason && { reason }),
+            },
+            orderBy: { dt_register: 'desc' },
+            include: {
+                task: {
+                    select: {
+                        id_task: true,
+                        vc_folio: true,
+                        store: { select: { id_store: true, name: true } },
+                        request: { select: { id_request: true, vc_folio: true, vc_name: true, f_value: true } },
+                    },
+                },
+            },
+        })
     }
 
     async getTaskChecklist(id_task: number) {
