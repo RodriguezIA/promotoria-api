@@ -16,34 +16,43 @@ function parseNumber(value: any): number | undefined {
 }
 
 export const createOrder = async (req: Request, res: Response) => {
+    let order: Awaited<ReturnType<typeof orderService.createOrder>> | undefined
     try {
-        const body = req.body
-        const payload: CreateOrderDTO = {
-            id_user: parseNumber(body.id_user)!,
-            id_client: parseNumber(body.id_client)!,
-            items: body.items || []
-        }
+        const payload: CreateOrderDTO = req.body
+        order = await orderService.createOrder(payload)
+    } catch (error) {
+        console.error('CREATE ORDER ERROR:', (error as any).message)
+        res.status(400).json({
+            ok: false,
+            error: 1,
+            data: null,
+            message: (error as any).message || 'Error al crear el pedido',
+            error_backend: error
+        })
+        return
+    }
 
-        const order = await orderService.createOrder(payload)
-
+    // El pedido ya se creó; si la generación de tareas falla, el pedido no se
+    // pierde y no debe reportarse como si la creación hubiera fallado por completo.
+    try {
         await createTasksInSystem(order.id_order)
-
+    } catch (error) {
+        console.error('CREATE ORDER - TASK GENERATION ERROR:', (error as any).message)
         res.status(200).json({
             ok: true,
             error: 0,
             data: order,
-            message: 'Pedido creado exitosamente'
+            message: 'Pedido creado, pero ocurrió un error generando las tareas. Contacta a soporte.'
         })
-    } catch (error) {
-        console.error('CREATE ORDER ERROR:', (error as any).message)
-        res.status(500).json({
-            ok: false,
-            error: 1,
-            data: null,
-            message: 'Error al crear el pedido',
-            error_backend: error
-        })
+        return
     }
+
+    res.status(200).json({
+        ok: true,
+        error: 0,
+        data: order,
+        message: 'Pedido creado exitosamente'
+    })
 }
 
 export const getAllOrders = async (req: Request, res: Response) => {
@@ -112,11 +121,7 @@ export const getOrderById = async (req: Request, res: Response) => {
 export const updateOrder = async (req: Request, res: Response) => {
     try {
         const { id_order } = req.params
-        const body = req.body
-        const payload: UpdateOrderDTO = {
-            id_status: parseNumber(body.id_status),
-            f_total: body.f_total !== undefined ? Number(body.f_total) : undefined
-        }
+        const payload: UpdateOrderDTO = req.body
 
         const order = await orderService.updateOrder(Number(id_order), payload)
 

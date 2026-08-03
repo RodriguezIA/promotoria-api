@@ -8,13 +8,14 @@ import {
   updateLocationPromoter, createPromoter, loginPromoter, getPromoters,
   getPromoterBankAccounts, createPromoterBankAccount, getPromoterBankAccount,
   updatePromoterBankAccount, deletePromoterBankAccount, getPromoterById,
+  updateFcmToken,
   // updatePromoterImage
 } from './promoter.controller'
 
 import {
   createPromoterSchema, loginPromoterSchema, updateLocationPromoterSchema,
   createPromoterBankAccountSchema, updatePromoterBankAccountSchema,
-  promoterIdParamSchema, bankAccountIdParamSchema,
+  promoterIdParamSchema, bankAccountIdParamSchema, updateFcmTokenSchema,
 } from './promoter.schema'
 
 const promoterRouter = Router()
@@ -24,6 +25,10 @@ promoterRouter.post('/', validateBody(createPromoterSchema), createPromoter)
 promoterRouter.post('/login', loginPromoter)
 promoterRouter.put('/update-location', validateBody(updateLocationPromoterSchema), updateLocationPromoter)
 promoterRouter.get('/:id', authMiddleware, getPromoterById)
+
+// Sincroniza el FCM token fuera del login (rotación de token, reinstalación, etc.)
+promoterRouter.put('/:id_promoter/fcm-token',
+  authMiddleware, validateParams(promoterIdParamSchema), validateBody(updateFcmTokenSchema), updateFcmToken)
 
 
 // Upload de imagen de perfil - NUEVA RUTA

@@ -98,6 +98,31 @@ export const loginPromoter = async(req: Request, res: Response) => {
     }
 }
 
+export const updateFcmToken = async (req: Request, res: Response) => {
+    try {
+        const id_promoter = Number(req.params.id_promoter)
+        const { fcm_token } = req.body
+
+        const promoter = await promoterService.getPromoterById(id_promoter)
+        if (!promoter) {
+            return res.status(404).json({ ok: false, error: 1, data: null, message: 'Promotor no encontrado' })
+        }
+
+        const updated = await promoterService.updateFcmToken(id_promoter, fcm_token)
+        const { password, ...promoterWithoutPassword } = updated
+
+        res.status(200).json({
+            ok: true,
+            error: 0,
+            data: promoterWithoutPassword,
+            message: 'Token de notificaciones actualizado exitosamente',
+        })
+    } catch (error) {
+        console.error('f.updateFcmToken: ', error)
+        res.status(500).json({ ok: false, error: 1, data: null, message: 'Error al actualizar el token de notificaciones' })
+    }
+}
+
 export const updateLocationPromoter = async(req: Request, res: Response) => {
     try {
         const { id, latitude, longitude }: { id: number; latitude: number; longitude: number } = req.body

@@ -4,11 +4,12 @@ import { generateFolio } from '../../services/folio.service'
 import { resolveImages } from '../../core/asset-resolver'
 import { haversineMeters } from '../../queues/helpers/haversine'
 import { StorageService } from '../../services/storage.service'
+import { taskRankingQueue } from '../../core/bullmq/queues'
 
 export class Task {
 
     async create(data: CreateTaskDTO) {
-        return await prisma.$transaction(async (tx) => {
+        const task = await prisma.$transaction(async (tx) => {
             const vc_folio = await generateFolio(tx, data.id_client, 'tasks')
 
             return tx.tasks.create({
@@ -21,6 +22,26 @@ export class Task {
                 }
             })
         })
+
+        // Dispara el primer ciclo de ranking/notificación de inmediato, en vez
+        // de esperar al siguiente tick del scheduler (cada 30 min en prod / 1
+        // min en dev). Mismo job y mismo jobId determinístico que usa
+        // `schedulerWorker`, así que si el scheduler también la encuentra antes
+        // de que este ciclo termine, BullMQ deduplica por jobId y no se manda
+        // la notificación dos veces para el mismo ciclo.
+        try {
+            await taskRankingQueue.add('rank_promoters', {
+                id_task: task.id_task,
+                id_store: task.id_store,
+                cycle: task.i_current_cycle
+            }, {
+                jobId: `rank_task_${task.id_task}_cycle_${task.i_current_cycle}`
+            })
+        } catch (error) {
+            console.error(`[Task] Error al encolar ranking inmediato para tarea ${task.id_task}:`, error)
+        }
+
+        return task
     }
 
     async getById(id_task: number) {

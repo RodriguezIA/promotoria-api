@@ -1,5 +1,5 @@
 import { Router } from 'express'
-import { authMiddleware, requireRole } from '../../core/middleware'
+import { authMiddleware, requireRole, validateBody } from '../../core/middleware'
 import { ROLES } from '../../core/constants/status.constants'
 import {
     createOrder,
@@ -9,6 +9,7 @@ import {
     deleteOrder,
     closeOrder
 } from './orders.controller'
+import { createOrderSchema, updateOrderSchema } from './orders.schema'
 
 const orderRouter = Router()
 
@@ -55,7 +56,7 @@ const orderRouter = Router()
  *       200: { description: "Página de pedidos." }
  *       401: { $ref: '#/components/responses/Unauthorized' }
  */
-orderRouter.post('/', authMiddleware, createOrder)
+orderRouter.post('/', authMiddleware, validateBody(createOrderSchema), createOrder)
 orderRouter.get('/', authMiddleware, getAllOrders)
 
 /**
@@ -105,7 +106,7 @@ orderRouter.get('/', authMiddleware, getAllOrders)
  *       401: { $ref: '#/components/responses/Unauthorized' }
  */
 orderRouter.get('/:id_order', authMiddleware, getOrderById)
-orderRouter.put('/:id_order', authMiddleware, updateOrder)
+orderRouter.put('/:id_order', authMiddleware, validateBody(updateOrderSchema), updateOrder)
 orderRouter.delete('/:id_order', authMiddleware, deleteOrder)
 
 /**

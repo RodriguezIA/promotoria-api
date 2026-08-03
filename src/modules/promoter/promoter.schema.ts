@@ -25,6 +25,10 @@ export const updateLocationPromoterSchema = z.object({
   longitude: z.number(),
 });
 
+export const updateFcmTokenSchema = z.object({
+  fcm_token: z.string().min(1, 'fcm_token es requerido'),
+});
+
 export const accountTypeEnum = z.enum(['CLABE', 'CARD']);
 
 const bankAccountRefinement = (data: any, ctx: z.RefinementCtx) => {

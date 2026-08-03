@@ -6,6 +6,10 @@ export interface NotificationData {
   data?: { [key: string]: string };
 }
 
+// El channelId debe coincidir EXACTO con el canal creado en la app
+// (promotoria-app/lib/core/services/fcm_service.dart, _androidChannel).
+// Si no existe ese canal en el dispositivo, Android no respeta la
+// importancia/sonido configurados para notificaciones en background.
 export class NotificationService {
   static async sendPushNotification(fcmToken: string, notification: NotificationData) {
     try {
@@ -18,7 +22,7 @@ export class NotificationService {
         data: notification.data || {},
         android: {
           notification: {
-            channelId: 'default',
+            channelId: 'high_importance_channel',
             priority: 'high' as const,
           },
         },
@@ -66,7 +70,7 @@ export class NotificationService {
         data: notification.data || {},
         android: {
           notification: {
-            channelId: 'default',
+            channelId: 'high_importance_channel',
             priority: 'high' as const,
           },
         },

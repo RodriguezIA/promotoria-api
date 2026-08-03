@@ -118,6 +118,17 @@ export class Promoter {
         })
     }
 
+    async updateFcmToken(id: number, fcm_token: string){
+        return await prisma.promoters.update({
+            where: {
+                id
+            },
+            data: {
+                fcm_token
+            }
+        })
+    }
+
     async deletePromoter(id: number){
         return await prisma.$transaction(async (prisma) => {
             await prisma.promoters.update({
