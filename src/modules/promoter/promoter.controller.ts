@@ -80,6 +80,10 @@ export const loginPromoter = async(req: Request, res: Response) => {
 
         await promoterService.updateLastLogin(promoter.id, body.fcm_token)
 
+        if (body.latitude !== undefined && body.longitude !== undefined) {
+            await promoterService.updateGeolocation(promoter.id, body.latitude, body.longitude)
+        }
+
         res.status(200).json({
             ok: true,
             error: 0,

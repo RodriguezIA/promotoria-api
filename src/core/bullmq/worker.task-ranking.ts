@@ -64,11 +64,18 @@ export const taskRankingWorker = new Worker('task_ranking_queue', async (job: Jo
         console.log(`[Ranking] ${totalActivePromoters - promoters.length} promotor(es) activo(s) excluido(s) de la búsqueda por no tener fcm_token o latitude/longitude guardados.`);
     }
 
+    console.log(`[Ranking] Tienda ${id_store} en (${Number(store.latitude)}, ${Number(store.longitude)}).`);
+
     // Filtrar por distancia según el ciclo
     const candidates = promoters.filter(p => {
-        if (rejectedSet.has(p.id)) return false;
+        if (rejectedSet.has(p.id)) {
+            console.log(`[Ranking]   Promotor ${p.id}: excluido, ya rechazó esta tarea.`);
+            return false;
+        }
         const distance = haversineMeters(Number(store.latitude), Number(store.longitude), Number(p.latitude), Number(p.longitude));
-        return distance <= cycleConfig.radioMetros;
+        const dentro = distance <= cycleConfig.radioMetros;
+        console.log(`[Ranking]   Promotor ${p.id} en (${Number(p.latitude)}, ${Number(p.longitude)}): ${Math.round(distance)}m de la tienda (radio ${cycleConfig.radioMetros}m) → ${dentro ? 'DENTRO' : 'fuera'}.`);
+        return dentro;
     });
 
     if (candidates.length === 0) {
