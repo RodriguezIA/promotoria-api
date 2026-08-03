@@ -8,7 +8,7 @@ import {
   updateLocationPromoter, createPromoter, loginPromoter, getPromoters,
   getPromoterBankAccounts, createPromoterBankAccount, getPromoterBankAccount,
   updatePromoterBankAccount, deletePromoterBankAccount, getPromoterById,
-  updateFcmToken,
+  updateFcmToken, updatePromoterLocation,
   // updatePromoterImage
 } from './promoter.controller'
 
@@ -16,6 +16,7 @@ import {
   createPromoterSchema, loginPromoterSchema, updateLocationPromoterSchema,
   createPromoterBankAccountSchema, updatePromoterBankAccountSchema,
   promoterIdParamSchema, bankAccountIdParamSchema, updateFcmTokenSchema,
+  updatePromoterLocationSchema,
 } from './promoter.schema'
 
 const promoterRouter = Router()
@@ -29,6 +30,12 @@ promoterRouter.get('/:id', authMiddleware, getPromoterById)
 // Sincroniza el FCM token fuera del login (rotación de token, reinstalación, etc.)
 promoterRouter.put('/:id_promoter/fcm-token',
   authMiddleware, validateParams(promoterIdParamSchema), validateBody(updateFcmTokenSchema), updateFcmToken)
+
+// La app llama esta ruta (id en la URL); /update-location (id en el body) se deja
+// intacta por si algo más la usa, pero la app no la usaba y por eso la
+// ubicación del promotor nunca se actualizaba (siempre 404).
+promoterRouter.put('/:id_promoter/location',
+  authMiddleware, validateParams(promoterIdParamSchema), validateBody(updatePromoterLocationSchema), updatePromoterLocation)
 
 
 // Upload de imagen de perfil - NUEVA RUTA

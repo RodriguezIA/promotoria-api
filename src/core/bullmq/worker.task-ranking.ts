@@ -7,6 +7,7 @@ import { getCicloConfig, PUSH_INTERVAL_MS } from '../../queues/helpers/cycles'
 
 export const taskRankingWorker = new Worker('task_ranking_queue', async (job: Job) => {
     const { id_task, id_store, cycle } = job.data;
+    console.log(`[Ranking] Job ${job.id} recibido: tarea ${id_task}, tienda ${id_store}, ciclo ${cycle}`);
 
     // ---------------------------------------------------------
     // 👇 NUEVO: BLOQUEO ANTISPAM (Dormir 15 horas tras 5 ciclos)
@@ -56,6 +57,13 @@ export const taskRankingWorker = new Worker('task_ranking_queue', async (job: Jo
         orderBy: { dt_register: 'asc' } // <-- Tu lógica de ranqueo actual
     });
 
+    console.log(`[Ranking] Tarea ${id_task}, ciclo ${nextCycle} (radio ${cycleConfig.radioMetros}m): ${promoters.length} promotor(es) activo(s) con token+ubicación, ${rejectedSet.size} ya rechazaron esta tarea.`);
+
+    const totalActivePromoters = await prisma.promoters.count({ where: { isActive: true } });
+    if (totalActivePromoters > promoters.length) {
+        console.log(`[Ranking] ${totalActivePromoters - promoters.length} promotor(es) activo(s) excluido(s) de la búsqueda por no tener fcm_token o latitude/longitude guardados.`);
+    }
+
     // Filtrar por distancia según el ciclo
     const candidates = promoters.filter(p => {
         if (rejectedSet.has(p.id)) return false;
@@ -64,12 +72,13 @@ export const taskRankingWorker = new Worker('task_ranking_queue', async (job: Jo
     });
 
     if (candidates.length === 0) {
+        console.log(`[Ranking] Tarea ${id_task}: 0 promotores dentro del radio de ${cycleConfig.radioMetros}m en ciclo ${nextCycle}. No se manda push, se avanza al ciclo ${nextCycle + 1} en la próxima corrida del scheduler.`);
         // Avanzamos el ciclo directo en DB si no hay nadie
         await prisma.tasks.update({ where: { id_task }, data: { i_current_cycle: nextCycle } });
         return;
     }
 
-    console.log(`[Ranking] Tarea ${id_task}: Encontrados ${candidates.length} promotores. Encolando pushes...`);
+    console.log(`[Ranking] Tarea ${id_task}: Encontrados ${candidates.length} promotores dentro de ${cycleConfig.radioMetros}m. Encolando pushes...`);
 
     // Encolar los push notifications usando la propiedad nativa "delay" de BullMQ
     for (let i = 0; i < candidates.length; i++) {
@@ -89,4 +98,10 @@ export const taskRankingWorker = new Worker('task_ranking_queue', async (job: Jo
     // Actualizamos el ciclo para que el Scheduler lo sepa la próxima vez
     await prisma.tasks.update({ where: { id_task }, data: { i_current_cycle: nextCycle } });
 
+    console.log(`[Ranking] Tarea ${id_task}: ${candidates.length} push(es) encolado(s) en push_notification_queue, escalonados cada ${PUSH_INTERVAL_MS || 10000}ms.`);
+
 }, { connection: connectionWorker, concurrency: 5 });
+
+taskRankingWorker.on('failed', (job, err) => {
+    console.error(`[Ranking] Job ${job?.id} falló:`, err.message);
+});

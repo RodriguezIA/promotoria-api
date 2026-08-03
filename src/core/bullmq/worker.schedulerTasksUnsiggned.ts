@@ -16,7 +16,7 @@ export const schedulerWorker = new Worker('scheduler_task_unsigned_queue', async
     });
 
     if (tasks.length > 0) {
-        console.log(`[Scheduler] Encontradas ${tasks.length} tareas. Encolando para ranqueo...`);
+        console.log(`[Scheduler] Encontradas ${tasks.length} tarea(s) sin promotor asignado. Encolando para ranqueo...`);
         for (const task of tasks) {
             await taskRankingQueue.add('rank_promoters', {
                 id_task: task.id_task,
@@ -26,6 +26,12 @@ export const schedulerWorker = new Worker('scheduler_task_unsigned_queue', async
                 jobId: `rank_task_${task.id_task}_cycle_${task.i_current_cycle}`
             });
         }
+    } else {
+        console.log('[Scheduler] Sin tareas pendientes de asignar.');
     }
-    
+
 }, { connection: connectionWorker });
+
+schedulerWorker.on('failed', (job, err) => {
+    console.error(`[Scheduler] Job ${job?.id} falló:`, err.message);
+});

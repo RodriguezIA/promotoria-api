@@ -37,6 +37,7 @@ export class Task {
             }, {
                 jobId: `rank_task_${task.id_task}_cycle_${task.i_current_cycle}`
             })
+            console.log(`[Task] Tarea ${task.id_task} (folio ${task.vc_folio}) encolada para ranqueo inmediato, ciclo ${task.i_current_cycle}.`)
         } catch (error) {
             console.error(`[Task] Error al encolar ranking inmediato para tarea ${task.id_task}:`, error)
         }

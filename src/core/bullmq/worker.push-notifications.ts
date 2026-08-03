@@ -5,6 +5,7 @@ import { NotificationService } from '../../services/notification.service'
 
 export const pushNotificationWorker = new Worker('push_notification_queue', async (job: Job) => {
     const { id_task, id_promoter, fcm_token } = job.data;
+    console.log(`[PushWorker] Job ${job.id} recibido: tarea ${id_task}, promotor ${id_promoter}, token ${fcm_token ? fcm_token.slice(0, 12) + '…' : 'sin token'}`);
 
     // 1. Verificación de seguridad: ¿Alguien más ya aceptó la tarea mientras este job esperaba su "delay"?
     const taskCheck = await prisma.tasks.findUnique({
@@ -45,3 +46,7 @@ export const pushNotificationWorker = new Worker('push_notification_queue', asyn
         }
     }
 }, { connection: connectionWorker, concurrency: 3 }); // Podemos enviar varias notificaciones simultáneas
+
+pushNotificationWorker.on('failed', (job, err) => {
+    console.error(`[PushWorker] Job ${job?.id} falló:`, err.message);
+});

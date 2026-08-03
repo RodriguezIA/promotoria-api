@@ -123,6 +123,31 @@ export const updateFcmToken = async (req: Request, res: Response) => {
     }
 }
 
+export const updatePromoterLocation = async (req: Request, res: Response) => {
+    try {
+        const id_promoter = Number(req.params.id_promoter)
+        const { latitude, longitude } = req.body
+
+        const promoter = await promoterService.getPromoterById(id_promoter)
+        if (!promoter) {
+            return res.status(404).json({ ok: false, error: 1, data: null, message: 'Promotor no encontrado' })
+        }
+
+        const updated = await promoterService.updateGeolocation(id_promoter, latitude, longitude)
+        const { password, ...promoterWithoutPassword } = updated
+
+        res.status(200).json({
+            ok: true,
+            error: 0,
+            data: promoterWithoutPassword,
+            message: 'Ubicación del promotor actualizada correctamente',
+        })
+    } catch (error) {
+        console.error('f.updatePromoterLocation: ', error)
+        res.status(500).json({ ok: false, error: 1, data: null, message: 'Error al actualizar la ubicación del promotor' })
+    }
+}
+
 export const updateLocationPromoter = async(req: Request, res: Response) => {
     try {
         const { id, latitude, longitude }: { id: number; latitude: number; longitude: number } = req.body
