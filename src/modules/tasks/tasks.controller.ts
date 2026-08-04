@@ -2,6 +2,7 @@ import { Request, Response } from 'express'
 
 import { Task } from './tasks.service'
 import { CreateTaskDTO, UpdateTaskDTO } from './tasks.dtos'
+import { TASK_STATUS } from '../../core/constants/status.constants'
 
 const taskService = new Task()
 
@@ -50,14 +51,19 @@ export const getTaskById = async (req: Request, res: Response) => {
 
 export const getTasks = async (req: Request, res: Response) => {
     try {
-        const { id_client, id_order, id_promoter, id_status } = req.query
-        const tasks = await taskService.getAll({
+        const { id_client, id_order, id_promoter, id_status, id_request, dt_from, dt_to, page, limit } = req.query
+        const result = await taskService.getAll({
             id_client: id_client ? Number(id_client) : undefined,
             id_order: id_order ? Number(id_order) : undefined,
             id_promoter: id_promoter !== undefined ? Number(id_promoter) : undefined,
             id_status: id_status !== undefined ? Number(id_status) : undefined,
+            id_request: id_request ? Number(id_request) : undefined,
+            dt_from: dt_from ? String(dt_from) : undefined,
+            dt_to: dt_to ? String(dt_to) : undefined,
+            page: page ? Number(page) : undefined,
+            limit: limit ? Number(limit) : undefined,
         })
-        res.status(200).json({ ok: true, error: 0, data: tasks, message: 'Tareas obtenidas exitosamente' })
+        res.status(200).json({ ok: true, error: 0, data: result, message: 'Tareas obtenidas exitosamente' })
     } catch (error) {
         res.status(500).json({ ok: false, error: 1, data: null, message: 'Error al obtener las tareas', error_backend: (error as any).message })
     }
@@ -74,6 +80,38 @@ export const getMyTasks = async (req: Request, res: Response) => {
         res.status(200).json({ ok: true, error: 0, data: tasks, message: 'Tareas del promotor obtenidas exitosamente' })
     } catch (error) {
         res.status(500).json({ ok: false, error: 1, data: null, message: 'Error al obtener las tareas', error_backend: (error as any).message })
+    }
+}
+
+export const forceNotifyTask = async (req: Request, res: Response) => {
+    try {
+        const { id_task, folio } = req.body
+
+        const task = await taskService.findByIdOrFolio(id_task, folio)
+        if (!task) {
+            return res.status(404).json({ ok: false, error: 1, data: null, message: 'Tarea no encontrada' })
+        }
+
+        if (task.id_status !== TASK_STATUS.CREADO) {
+            return res.status(409).json({
+                ok: false,
+                error: 1,
+                data: null,
+                message: `La tarea no está disponible para notificar (estatus actual: ${task.id_status}, id_promoter: ${task.id_promoter ?? 'ninguno'}).`,
+            })
+        }
+
+        await taskService.forceNotify(task)
+
+        res.status(200).json({
+            ok: true,
+            error: 0,
+            data: { id_task: task.id_task, vc_folio: task.vc_folio, cycle: task.i_current_cycle },
+            message: 'Notificación forzada encolada exitosamente',
+        })
+    } catch (error) {
+        console.error('f.forceNotifyTask: ', error)
+        res.status(500).json({ ok: false, error: 1, data: null, message: 'Error al forzar la notificación', error_backend: (error as any).message })
     }
 }
 

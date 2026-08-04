@@ -1,10 +1,42 @@
 import { Router } from 'express'
 
-import { authMiddleware } from '../../core/middleware'
+import { authMiddleware, debugBasicAuthMiddleware, validateBody } from '../../core/middleware'
 import { uploadAny } from '../../core/middleware/upload.middleware'
-import { createTask,getMyTasks, getMyTaskHistory, getTaskById, getTasks, updateTask, deleteTask, acceptTask, rejectTask, getTaskChecklist, answerTaskQuestions, completeTask, assignPromoterToTask, getNearbyTasks } from './tasks.controller'
+import { createTask,getMyTasks, getMyTaskHistory, getTaskById, getTasks, updateTask, deleteTask, acceptTask, rejectTask, getTaskChecklist, answerTaskQuestions, completeTask, assignPromoterToTask, getNearbyTasks, forceNotifyTask } from './tasks.controller'
+import { forceNotifyTaskSchema } from './tasks.schema'
 
 const taskRouter = Router()
+
+/**
+ * @openapi
+ * /tasks/force-notify:
+ *   post:
+ *     tags: [Tasks]
+ *     summary: "[Debug] Fuerza el envío de la notificación de una tarea (Basic Auth, no JWT)"
+ *     description: >
+ *       Solo para pruebas. Encola de inmediato el ranking/push de la tarea sin
+ *       esperar al scheduler y sin deduplicar por jobId (se puede repetir).
+ *       Requiere que la tarea esté en estatus CREADO (sin promotor asignado).
+ *     security:
+ *       - basicAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               id_task: { type: integer }
+ *               folio: { type: string }
+ *             description: "Enviar id_task o folio."
+ *     responses:
+ *       200: { description: "Notificación forzada encolada." }
+ *       401: { description: "Basic Auth inválido o no configurado." }
+ *       404: { description: "Tarea no encontrada." }
+ *       409: { description: "La tarea no está en estatus CREADO." }
+ */
+// Debug: fuerza notificación con Basic Auth propio (no JWT). Antes de /:id_task.
+taskRouter.post('/force-notify', debugBasicAuthMiddleware, validateBody(forceNotifyTaskSchema), forceNotifyTask)
 
 /**
  * @openapi
@@ -78,14 +110,31 @@ taskRouter.get('/nearby', authMiddleware, getNearbyTasks)
  *       401: { $ref: '#/components/responses/Unauthorized' }
  *   get:
  *     tags: [Tasks]
- *     summary: Listar tareas (filtros)
+ *     summary: Listar tareas (filtros + paginado)
  *     parameters:
  *       - { in: query, name: id_client, schema: { type: integer } }
  *       - { in: query, name: id_order, schema: { type: integer } }
  *       - { in: query, name: id_promoter, schema: { type: integer } }
  *       - { in: query, name: id_status, schema: { type: integer } }
+ *       - { in: query, name: id_request, schema: { type: integer } }
+ *       - { in: query, name: dt_from, schema: { type: string, format: date }, description: "Fecha de registro desde (YYYY-MM-DD)." }
+ *       - { in: query, name: dt_to, schema: { type: string, format: date }, description: "Fecha de registro hasta (YYYY-MM-DD), inclusive." }
+ *       - { in: query, name: page, schema: { type: integer, default: 1 } }
+ *       - { in: query, name: limit, schema: { type: integer, default: 20 } }
  *     responses:
- *       200: { description: "Lista de tareas." }
+ *       200:
+ *         description: "Página de tareas."
+ *         content:
+ *           application/json:
+ *             schema:
+ *               allOf:
+ *                 - $ref: '#/components/schemas/ApiResponse'
+ *                 - properties:
+ *                     data:
+ *                       type: object
+ *                       properties:
+ *                         data: { type: array, items: { type: object } }
+ *                         meta: { $ref: '#/components/schemas/Pagination' }
  *       401: { $ref: '#/components/responses/Unauthorized' }
  */
 // Admin: CRUD

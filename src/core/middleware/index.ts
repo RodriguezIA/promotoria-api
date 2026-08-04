@@ -1,4 +1,5 @@
 export { authMiddleware, roleMiddleware } from './auth.middleware'
+export { debugBasicAuthMiddleware } from './debug-basic-auth.middleware'
 export { requireRole } from './require-role.middleware'
 export { AppError,errorHandler, notFoundHandler, responseLogger } from './error.middleware'
 export { upload, uploadAny, uploadExcel } from './upload.middleware'

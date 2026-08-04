@@ -79,24 +79,52 @@ export class Task {
         return { ...task, request, storeAddress }
     }
 
-    async getAll(filters?: { id_client?: number; id_order?: number; id_promoter?: number; id_status?: number }) {
+    async getAll(filters?: {
+        id_client?: number; id_order?: number; id_promoter?: number; id_status?: number
+        id_request?: number; dt_from?: string; dt_to?: string
+        page?: number; limit?: number
+    }) {
+        const page = filters?.page ?? 1
+        const limit = filters?.limit ?? 20
+        const skip = (page - 1) * limit
+
         const where: any = {}
         if (filters?.id_client) where.id_client = filters.id_client
         if (filters?.id_order) where.id_order = filters.id_order
         if (filters?.id_promoter !== undefined) where.id_promoter = filters.id_promoter
         if (filters?.id_status !== undefined) where.id_status = filters.id_status
+        if (filters?.id_request) where.id_request = filters.id_request
+        if (filters?.dt_from || filters?.dt_to) {
+            where.dt_register = {}
+            if (filters.dt_from) where.dt_register.gte = new Date(filters.dt_from)
+            if (filters.dt_to) {
+                const endOfDay = new Date(filters.dt_to)
+                endOfDay.setHours(23, 59, 59, 999)
+                where.dt_register.lte = endOfDay
+            }
+        }
 
-        return await prisma.tasks.findMany({
-            where,
-            include: {
-                client: { select: { id_client: true, name: true, vc_initialism: true } },
-                order: { select: { id_order: true, vc_folio: true, f_total: true } },
-                store: { select: { id_store: true, name: true } },
-                promoter: { select: { id: true, name: true, lastname: true, phone: true } },
-                request: { select: { id_request: true, vc_folio: true, vc_name: true } }
-            },
-            orderBy: { dt_register: 'desc' }
-        })
+        const [tasks, total] = await Promise.all([
+            prisma.tasks.findMany({
+                where,
+                skip,
+                take: limit,
+                include: {
+                    client: { select: { id_client: true, name: true, vc_initialism: true } },
+                    order: { select: { id_order: true, vc_folio: true, f_total: true } },
+                    store: { select: { id_store: true, name: true } },
+                    promoter: { select: { id: true, name: true, lastname: true, phone: true } },
+                    request: { select: { id_request: true, vc_folio: true, vc_name: true } }
+                },
+                orderBy: { dt_register: 'desc' }
+            }),
+            prisma.tasks.count({ where })
+        ])
+
+        return {
+            data: tasks,
+            meta: { total, page, limit, totalPages: Math.ceil(total / limit) }
+        }
     }
 
     async getTasksByPromoter(id_promoter: number, id_status?: number) {
@@ -212,6 +240,31 @@ export class Task {
         return await prisma.task_rejections.create({ data: { id_task, id_promoter, reason: 'rejected' } })
     }
 
+    async findByIdOrFolio(id_task?: number, folio?: string) {
+        if (id_task !== undefined) {
+            return await prisma.tasks.findUnique({ where: { id_task } })
+        }
+        if (folio) {
+            return await prisma.tasks.findUnique({ where: { vc_folio: folio } })
+        }
+        return null
+    }
+
+    /**
+     * Fuerza el envío de la notificación de una tarea sin esperar al scheduler,
+     * saltándose la deduplicación por jobId (a diferencia del disparo inmediato
+     * normal) para poder repetirlo varias veces en pruebas.
+     */
+    async forceNotify(task: { id_task: number; id_store: number; i_current_cycle: number }) {
+        await taskRankingQueue.add('rank_promoters', {
+            id_task: task.id_task,
+            id_store: task.id_store,
+            cycle: task.i_current_cycle,
+        }, {
+            jobId: `rank_task_${task.id_task}_cycle_${task.i_current_cycle}_forced_${Date.now()}`,
+        })
+    }
+
     async getPromoterTaskHistory(id_promoter: number, reason?: 'rejected' | 'timeout') {
         // Sin @relation en el schema hacia tasks (ver nota en schema.prisma:
         // task_rejections.id_task/id_promoter no pueden tener FK real por un
@@ -249,21 +302,29 @@ export class Task {
                 id_task: true, vc_folio: true, id_status: true, dt_register: true,
                 id_client: true, id_order: true, id_request: true, id_promoter: true, id_store: true,
                 i_notification_count: true,
+                client: { select: { id_client: true, name: true } },
+                order: { select: { id_order: true, vc_folio: true, f_total: true, id_status: true } },
+                promoter: { select: { id: true, name: true, lastname: true, phone: true, email: true } },
                 store: { select: { id_store: true, name: true, store_code: true } },
                 request: {
                     select: {
                         id_request: true, vc_folio: true, vc_name: true, url_rack_image: true, f_value: true,
+                        // Sin filtro b_active en la query: traemos todo y filtramos abajo en JS,
+                        // porque un producto/pregunta desactivado DESPUÉS de que el promotor ya
+                        // respondió debe seguir viéndose en el histórico de esta tarea (si no,
+                        // "desaparece" el checklist de tareas viejas contestadas). Para una tarea
+                        // que aún no se contesta, sí queremos que se filtre a solo lo activo.
                         request_products: {
-                            where: { b_active: true },
                             select: {
                                 id_request_product: true,
+                                b_active: true,
                                 product: {
                                     select: { id_product: true, name: true, description: true, vc_image: true }
                                 },
                                 request_product_questions: {
-                                    where: { b_active: true },
                                     select: {
                                         id_request_product_question: true,
+                                        b_active: true,
                                         question: {
                                             select: {
                                                 id_question: true, question: true, question_type: true,
@@ -305,6 +366,20 @@ export class Task {
                     vc_answer: true, vc_image_url: true, dt_register: true,
                 }
             })
+        }
+
+        // Mantener un producto/pregunta si sigue activo O si ya tiene una
+        // respuesta registrada (histórico), aunque se haya desactivado después.
+        const answeredQuestionIds = new Set(myAnswers.map((a: any) => a.id_request_product_question))
+        if (task.request) {
+            task.request.request_products = task.request.request_products
+                .map(rp => ({
+                    ...rp,
+                    request_product_questions: rp.request_product_questions.filter(
+                        rpq => rpq.b_active || answeredQuestionIds.has(rpq.id_request_product_question)
+                    ),
+                }))
+                .filter(rp => rp.b_active || rp.request_product_questions.length > 0)
         }
 
         const productIds = task.request?.request_products.map(rp => rp.product.id_product) ?? [];
