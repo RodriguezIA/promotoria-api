@@ -2,8 +2,8 @@ import { Router } from 'express'
 
 import { authMiddleware, debugBasicAuthMiddleware, validateBody } from '../../core/middleware'
 import { uploadAny } from '../../core/middleware/upload.middleware'
-import { createTask,getMyTasks, getMyTaskHistory, getTaskById, getTasks, updateTask, deleteTask, acceptTask, rejectTask, getTaskChecklist, answerTaskQuestions, completeTask, assignPromoterToTask, getNearbyTasks, forceNotifyTask } from './tasks.controller'
-import { forceNotifyTaskSchema } from './tasks.schema'
+import { createTask,getMyTasks, getMyTaskHistory, getTaskById, getTasks, updateTask, deleteTask, acceptTask, rejectTask, getTaskChecklist, answerTaskQuestions, completeTask, assignPromoterToTask, getNearbyTasks, forceNotifyTask, approveTask, cancelTask } from './tasks.controller'
+import { forceNotifyTaskSchema, cancelTaskSchema } from './tasks.schema'
 
 const taskRouter = Router()
 
@@ -285,6 +285,46 @@ taskRouter.get('/:id_task/checklist', authMiddleware, getTaskChecklist)
  *       400: { description: "id_promoter es requerido." }
  *       401: { $ref: '#/components/responses/Unauthorized' }
  */
+/**
+ * @openapi
+ * /tasks/{id_task}/approve:
+ *   patch:
+ *     tags: [Tasks]
+ *     summary: Aprueba una tarea en revisión (admin/superadmin) -> Terminada con éxito
+ *     parameters:
+ *       - { in: path, name: id_task, required: true, schema: { type: integer } }
+ *     responses:
+ *       200: { description: "Tarea aprobada." }
+ *       400: { description: "La tarea no está en revisión." }
+ *       401: { $ref: '#/components/responses/Unauthorized' }
+ *
+ * /tasks/{id_task}/cancel:
+ *   patch:
+ *     tags: [Tasks]
+ *     summary: Cancela una tarea en revisión (admin/superadmin), requiere comentario
+ *     description: >
+ *       Pasa la tarea a estatus Cancelada con vc_cancel_type "cliente" y el
+ *       comentario enviado en vc_cancel_reason. Notifica por push al promotor.
+ *     parameters:
+ *       - { in: path, name: id_task, required: true, schema: { type: integer } }
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [comment]
+ *             properties:
+ *               comment: { type: string }
+ *     responses:
+ *       200: { description: "Tarea cancelada." }
+ *       400: { description: "La tarea no está en revisión, o falta el comentario." }
+ *       401: { $ref: '#/components/responses/Unauthorized' }
+ */
+// Admin/superadmin: revisión de tarea (aprobar / cancelar con comentario)
+taskRouter.patch('/:id_task/approve', authMiddleware, approveTask)
+taskRouter.patch('/:id_task/cancel', authMiddleware, validateBody(cancelTaskSchema), cancelTask)
+
 // Batch: enviar todas las respuestas del checklist con imagenes opcionales
 taskRouter.post('/:id_task/answers', authMiddleware, uploadAny.any(), answerTaskQuestions)
 

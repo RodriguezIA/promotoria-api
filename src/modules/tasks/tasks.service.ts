@@ -5,6 +5,7 @@ import { resolveImages } from '../../core/asset-resolver'
 import { haversineMeters } from '../../queues/helpers/haversine'
 import { StorageService } from '../../services/storage.service'
 import { taskRankingQueue } from '../../core/bullmq/queues'
+import { NotificationService } from '../../services/notification.service'
 
 export class Task {
 
@@ -240,6 +241,69 @@ export class Task {
         return await prisma.task_rejections.create({ data: { id_task, id_promoter, reason: 'rejected' } })
     }
 
+    /**
+     * Aprueba una tarea en revisión (id_status 6, "En revisión" en el
+     * vocabulario real de la app) -> pasa a 7 ("Terminada con éxito").
+     */
+    async reviewApprove(id_task: number) {
+        const task = await prisma.tasks.findUnique({
+            where: { id_task },
+            select: { id_status: true }
+        })
+        if (!task) throw new Error('Tarea no encontrada')
+        if (task.id_status !== 6) throw new Error('Solo se puede aprobar una tarea en revisión')
+
+        return await prisma.tasks.update({
+            where: { id_task },
+            data: { id_status: 7, dt_update: new Date() },
+        })
+    }
+
+    /**
+     * Cancela una tarea en revisión (id_status 6) a petición del cliente/admin,
+     * con un comentario obligatorio -> pasa a 0 ("Cancelada"), vc_cancel_type
+     * "cliente". Notifica por push al promotor asignado.
+     */
+    async reviewCancel(id_task: number, comment: string) {
+        const task = await prisma.tasks.findUnique({
+            where: { id_task },
+            select: {
+                id_status: true,
+                promoter: { select: { fcm_token: true } },
+                store: { select: { name: true } },
+            }
+        })
+        if (!task) throw new Error('Tarea no encontrada')
+        if (task.id_status !== 6) throw new Error('Solo se puede cancelar una tarea en revisión')
+
+        const updated = await prisma.tasks.update({
+            where: { id_task },
+            data: {
+                id_status: 0,
+                vc_cancel_type: 'cliente',
+                vc_cancel_reason: comment,
+                dt_update: new Date(),
+            },
+        })
+
+        if (task.promoter?.fcm_token) {
+            try {
+                await NotificationService.sendPushNotification(task.promoter.fcm_token, {
+                    title: 'Tarea cancelada',
+                    body: `Tu tarea en ${task.store?.name ?? 'la tienda'} fue cancelada: ${comment}`,
+                    // Sin id_task en data a propósito: el listener de la app navega a
+                    // /task-offer/:id en cuanto ve id_task en el payload (pensado para
+                    // ofertas nuevas), y esta tarea ya no es una oferta válida.
+                    data: { type: 'task_cancelled' },
+                })
+            } catch (error) {
+                console.error(`[Task] Error al notificar cancelación de la tarea ${id_task}:`, error)
+            }
+        }
+
+        return updated
+    }
+
     async findByIdOrFolio(id_task?: number, folio?: string) {
         if (id_task !== undefined) {
             return await prisma.tasks.findUnique({ where: { id_task } })
@@ -301,7 +365,7 @@ export class Task {
             select: {
                 id_task: true, vc_folio: true, id_status: true, dt_register: true,
                 id_client: true, id_order: true, id_request: true, id_promoter: true, id_store: true,
-                i_notification_count: true,
+                i_notification_count: true, vc_cancel_reason: true, vc_cancel_type: true,
                 client: { select: { id_client: true, name: true } },
                 order: { select: { id_order: true, vc_folio: true, f_total: true, id_status: true } },
                 promoter: { select: { id: true, name: true, lastname: true, phone: true, email: true } },

@@ -2,6 +2,7 @@ import { prisma } from '../../core/prisma'
 import { CreateOrderDTO, UpdateOrderDTO, OrderFiltersDTO } from './orders.dtos'
 import { generateFolio } from '../../services/folio.service'
 import { ORDER_STATUS } from '../../core/constants/status.constants'
+import { NotificationService } from '../../services/notification.service'
 
 export class Order {
 
@@ -180,7 +181,7 @@ export class Order {
     }
 
     async closeOrder(id_order: number, id_user: number) {
-        return await prisma.$transaction(async (tx) => {
+        const { updated, cancelledTasks } = await prisma.$transaction(async (tx) => {
             const order = await tx.orders.findUnique({ where: { id_order } })
             if (!order) {
                 throw new Error('Pedido no encontrado')
@@ -194,17 +195,75 @@ export class Order {
                 data: { id_status: ORDER_STATUS.CERRADO, dt_update: new Date() }
             })
 
+            // Tareas que aún no llegaron a revisión (id_status < 6, sin contar las
+            // ya canceladas) se cancelan "por negocio" al cerrar el pedido. Las que
+            // ya están en revisión o terminadas (>= 6) se dejan tal cual.
+            const unansweredTasks = await tx.tasks.findMany({
+                where: { id_order, id_status: { lt: 6, not: 0 } },
+                select: {
+                    id_task: true,
+                    promoter: { select: { fcm_token: true } },
+                    store: { select: { name: true } },
+                }
+            })
+
+            if (unansweredTasks.length > 0) {
+                await tx.tasks.updateMany({
+                    where: { id_task: { in: unansweredTasks.map(t => t.id_task) } },
+                    data: {
+                        id_status: 0,
+                        vc_cancel_type: 'negocio',
+                        vc_cancel_reason: 'Cierre de pedido',
+                        dt_update: new Date(),
+                    }
+                })
+            }
+
+            // Tareas que ya están en revisión (6) se aprueban automáticamente al
+            // cerrar el pedido -> pasan a 7 ("Terminada con éxito"), igual que si
+            // un admin le hubiera dado "Aceptar" a mano.
+            const inReviewCount = await tx.tasks.updateMany({
+                where: { id_order, id_status: 6 },
+                data: { id_status: 7, dt_update: new Date() }
+            })
+
+            const logParts: string[] = []
+            if (unansweredTasks.length > 0) {
+                logParts.push(`${unansweredTasks.length} tarea(s) sin contestar canceladas por cierre de pedido`)
+            }
+            if (inReviewCount.count > 0) {
+                logParts.push(`${inReviewCount.count} tarea(s) en revisión aprobadas automáticamente`)
+            }
+
             await tx.order_logs.create({
                 data: {
                     id_order,
                     id_usuario: id_user,
-                    vc_log: 'Pedido cerrado',
+                    vc_log: logParts.length > 0 ? `Pedido cerrado; ${logParts.join('; ')}` : 'Pedido cerrado',
                     i_status: 1,
                     dt_registro: new Date()
                 }
             })
 
-            return updated
+            return { updated, cancelledTasks: unansweredTasks }
         })
+
+        for (const task of cancelledTasks) {
+            if (!task.promoter?.fcm_token) continue
+            try {
+                await NotificationService.sendPushNotification(task.promoter.fcm_token, {
+                    title: 'Tarea cancelada',
+                    body: `Tu tarea en ${task.store?.name ?? 'la tienda'} fue cancelada: el pedido fue cerrado.`,
+                    // Sin id_task en data a propósito: el listener de la app navega a
+                    // /task-offer/:id en cuanto ve id_task en el payload (pensado para
+                    // ofertas nuevas), y esta tarea ya no es una oferta válida.
+                    data: { type: 'task_cancelled' },
+                })
+            } catch (error) {
+                console.error(`[Order] Error al notificar cancelación de la tarea ${task.id_task} por cierre de pedido:`, error)
+            }
+        }
+
+        return updated
     }
 }

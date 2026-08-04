@@ -126,6 +126,6 @@ orderRouter.delete('/:id_order', authMiddleware, deleteOrder)
  *       403: { description: "Solo un Super usuario puede cerrar pedidos." }
  *       409: { description: "El pedido no está en estatus creado." }
  */
-orderRouter.patch('/:id_order/close', authMiddleware, requireRole(ROLES.SUPER), closeOrder)
+orderRouter.patch('/:id_order/close', authMiddleware, requireRole(ROLES.SUPER, ROLES.ADMIN), closeOrder)
 
 export default orderRouter

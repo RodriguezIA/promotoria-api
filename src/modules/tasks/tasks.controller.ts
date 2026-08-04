@@ -173,6 +173,31 @@ export const rejectTask = async (req: Request, res: Response) => {
     }
 }
 
+export const approveTask = async (req: Request, res: Response) => {
+    const { id_task } = req.params
+    try {
+        const task = await taskService.reviewApprove(Number(id_task))
+        res.status(200).json({ ok: true, error: 0, data: task, message: 'Tarea aprobada exitosamente' })
+    } catch (error) {
+        const msg = (error as any).message
+        const status = msg.includes('Solo se puede') || msg.includes('no encontrada') ? 400 : 500
+        res.status(status).json({ ok: false, error: 1, data: null, message: msg, error_backend: msg })
+    }
+}
+
+export const cancelTask = async (req: Request, res: Response) => {
+    const { id_task } = req.params
+    const { comment } = req.body
+    try {
+        const task = await taskService.reviewCancel(Number(id_task), comment)
+        res.status(200).json({ ok: true, error: 0, data: task, message: 'Tarea cancelada exitosamente' })
+    } catch (error) {
+        const msg = (error as any).message
+        const status = msg.includes('Solo se puede') || msg.includes('no encontrada') ? 400 : 500
+        res.status(status).json({ ok: false, error: 1, data: null, message: msg, error_backend: msg })
+    }
+}
+
 export const getTaskChecklist = async (req: Request, res: Response) => {
     const { id_task } = req.params
     try {

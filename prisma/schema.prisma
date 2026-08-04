@@ -507,6 +507,12 @@ model tasks {
   dt_register          DateTime   @default(now()) @db.Timestamp(0)
   dt_update            DateTime   @default(now()) @db.Timestamp(0)
   id_status            Int        @default(1)
+  /// Motivo/comentario de cancelación (requerido al cancelar desde revisión o
+  /// al cerrar el pedido); null si la tarea no está cancelada por este flujo.
+  vc_cancel_reason     String?    @db.Text
+  /// 'cliente' = cancelada por un admin al revisar la tarea; 'negocio' =
+  /// cancelada en cascada por cierre de pedido. Ver tasks.service.ts.
+  vc_cancel_type       String?    @db.VarChar(20)
   i_notification_count Int        @default(0)
   id_request           Int?       @db.UnsignedInt
   id_client            Int        @db.UnsignedInt

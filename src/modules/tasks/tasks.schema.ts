@@ -8,3 +8,7 @@ export const forceNotifyTaskSchema = z
   .refine((data) => data.id_task !== undefined || data.folio !== undefined, {
     message: 'Debes enviar id_task o folio',
   })
+
+export const cancelTaskSchema = z.object({
+  comment: z.string().trim().min(1, 'Debes indicar el motivo de la cancelación'),
+})
