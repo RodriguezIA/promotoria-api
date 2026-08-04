@@ -213,23 +213,33 @@ export class Task {
     }
 
     async getPromoterTaskHistory(id_promoter: number, reason?: 'rejected' | 'timeout') {
-        return await prisma.task_rejections.findMany({
+        // Sin @relation en el schema hacia tasks (ver nota en schema.prisma:
+        // task_rejections.id_task/id_promoter no pueden tener FK real por un
+        // mismatch de tipos preexistente), así que el join se arma a mano.
+        const rejections = await prisma.task_rejections.findMany({
             where: {
                 id_promoter,
                 ...(reason && { reason }),
             },
             orderBy: { dt_register: 'desc' },
-            include: {
-                task: {
-                    select: {
-                        id_task: true,
-                        vc_folio: true,
-                        store: { select: { id_store: true, name: true } },
-                        request: { select: { id_request: true, vc_folio: true, vc_name: true, f_value: true } },
-                    },
-                },
+        })
+
+        const taskIds = [...new Set(rejections.map(r => r.id_task))]
+        const tasks = await prisma.tasks.findMany({
+            where: { id_task: { in: taskIds } },
+            select: {
+                id_task: true,
+                vc_folio: true,
+                store: { select: { id_store: true, name: true } },
+                request: { select: { id_request: true, vc_folio: true, vc_name: true, f_value: true } },
             },
         })
+        const taskMap = new Map(tasks.map(t => [t.id_task, t]))
+
+        return rejections.map(r => ({
+            ...r,
+            task: taskMap.get(r.id_task) ?? null,
+        }))
     }
 
     async getTaskChecklist(id_task: number) {
