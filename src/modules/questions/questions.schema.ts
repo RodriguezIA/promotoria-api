@@ -13,6 +13,7 @@ export const createQuestionSchema = z.object({
   id_user: z.number().int().positive('id_user es requerido'),
   question: z.string().min(1, 'question es requerido'),
   question_type: questionTypeEnum,
+  f_cost: z.number().min(0, 'f_cost no puede ser negativo').optional(),
   min_value: z.number().optional(),
   max_value: z.number().optional(),
   max_photos: z.number().int().optional(),

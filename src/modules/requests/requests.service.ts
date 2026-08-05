@@ -1,4 +1,5 @@
 import { prisma } from '../../core/prisma'
+import { Prisma } from '../../generated/prisma/client'
 import {
     CreateRequestDTO,
     UpdateRequestDTO,
@@ -9,9 +10,51 @@ import { resolveImages } from '../../core/asset-resolver'
 
 export class Request {
 
+    /**
+     * Calcula el costo real de la solicitud en el backend (nunca se confía en lo
+     * que mande el navegador, porque es dinero real que después se factura).
+     *
+     * Regla de negocio:
+     * - Costo base según cantidad de PRODUCTOS: hasta 3 productos = $45.
+     *   Cada producto extra (4to, 5to, 6to) suma $15, con tope de $90 total
+     *   (a partir del 7mo producto en adelante ya no sube el costo base).
+     * - Cada PREGUNTA seleccionada suma su propio costo (questions.f_cost),
+     *   el cual asigna el Master al crear la pregunta (puede ser $0 = gratis).
+     *   No tiene tope, se suma completo.
+     */
+    private async calculateRequestCost(
+        tx: Prisma.TransactionClient,
+        products: { id_product: number, questions?: { id_question: number }[] }[]
+    ): Promise<number> {
+        const numProductos = products.length
+        const base = numProductos <= 3 ? 45 : Math.min(45 + (Math.min(numProductos - 3, 3) * 15), 90)
+
+        const questionIds = [...new Set(
+            products.flatMap(p => (p.questions ?? []).map(q => q.id_question))
+        )]
+
+        let costoPreguntas = 0
+        if (questionIds.length > 0) {
+            const questions = await tx.questions.findMany({
+                where: { id_question: { in: questionIds } },
+                select: { id_question: true, f_cost: true }
+            })
+            const costMap = new Map(questions.map(q => [q.id_question, Number(q.f_cost)]))
+
+            for (const product of products) {
+                for (const q of product.questions ?? []) {
+                    costoPreguntas += costMap.get(q.id_question) ?? 0
+                }
+            }
+        }
+
+        return base + costoPreguntas
+    }
+
     async createRequest(data: CreateRequestDTO) {
         return await prisma.$transaction(async (tx) => {
             const vc_folio = await generateFolio(tx, data.id_client, 'requests')
+            const f_value = await this.calculateRequestCost(tx, data.products ?? [])
 
             const request = await tx.requests.create({
                 data: {
@@ -19,7 +62,7 @@ export class Request {
                     id_client: data.id_client,
                     vc_folio,
                     vc_name: data.vc_name,
-                    f_value: data.f_value,
+                    f_value,
                     url_rack_image: data.url_rack_image,
                 }
             })
@@ -88,6 +131,7 @@ export class Request {
                                             id_question: true,
                                             question: true,
                                             question_type: true,
+                                            f_cost: true,
                                         }
                                     }
                                 }
@@ -149,6 +193,7 @@ export class Request {
                                         id_question: true,
                                         question: true,
                                         question_type: true,
+                                        f_cost: true,
                                     }
                                 }
                             }
@@ -177,13 +222,19 @@ export class Request {
 
     async updateRequest(id_request: number, data: UpdateRequestDTO) {
         return await prisma.$transaction(async (tx) => {
+            // Solo recalculamos el costo si vienen productos en el payload (es la
+            // única forma de saber el estado completo y correcto a cobrar). Si no
+            // vienen productos, el f_value existente se deja tal cual, nunca se
+            // confía en un f_value suelto que mande el navegador.
+            const f_value = data.products ? await this.calculateRequestCost(tx, data.products) : undefined
+
             const request = await tx.requests.update({
                 where: { id_request },
                 data: {
                     id_user: data.id_user,
                     id_client: data.id_client,
                     vc_name: data.vc_name,
-                    f_value: data.f_value,
+                    f_value,
                     url_rack_image: data.url_rack_image,
                     id_status: data.id_status,
                     dt_update: new Date(),

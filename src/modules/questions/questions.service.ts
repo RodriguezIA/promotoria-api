@@ -10,6 +10,7 @@ export class Questions {
                 id_user: data.id_user,
                 question: data.question,
                 question_type: data.question_type,
+                f_cost: data.f_cost,
                 min_value: data.min_value,
                 max_value: data.max_value,
                 max_photos: data.max_photos,
@@ -66,6 +67,7 @@ export class Questions {
             data: {
                 question: data.question,
                 question_type: data.question_type,
+                f_cost: data.f_cost,
                 min_value: data.min_value,
                 max_value: data.max_value,
                 max_photos: data.max_photos,

@@ -12,6 +12,7 @@ export interface CreateQuestionDto {
     id_user: number;
     question: string;
     question_type: QuestionType;
+    f_cost?: number;
     min_value?: number;
     max_value?: number;
     max_photos?: number;
