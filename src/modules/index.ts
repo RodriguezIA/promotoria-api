@@ -9,6 +9,7 @@ import requestRouter from './requests/requests.routes'
 import orderRouter from './orders/orders.routes'
 import taskRouter from './tasks/tasks.routes'
 import financesRouter from './finances/finances.routes'
+import taskSettingsRouter from './task-settings/task-settings.routes'
 
 export {
     clientRouter,
@@ -22,4 +23,5 @@ export {
     orderRouter,
     taskRouter,
     financesRouter,
+    taskSettingsRouter,
 }

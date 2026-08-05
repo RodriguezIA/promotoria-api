@@ -38,6 +38,7 @@ export type AssetEntity =
   | "client_doc"
   | "promoter"
   | "client_charge"
+  | "client_charge_order"
   | "promoter_payment";
 
 const ENTITY_SEGMENT: Record<AssetEntity, string> = {
@@ -49,6 +50,7 @@ const ENTITY_SEGMENT: Record<AssetEntity, string> = {
   client_doc: "docs",
   promoter: "promoters",
   client_charge: "client_charges",
+  client_charge_order: "client_charge_orders",
   promoter_payment: "promoter_payments",
 };
 

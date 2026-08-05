@@ -602,12 +602,7 @@ model client_charges {
   dt_start            DateTime  @db.DateTime(0)
   dt_end              DateTime  @db.DateTime(0)
   f_total             Decimal   @db.Decimal(10, 2)
-  id_status           Int       @default(1)
-  dt_payment          DateTime? @db.DateTime(0)
-  vc_payment_method   String?   @db.VarChar(50)
-  vc_rejection_reason String?   @db.VarChar(500)
   id_user_creator     Int       @db.UnsignedInt
-  id_user_validator   Int?      @db.UnsignedInt
   dt_register         DateTime  @default(now()) @db.Timestamp(0)
   dt_updated          DateTime  @default(now()) @updatedAt @db.Timestamp(0)
 
@@ -615,20 +610,30 @@ model client_charges {
   charge_orders client_charge_orders[]
   charge_tasks  client_charge_tasks[]
 
-  @@index([id_client, id_status], map: "idx_client_charges_client_status")
+  @@index([id_client], map: "idx_client_charges_client")
 }
 
 model client_charge_orders {
-  id          Int            @id @default(autoincrement()) @db.UnsignedInt
-  id_charge   Int            @db.UnsignedInt
-  id_order    Int            @db.UnsignedInt
-  f_amount    Decimal        @db.Decimal(10, 2)
-  dt_register DateTime       @default(now()) @db.Timestamp(0)
+  id                   Int            @id @default(autoincrement()) @db.UnsignedInt
+  id_charge            Int            @db.UnsignedInt
+  id_order             Int            @db.UnsignedInt
+  vc_folio             String?        @unique(map: "uq_charge_orders_folio") @db.VarChar(50)
+  f_amount             Decimal        @db.Decimal(10, 2)
+  id_status            Int            @default(1)
+  dt_due               DateTime?      @db.DateTime(0)
+  dt_payment           DateTime?      @db.DateTime(0)
+  vc_payment_method    String?        @db.VarChar(50)
+  vc_rejection_reason  String?        @db.VarChar(500)
+  id_user_validator    Int?           @db.UnsignedInt
+  dt_register          DateTime       @default(now()) @db.Timestamp(0)
+  dt_updated           DateTime       @default(now()) @updatedAt @db.Timestamp(0)
+
   charge      client_charges @relation(fields: [id_charge], references: [id_charge])
   order       orders         @relation(fields: [id_order], references: [id_order])
 
   @@unique([id_charge, id_order], map: "uq_charge_order")
   @@index([id_order], map: "idx_charge_orders_order")
+  @@index([id_status], map: "idx_charge_orders_status")
 }
 
 model client_charge_tasks {
@@ -710,6 +715,14 @@ model finance_settings {
   id_system_client                  Int      @db.UnsignedInt
   id_user_updater                   Int?     @db.UnsignedInt
   dt_updated                        DateTime @default(now()) @updatedAt @db.Timestamp(0)
+}
+
+// ==================== OPERACIÓN: CONFIGURACIÓN DE TAREAS ====================
+model task_settings {
+  id_setting              Int      @id @default(1)
+  i_review_timeout_hours  Int      @default(24)
+  id_user_updater         Int?     @db.UnsignedInt
+  dt_updated               DateTime @default(now()) @updatedAt @db.Timestamp(0)
 }
 
 // ==================== FINANZAS ====================

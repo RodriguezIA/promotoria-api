@@ -1,8 +1,15 @@
 import { prisma } from '../../../core/prisma'
 import { generateFolio } from '../../../services/folio.service'
-import { TASK_STATUS, ORDER_STATUS } from '../../../core/constants/status.constants'
+import { ORDER_STATUS } from '../../../core/constants/status.constants'
 import { CLIENT_CHARGE_STATUS } from '../finances.constants'
-import { GenerateChargesDTO, ChargeFiltersDTO, UpdateChargePaymentDTO, UpdateChargeStatusDTO } from './client-charges.dto'
+import {
+    GenerateChargesDTO,
+    ChargeFiltersDTO,
+    InvoiceFiltersDTO,
+    UpdateInvoicePaymentDTO,
+    UpdateInvoiceStatusDTO,
+    UpdateInvoiceDueDateDTO,
+} from './client-charges.dto'
 
 interface EligibleTask {
   id_task: number
@@ -16,7 +23,10 @@ export class ClientCharges {
     private async findEligibleTasks(dt_start: Date, dt_end: Date, id_client?: number): Promise<EligibleTask[]> {
         const tasks = await prisma.tasks.findMany({
             where: {
-                id_status: TASK_STATUS.TERMINADO,
+                // OJO: el enum TASK_STATUS del backend casi no se usa en la práctica.
+                // El estatus real "Terminada con éxito" que escribe la app móvil es el 7
+                // (ver comentario en webs/promotoria-saas/src/modules/tareas/utils.ts).
+                id_status: 7,
                 id_invoice: null,
                 id_request: { not: null },
                 dt_update: { gte: dt_start, lte: dt_end },
@@ -104,15 +114,23 @@ export class ClientCharges {
                         dt_start: input.dt_start,
                         dt_end: input.dt_end,
                         f_total,
-                        id_status: CLIENT_CHARGE_STATUS.PENDIENTE_PAGO,
                         id_user_creator: input.id_user_creator,
                     }
                 })
 
                 for (const [id_order, orderTasks] of byOrder) {
                     const orderTotal = orderTasks.reduce((sum, t) => sum + t.f_amount, 0)
+                    const vc_invoice_folio = await generateFolio(tx, id_client, 'invoices')
+
                     await tx.client_charge_orders.create({
-                        data: { id_charge: charge.id_charge, id_order, f_amount: orderTotal }
+                        data: {
+                            id_charge: charge.id_charge,
+                            id_order,
+                            vc_folio: vc_invoice_folio,
+                            f_amount: orderTotal,
+                            id_status: CLIENT_CHARGE_STATUS.PENDIENTE_PAGO,
+                            dt_due: input.dt_due,
+                        }
                     })
                     for (const t of orderTasks) {
                         await tx.client_charge_tasks.create({
@@ -134,7 +152,7 @@ export class ClientCharges {
                     data: {
                         id_charge: charge.id_charge,
                         id_user: input.id_user_creator,
-                        vc_log: `Corte generado con ${byOrder.size} pedido(s) y ${taskIds.length} tarea(s) por $${f_total.toFixed(2)}`,
+                        vc_log: `Corte generado con ${byOrder.size} factura(s) y ${taskIds.length} tarea(s) por $${f_total.toFixed(2)}`,
                     }
                 })
 
@@ -152,7 +170,6 @@ export class ClientCharges {
 
         const where: any = {}
         if (filters.id_client !== undefined) where.id_client = filters.id_client
-        if (filters.id_status !== undefined) where.id_status = filters.id_status
         if (filters.vc_folio) where.vc_folio = { contains: filters.vc_folio }
         if (filters.dt_start || filters.dt_end) {
             where.dt_start = {}
@@ -192,24 +209,109 @@ export class ClientCharges {
         })
         if (!charge) return null
 
-        const [evidences, logs] = await Promise.all([
-            prisma.assets.findMany({ where: { entity_type: 'client_charge', entity_id: id_charge, is_active: true } }),
-            prisma.client_charge_logs.findMany({ where: { id_charge }, orderBy: { dt_register: 'desc' } })
-        ])
+        const logs = await prisma.client_charge_logs.findMany({ where: { id_charge }, orderBy: { dt_register: 'desc' } })
 
-        return { ...charge, evidences, logs }
+        return { ...charge, logs }
     }
 
-    async submitPayment(id_charge: number, data: UpdateChargePaymentDTO, id_user: number) {
+    async listInvoices(filters: InvoiceFiltersDTO) {
+        const page = filters.page ?? 1
+        const limit = filters.limit ?? 20
+        const skip = (page - 1) * limit
+
+        const where: any = {}
+        if (filters.id_status !== undefined) where.id_status = filters.id_status
+        if (filters.vc_folio) where.vc_folio = { contains: filters.vc_folio }
+        if (filters.id_client !== undefined || filters.dt_start || filters.dt_end) {
+            where.charge = {}
+            if (filters.id_client !== undefined) where.charge.id_client = filters.id_client
+            if (filters.dt_start || filters.dt_end) {
+                where.charge.dt_start = {}
+                if (filters.dt_start) where.charge.dt_start.gte = filters.dt_start
+                if (filters.dt_end) where.charge.dt_start.lte = filters.dt_end
+            }
+        }
+        // Vencida = sigue pendiente de pago u observada, y ya pasó su fecha límite
+        if (filters.b_overdue) {
+            where.id_status = { in: [CLIENT_CHARGE_STATUS.PENDIENTE_PAGO, CLIENT_CHARGE_STATUS.OBSERVADO] }
+            where.dt_due = { lt: new Date() }
+        }
+
+        const [data, total] = await Promise.all([
+            prisma.client_charge_orders.findMany({
+                where,
+                skip,
+                take: limit,
+                orderBy: { dt_register: 'desc' },
+                include: { charge: true, order: true }
+            }),
+            prisma.client_charge_orders.count({ where })
+        ])
+
+        return { data, meta: { total, page, limit, totalPages: Math.ceil(total / limit) } }
+    }
+
+    async getInvoiceRaw(id: number) {
+        return await prisma.client_charge_orders.findUnique({ where: { id }, include: { charge: true } })
+    }
+
+    async getInvoiceById(id: number) {
+        const invoice = await prisma.client_charge_orders.findUnique({
+            where: { id },
+            include: { charge: true, order: true }
+        })
+        if (!invoice) return null
+
+        const [tasks, evidences, logs] = await Promise.all([
+            prisma.client_charge_tasks.findMany({
+                where: { id_charge: invoice.id_charge, id_order: invoice.id_order },
+                include: {
+                    task: {
+                        include: {
+                            store: true,
+                            request: true,
+                            promoter: { select: { id: true, name: true, lastname: true, email: true, phone: true } }
+                        }
+                    }
+                }
+            }),
+            prisma.assets.findMany({ where: { entity_type: 'client_charge_order', entity_id: id, is_active: true } }),
+            prisma.client_charge_logs.findMany({ where: { id_charge: invoice.id_charge }, orderBy: { dt_register: 'desc' } })
+        ])
+
+        return { ...invoice, tasks, evidences, logs }
+    }
+
+    async updateInvoiceDueDate(id: number, dt_due: Date, id_user: number) {
+        const invoice = await prisma.client_charge_orders.findUnique({ where: { id } })
+        if (!invoice) throw new Error('Factura no encontrada')
+
+        const updated = await prisma.client_charge_orders.update({
+            where: { id },
+            data: { dt_due }
+        })
+
+        await prisma.client_charge_logs.create({
+            data: {
+                id_charge: invoice.id_charge,
+                id_user,
+                vc_log: `Fecha límite de pago de la factura ${invoice.vc_folio ?? invoice.id} actualizada a ${dt_due.toISOString()}`
+            }
+        })
+
+        return updated
+    }
+
+    async submitInvoicePayment(id: number, data: UpdateInvoicePaymentDTO, id_user: number) {
         return await prisma.$transaction(async (tx) => {
-            const charge = await tx.client_charges.findUnique({ where: { id_charge } })
-            if (!charge) throw new Error('Cobro no encontrado')
-            if (![CLIENT_CHARGE_STATUS.PENDIENTE_PAGO, CLIENT_CHARGE_STATUS.OBSERVADO].includes(charge.id_status as any)) {
-                throw new Error('El cobro no está en un estatus que permita subir el comprobante de pago')
+            const invoice = await tx.client_charge_orders.findUnique({ where: { id } })
+            if (!invoice) throw new Error('Factura no encontrada')
+            if (![CLIENT_CHARGE_STATUS.PENDIENTE_PAGO, CLIENT_CHARGE_STATUS.OBSERVADO].includes(invoice.id_status as any)) {
+                throw new Error('La factura no está en un estatus que permita subir el comprobante de pago')
             }
 
-            const updated = await tx.client_charges.update({
-                where: { id_charge },
+            const updated = await tx.client_charge_orders.update({
+                where: { id },
                 data: {
                     dt_payment: data.dt_payment,
                     vc_payment_method: data.vc_payment_method,
@@ -218,56 +320,77 @@ export class ClientCharges {
             })
 
             await tx.client_charge_logs.create({
-                data: { id_charge, id_user, vc_log: 'Cliente subió comprobante de pago' }
+                data: {
+                    id_charge: invoice.id_charge,
+                    id_user,
+                    vc_log: `Cliente subió comprobante de pago de la factura ${invoice.vc_folio ?? invoice.id}`
+                }
             })
 
             return updated
         })
     }
 
-    async updateStatus(id_charge: number, data: UpdateChargeStatusDTO, id_user: number) {
+    async updateInvoiceStatus(id: number, data: UpdateInvoiceStatusDTO, id_user: number) {
         return await prisma.$transaction(async (tx) => {
-            const charge = await tx.client_charges.findUnique({ where: { id_charge } })
-            if (!charge) throw new Error('Cobro no encontrado')
+            const invoice = await tx.client_charge_orders.findUnique({ where: { id } })
+            if (!invoice) throw new Error('Factura no encontrada')
 
             if (data.action === 'approve') {
-                if (charge.id_status !== CLIENT_CHARGE_STATUS.EN_VALIDACION) {
-                    throw new Error('Solo se puede aprobar un cobro en validación')
+                if (invoice.id_status !== CLIENT_CHARGE_STATUS.EN_VALIDACION) {
+                    throw new Error('Solo se puede aprobar una factura en validación')
                 }
-                const updated = await tx.client_charges.update({
-                    where: { id_charge },
+                const updated = await tx.client_charge_orders.update({
+                    where: { id },
                     data: { id_status: CLIENT_CHARGE_STATUS.PAGADO, id_user_validator: id_user }
                 })
-                await tx.client_charge_logs.create({ data: { id_charge, id_user, vc_log: 'Cobro aprobado y cerrado' } })
+                await tx.client_charge_logs.create({
+                    data: { id_charge: invoice.id_charge, id_user, vc_log: `Factura ${invoice.vc_folio ?? invoice.id} aprobada y cerrada` }
+                })
                 return updated
             }
 
             if (data.action === 'reject') {
-                if (charge.id_status !== CLIENT_CHARGE_STATUS.EN_VALIDACION) {
-                    throw new Error('Solo se puede rechazar un cobro en validación')
+                if (invoice.id_status !== CLIENT_CHARGE_STATUS.EN_VALIDACION) {
+                    throw new Error('Solo se puede rechazar una factura en validación')
                 }
-                const updated = await tx.client_charges.update({
-                    where: { id_charge },
+                const updated = await tx.client_charge_orders.update({
+                    where: { id },
                     data: {
                         id_status: CLIENT_CHARGE_STATUS.OBSERVADO,
                         vc_rejection_reason: data.vc_rejection_reason,
                         id_user_validator: id_user,
                     }
                 })
-                await tx.client_charge_logs.create({ data: { id_charge, id_user, vc_log: `Cobro observado: ${data.vc_rejection_reason}` } })
+                await tx.client_charge_logs.create({
+                    data: { id_charge: invoice.id_charge, id_user, vc_log: `Factura ${invoice.vc_folio ?? invoice.id} observada: ${data.vc_rejection_reason}` }
+                })
                 return updated
             }
 
-            // cancel
-            if (![CLIENT_CHARGE_STATUS.PENDIENTE_PAGO, CLIENT_CHARGE_STATUS.OBSERVADO].includes(charge.id_status as any)) {
-                throw new Error('Solo se puede cancelar un cobro pendiente de pago u observado')
+            if (![CLIENT_CHARGE_STATUS.PENDIENTE_PAGO, CLIENT_CHARGE_STATUS.OBSERVADO].includes(invoice.id_status as any)) {
+                throw new Error('Solo se puede cancelar una factura pendiente de pago u observada')
             }
-            const updated = await tx.client_charges.update({
-                where: { id_charge },
+            const updated = await tx.client_charge_orders.update({
+                where: { id },
                 data: { id_status: CLIENT_CHARGE_STATUS.CANCELADO }
             })
-            await tx.tasks.updateMany({ where: { id_invoice: id_charge }, data: { id_invoice: null } })
-            await tx.client_charge_logs.create({ data: { id_charge, id_user, vc_log: 'Cobro cancelado, tareas liberadas' } })
+
+            const orderTasks = await tx.client_charge_tasks.findMany({
+                where: { id_charge: invoice.id_charge, id_order: invoice.id_order },
+                select: { id_task: true }
+            })
+            const taskIds = orderTasks.map(t => t.id_task)
+            if (taskIds.length > 0) {
+                await tx.tasks.updateMany({
+                    where: { id_task: { in: taskIds }, id_invoice: invoice.id_charge },
+                    data: { id_invoice: null }
+                })
+            }
+
+            await tx.client_charge_logs.create({
+                data: { id_charge: invoice.id_charge, id_user, vc_log: `Factura ${invoice.vc_folio ?? invoice.id} cancelada, tareas liberadas` }
+            })
             return updated
         })
     }

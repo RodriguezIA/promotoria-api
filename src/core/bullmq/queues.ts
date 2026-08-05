@@ -17,6 +17,9 @@ export const billingQueue = new Queue('billing_queue', { connection: connectionQ
 //  5 QUEUE de timeout de tareas "en camino" (2h sin iniciar tarea = se reasigna)
 export const enRouteTimeoutQueue = new Queue('en_route_timeout_queue', { connection: connectionQueue })
 
+//  6 QUEUE de timeout de revisión de tareas por el cliente (auto-aprobar si no responde a tiempo)
+export const reviewTimeoutQueue = new Queue('review_timeout_queue', { connection: connectionQueue })
+
 
 export async function startTaskNotificacitonScheduler(): Promise<void> {
     const REPEAT_INTERVAL_MS = process.env.NODE_ENV === 'production' ? 30 * 60_000 : 60_000;
@@ -61,4 +64,19 @@ export async function startBillingScheduler(): Promise<void> {
     });
 
     console.log(`[Queues] Billing scheduler configurado cada ${REPEAT_INTERVAL_MS / 1000}s`);
+}
+
+export async function startReviewTimeoutScheduler(): Promise<void> {
+    // Cada 15 min es suficiente precisión para una ventana medida en horas.
+    const REPEAT_INTERVAL_MS = 15 * 60_000;
+
+    await reviewTimeoutQueue.add('check_review_timeouts', {}, {
+        repeat: {
+            every: REPEAT_INTERVAL_MS,
+            immediately: true
+        },
+        jobId: 'review_timeout_cron_job',
+    });
+
+    console.log(`[Queues] Timeout de revisión de tareas configurado cada ${REPEAT_INTERVAL_MS / 1000}s`);
 }

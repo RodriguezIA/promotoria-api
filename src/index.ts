@@ -3,13 +3,13 @@ import cors from "cors"
 import helmet from "helmet"
 import morgan from "morgan"
 import express, { Express } from "express"
-import { startTaskNotificacitonScheduler, startEnRouteTimeoutScheduler, queues } from "./core/bullmq"
+import { startTaskNotificacitonScheduler, startEnRouteTimeoutScheduler, startReviewTimeoutScheduler, queues } from "./core/bullmq"
 import { initializeBullBoard, serverAdapter } from "./queues/helpers/bullboard"
 
 import adminRouter from "./app_admin/index"
 import superadminRouter from "./app_superadmin/index"
 import mobileRouter from "./app_mobile/index"
-import { clientRouter, productRouter, userAdminRouter, storeRouter, channelsSalesRouter, promoterRouter, questionRouter, requestRouter, orderRouter, taskRouter, financesRouter } from './modules'
+import { clientRouter, productRouter, userAdminRouter, storeRouter, channelsSalesRouter, promoterRouter, questionRouter, requestRouter, orderRouter, taskRouter, financesRouter, taskSettingsRouter } from './modules'
 import { errorHandler } from "./core/middleware"
 import { setupSwagger } from "./config/swagger"
 
@@ -31,6 +31,7 @@ initializeBullBoard(queues)
 app.use("/retailink-api/queues", serverAdapter.getRouter())
 startTaskNotificacitonScheduler()
 startEnRouteTimeoutScheduler()
+startReviewTimeoutScheduler()
 
 app.use("/retailink-api/superadmin", superadminRouter)
 app.use("/retailink-api/admin", adminRouter)
@@ -47,6 +48,7 @@ app.use("/retailink-api/requests", requestRouter)
 app.use("/retailink-api/orders", orderRouter)
 app.use("/retailink-api/tasks", taskRouter)
 app.use("/retailink-api/finances", financesRouter)
+app.use("/retailink-api/task-settings", taskSettingsRouter)
 
 // Manejo global de errores (multer, no controlados): debe ir después de todas las rutas.
 app.use(errorHandler)
