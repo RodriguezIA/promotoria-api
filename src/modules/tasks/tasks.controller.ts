@@ -73,10 +73,14 @@ export const getMyTasks = async (req: Request, res: Response) => {
     try {
         const id_promoter = req.user!.id
         const { id_status } = req.query
-        const tasks = await taskService.getTasksByPromoter(
-            id_promoter,
-            id_status !== undefined ? Number(id_status) : undefined
-        )
+        let parsedStatus: number | number[] | undefined
+        if (id_status !== undefined) {
+            const raw = String(id_status)
+            parsedStatus = raw.includes(',')
+                ? raw.split(',').map(s => Number(s.trim())).filter(n => !isNaN(n))
+                : Number(raw)
+        }
+        const tasks = await taskService.getTasksByPromoter(id_promoter, parsedStatus)
         res.status(200).json({ ok: true, error: 0, data: tasks, message: 'Tareas del promotor obtenidas exitosamente' })
     } catch (error) {
         res.status(500).json({ ok: false, error: 1, data: null, message: 'Error al obtener las tareas', error_backend: (error as any).message })

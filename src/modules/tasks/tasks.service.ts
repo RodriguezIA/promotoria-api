@@ -128,10 +128,11 @@ export class Task {
         }
     }
 
-    async getTasksByPromoter(id_promoter: number, id_status?: number) {
+    async getTasksByPromoter(id_promoter: number, id_status?: number | number[]) {
         const where: any = { id_promoter }
-        if (id_status !== undefined) where.id_status = id_status
-        else {
+        if (id_status !== undefined) {
+            where.id_status = Array.isArray(id_status) ? { in: id_status } : id_status
+        } else {
             where.id_status = { in: [1, 2, 3] }
         }
 
