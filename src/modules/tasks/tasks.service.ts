@@ -578,6 +578,11 @@ export class Task {
         return { answers: results, arrangement_photo_url }
     }
 
+    /**
+     * El promotor terminó de llenar el checklist y lo manda a revisión del
+     * cliente (id_status 6 = "En revisión" en el vocabulario real de la app,
+     * ver fuente de verdad en webs/promotoria-saas/.../tareas/utils.ts).
+     */
     async completeTask(id_task: number, id_promoter: number) {
         const task = await prisma.tasks.findUnique({
             where: { id_task },
@@ -588,7 +593,7 @@ export class Task {
 
         return await prisma.tasks.update({
             where: { id_task },
-            data: { id_status: 3 }
+            data: { id_status: 6, dt_update: new Date() }
         })
     }
 
