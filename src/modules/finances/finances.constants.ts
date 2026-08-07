@@ -11,3 +11,9 @@ export const PROMOTER_PAYMENT_STATUS = {
   PAGADO: 2,
   CANCELADO: 3,
 } as const
+
+export const ACTIVATOR_PAYMENT_STATUS = {
+  POR_PAGAR: 1,
+  PAGADO: 2,
+  CANCELADO: 3,
+} as const

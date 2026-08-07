@@ -9,24 +9,49 @@ export class Promoter {
 
         const hashedPassword = await bcrypt.hash(data.password, 10);
 
-        return await prisma.$transaction(async (prisma) => {
-            const prometer = await prisma.promoters.create({
+        return await prisma.$transaction(async (tx) => {
+            // Si capturó un código de referido, buscamos quién lo activó.
+            let id_activator: number | null = null
+            if (data.referral_code) {
+                const activator = await tx.promoters.findUnique({
+                    where: { vc_referral_code: data.referral_code }
+                })
+                if (!activator) throw new Error('El código de referido no es válido')
+                id_activator = activator.id
+            }
+
+            const promoter = await tx.promoters.create({
                 data: {
-                    ...data,
+                    name: data.name,
+                    lastname: data.lastname,
+                    email: data.email,
                     password: hashedPassword,
+                    phone: data.phone,
+                    fcm_token: data.fcm_token,
+                    latitude: data.latitude,
+                    longitude: data.longitude,
+                    id_activator,
                     dt_register: new Date().toISOString(),
                     dt_updated: new Date().toISOString()
                 }
             })
 
-            await prisma.promoter_logs.create({
+            // Cada promotor tiene su propio código para poder invitar a otros.
+            const updated = await tx.promoters.update({
+                where: { id: promoter.id },
+                data: { vc_referral_code: `PR${promoter.id}` }
+            })
+
+            await tx.promoter_logs.create({
                 data: {
-                    id_promotor: prometer.id,
-                    vc_log: `Promotor ${prometer.name} registrado`,
+                    id_promotor: promoter.id,
+                    vc_log: id_activator
+                        ? `Promotor ${promoter.name} registrado (activado por el promotor #${id_activator})`
+                        : `Promotor ${promoter.name} registrado`,
                 }
             })
 
-            const {password, ...promoterWithoutPassword} = prometer
+            const {password, ...promoterWithoutPassword} = updated
             return promoterWithoutPassword
         })
     }

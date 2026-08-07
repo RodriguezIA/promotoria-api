@@ -255,9 +255,16 @@ model promoters {
   isActive      Boolean   @default(true)
   latitude      Decimal?  @db.Decimal(10, 8)
   longitude     Decimal?  @db.Decimal(11, 8)
+  vc_referral_code String? @unique(map: "uq_promoters_referral_code") @db.VarChar(20)
+  id_activator     Int?    @db.UnsignedInt
   tasks                  tasks[]
   promoter_bank_accounts promoter_bank_accounts[]
   payments               promoter_payments[]
+  activator            promoters?  @relation("PromoterActivator", fields: [id_activator], references: [id])
+  activated_promoters  promoters[] @relation("PromoterActivator")
+  activator_payments   activator_payments[]
+
+  @@index([id_activator], map: "idx_promoters_activator")
 }
 
 /// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
@@ -519,8 +526,9 @@ model tasks {
   id_client            Int        @db.UnsignedInt
   i_current_cycle      Int        @default(0)
   dt_next_retry        DateTime?
-  id_invoice           Int?       @db.UnsignedInt
-  id_promoter_payment  Int?       @db.UnsignedInt
+  id_invoice            Int?       @db.UnsignedInt
+  id_promoter_payment   Int?       @db.UnsignedInt
+  id_activator_payment  Int?       @db.UnsignedInt
   client               clients    @relation(fields: [id_client], references: [id_client])
   order                orders     @relation(fields: [id_order], references: [id_order])
   promoter             promoters? @relation(fields: [id_promoter], references: [id])
@@ -528,6 +536,7 @@ model tasks {
   store                stores     @relation(fields: [id_store], references: [id_store])
   charge_tasks         client_charge_tasks[]
   payment_tasks        promoter_payment_tasks[]
+  activator_payment_tasks activator_payment_tasks[]
 
   @@index([id_client], map: "tasks_id_client_fkey")
   @@index([id_order], map: "tasks_id_order_fkey")
@@ -536,6 +545,7 @@ model tasks {
   @@index([id_store], map: "tasks_id_store_fkey")
   @@index([id_invoice], map: "idx_tasks_invoice")
   @@index([id_promoter_payment], map: "idx_tasks_promoter_payment")
+  @@index([id_activator_payment], map: "idx_tasks_activator_payment")
 }
 
 /// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
@@ -711,11 +721,60 @@ model promoter_payment_logs {
 }
 
 model finance_settings {
-  id_setting                        Int      @id @default(1)
-  f_promoter_commission_percentage  Decimal  @db.Decimal(5, 2) @default(0)
-  id_system_client                  Int      @db.UnsignedInt
-  id_user_updater                   Int?     @db.UnsignedInt
-  dt_updated                        DateTime @default(now()) @updatedAt @db.Timestamp(0)
+  id_setting                          Int      @id @default(1)
+  f_promoter_commission_percentage    Decimal  @db.Decimal(5, 2) @default(0)
+  f_activator_commission_percentage   Decimal  @db.Decimal(5, 2) @default(10)
+  id_system_client                    Int      @db.UnsignedInt
+  id_user_updater                     Int?     @db.UnsignedInt
+  dt_updated                          DateTime @default(now()) @updatedAt @db.Timestamp(0)
+}
+
+// ==================== FINANZAS: PAGOS A ACTIVADORES ====================
+model activator_payments {
+  id_payment       Int       @id @default(autoincrement()) @db.UnsignedInt
+  id_activator     Int       @db.UnsignedInt
+  vc_folio         String?   @unique(map: "uq_activator_payments_folio") @db.VarChar(50)
+  dt_start         DateTime  @db.DateTime(0)
+  dt_end           DateTime  @db.DateTime(0)
+  f_total          Decimal   @db.Decimal(10, 2)
+  id_status        Int       @default(1)
+  dt_payment       DateTime? @db.DateTime(0)
+  id_bank_account  Int?      @db.UnsignedInt
+  vc_notes         String?   @db.VarChar(500)
+  id_user_creator  Int       @db.UnsignedInt
+  id_user_payer    Int?      @db.UnsignedInt
+  dt_register      DateTime  @default(now()) @db.Timestamp(0)
+  dt_updated       DateTime  @default(now()) @updatedAt @db.Timestamp(0)
+
+  activator     promoters @relation(fields: [id_activator], references: [id])
+  payment_tasks activator_payment_tasks[]
+
+  @@index([id_activator, id_status], map: "idx_activator_payments_activator_status")
+}
+
+model activator_payment_tasks {
+  id          Int      @id @default(autoincrement()) @db.UnsignedInt
+  id_payment  Int      @db.UnsignedInt
+  id_task     Int      @db.UnsignedInt
+  id_promoter Int      @db.UnsignedInt
+  f_amount    Decimal  @db.Decimal(10, 2)
+  dt_register DateTime @default(now()) @db.Timestamp(0)
+
+  payment activator_payments @relation(fields: [id_payment], references: [id_payment])
+  task    tasks              @relation(fields: [id_task], references: [id_task])
+
+  @@unique([id_payment, id_task], map: "uq_activator_payment_task")
+  @@index([id_task], map: "idx_activator_payment_tasks_task")
+}
+
+model activator_payment_logs {
+  id_payment_log Int      @id @default(autoincrement()) @db.UnsignedInt
+  id_payment     Int      @db.UnsignedInt
+  id_user        Int      @db.UnsignedInt
+  vc_log         String   @db.VarChar(1000)
+  dt_register    DateTime @default(now()) @db.Timestamp(0)
+
+  @@index([id_payment], map: "idx_activator_payment_logs_payment")
 }
 
 // ==================== OPERACIÓN: CONFIGURACIÓN DE TAREAS ====================

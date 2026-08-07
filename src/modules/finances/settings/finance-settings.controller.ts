@@ -9,7 +9,10 @@ export const getFinanceSettings = async (req: Request, res: Response) => {
         res.status(200).json({
             ok: true,
             error: 0,
-            data: { f_promoter_commission_percentage: Number(settings.f_promoter_commission_percentage) },
+            data: {
+                f_promoter_commission_percentage: Number(settings.f_promoter_commission_percentage),
+                f_activator_commission_percentage: Number(settings.f_activator_commission_percentage),
+            },
             message: 'Configuración de finanzas obtenida exitosamente'
         })
     } catch (error) {
@@ -26,13 +29,19 @@ export const getFinanceSettings = async (req: Request, res: Response) => {
 
 export const updateFinanceSettings = async (req: Request, res: Response) => {
     try {
-        const { f_promoter_commission_percentage } = req.body
+        const { f_promoter_commission_percentage, f_activator_commission_percentage } = req.body
         const id_user_updater = req.user!.id
-        const settings = await financeSettingsService.update(f_promoter_commission_percentage, id_user_updater)
+        const settings = await financeSettingsService.update(
+            { f_promoter_commission_percentage, f_activator_commission_percentage },
+            id_user_updater
+        )
         res.status(200).json({
             ok: true,
             error: 0,
-            data: { f_promoter_commission_percentage: Number(settings.f_promoter_commission_percentage) },
+            data: {
+                f_promoter_commission_percentage: Number(settings.f_promoter_commission_percentage),
+                f_activator_commission_percentage: Number(settings.f_activator_commission_percentage),
+            },
             message: 'Configuración de finanzas actualizada exitosamente'
         })
     } catch (error) {

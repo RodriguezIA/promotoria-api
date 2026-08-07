@@ -9,6 +9,7 @@ export const createPromoterSchema = z.object({
   fcm_token: z.string().optional(),
   latitude: z.number().optional(),
   longitude: z.number().optional(),
+  referral_code: z.string().optional(),
 });
 
 export const loginPromoterSchema = z.object({

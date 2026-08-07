@@ -23,6 +23,7 @@ export interface CreatePromoterDTO {
     fcm_token?: string
     latitude?: number
     longitude?: number
+    referral_code?: string
 }
 
 export interface LoginPromoterDTO {

@@ -42,11 +42,11 @@ export const createPromoter = async (req: Request, res: Response) => {
         })
     } catch (error) {
         console.log("Error en createPromoter: ", error)
-        res.status(500).json({
+        res.status(400).json({
             ok: false,
             error: 1,
             data: null,
-            message: "Error al crear el promotor",
+            message: (error as any).message || "Error al crear el promotor",
         })
     }
 }

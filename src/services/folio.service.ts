@@ -8,6 +8,7 @@ export const FOLIO_ENTITIES = {
     invoices: 'FAC',
     client_charge: 'COB',
     promoter_payment: 'PAG',
+    activator_payment: 'ACT',
 } as const;
 
 export type FolioEntity = keyof typeof FOLIO_ENTITIES;

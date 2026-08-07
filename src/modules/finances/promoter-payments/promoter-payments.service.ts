@@ -1,6 +1,5 @@
 import { prisma } from '../../../core/prisma'
 import { generateFolio } from '../../../services/folio.service'
-import { TASK_STATUS } from '../../../core/constants/status.constants'
 import { PROMOTER_PAYMENT_STATUS } from '../finances.constants'
 import { GeneratePaymentsDTO, PaymentFiltersDTO, UpdatePaymentPaymentDTO } from './promoter-payments.dto'
 
@@ -22,7 +21,10 @@ export class PromoterPayments {
     private async findEligibleTasks(dt_start: Date, dt_end: Date, commissionPct: number, id_promoter?: number): Promise<EligibleTask[]> {
         const tasks = await prisma.tasks.findMany({
             where: {
-                id_status: TASK_STATUS.TERMINADO,
+                // OJO: el estatus real "Terminada con éxito" es el 7, no el 6
+                // (el enum TASK_STATUS del backend casi no se usa en la práctica,
+                // ver fuente de verdad en webs/promotoria-saas/.../tareas/utils.ts).
+                id_status: 7,
                 id_promoter_payment: null,
                 id_promoter: { not: null },
                 id_request: { not: null },

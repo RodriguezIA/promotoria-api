@@ -9,10 +9,17 @@ export class FinanceSettings {
         return settings
     }
 
-    async update(f_promoter_commission_percentage: number, id_user_updater: number) {
+    async update(
+        data: { f_promoter_commission_percentage?: number, f_activator_commission_percentage?: number },
+        id_user_updater: number
+    ) {
         return await prisma.finance_settings.update({
             where: { id_setting: 1 },
-            data: { f_promoter_commission_percentage, id_user_updater }
+            data: {
+                ...(data.f_promoter_commission_percentage !== undefined ? { f_promoter_commission_percentage: data.f_promoter_commission_percentage } : {}),
+                ...(data.f_activator_commission_percentage !== undefined ? { f_activator_commission_percentage: data.f_activator_commission_percentage } : {}),
+                id_user_updater,
+            }
         })
     }
 }
