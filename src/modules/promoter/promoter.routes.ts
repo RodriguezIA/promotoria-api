@@ -8,8 +8,8 @@ import {
   updateLocationPromoter, createPromoter, loginPromoter, getPromoters,
   getPromoterBankAccounts, createPromoterBankAccount, getPromoterBankAccount,
   updatePromoterBankAccount, deletePromoterBankAccount, getPromoterById,
-  updateFcmToken, updatePromoterLocation,
-  // updatePromoterImage
+  updateFcmToken, updatePromoterLocation, refreshPromoterToken, getAffiliationCode,
+  updatePromoterImage,
 } from './promoter.controller'
 
 import {
@@ -24,6 +24,7 @@ const promoterRouter = Router()
 promoterRouter.get('/', authMiddleware, getPromoters)
 promoterRouter.post('/', validateBody(createPromoterSchema), createPromoter)
 promoterRouter.post('/login', loginPromoter)
+promoterRouter.post('/refresh-token', refreshPromoterToken)
 promoterRouter.put('/update-location', validateBody(updateLocationPromoterSchema), updateLocationPromoter)
 promoterRouter.get('/:id', authMiddleware, getPromoterById)
 
@@ -37,9 +38,13 @@ promoterRouter.put('/:id_promoter/fcm-token',
 promoterRouter.put('/:id_promoter/location',
   authMiddleware, validateParams(promoterIdParamSchema), validateBody(updatePromoterLocationSchema), updatePromoterLocation)
 
+// Código de invitación del promotor (para que invite a otros)
+promoterRouter.get('/:id_promoter/affiliation-code',
+  authMiddleware, validateParams(promoterIdParamSchema), getAffiliationCode)
 
-// Upload de imagen de perfil - NUEVA RUTA
-// promoterRouter.post('/:id_promoter/upload-image', authMiddleware, validateParams(promoterIdParamSchema), uploadAny.single('file'), updatePromoterImage)
+// Foto de perfil. La app manda PATCH con multipart, campo "photo".
+promoterRouter.patch('/:id_promoter/profile-photo',
+  authMiddleware, validateParams(promoterIdParamSchema), uploadAny.single('photo'), updatePromoterImage)
 
 // Cuentas bancarias
 promoterRouter.get('/:id_promoter/bank-accounts',

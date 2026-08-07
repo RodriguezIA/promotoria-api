@@ -93,6 +93,14 @@ export class Utils {
     });
   }
 
+  // Token de larga duración (90 días) que sirve solo para pedir un token de
+  // acceso nuevo cuando el actual expira. Se distingue con type:'refresh'.
+  static generate_refresh_token(payload: TokenPayload | TokenPromoterPayload): string {
+    return jwt.sign({ ...payload, type: 'refresh' }, JWT_SECRET, {
+      expiresIn: "90d",
+    });
+  }
+
   static verify_token(token: string): Promise<TokenPayload> {
     return new Promise((resolve, reject) => {
       jwt.verify(token, JWT_SECRET, (err, decoded) => {

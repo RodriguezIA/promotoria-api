@@ -75,6 +75,7 @@ export const loginPromoter = async(req: Request, res: Response) => {
         }
 
         const token =  Utils.generate_token(tokenPayload)
+        const refresh_token = Utils.generate_refresh_token(tokenPayload)
 
         const { password, ...promoterWithoutPassword} = promoter
 
@@ -87,7 +88,7 @@ export const loginPromoter = async(req: Request, res: Response) => {
         res.status(200).json({
             ok: true,
             error: 0,
-            data: { ...promoterWithoutPassword, token },
+            data: { ...promoterWithoutPassword, token, refresh_token },
             message: `Promotor autenticado exitosamente por ${field}`,
         })
 
@@ -99,6 +100,70 @@ export const loginPromoter = async(req: Request, res: Response) => {
             data: null,
             message: "Error al iniciar sesión del promotor",
         })
+    }
+}
+
+export const refreshPromoterToken = async (req: Request, res: Response) => {
+    try {
+        const authHeader = req.headers.authorization
+        if (!authHeader || !authHeader.startsWith('Bearer ')) {
+            return res.status(401).json({ ok: false, error: 1, data: null, message: 'Token de refresh requerido' })
+        }
+        const refreshToken = authHeader.slice(7)
+
+        let decoded: any
+        try {
+            decoded = await Utils.verify_token(refreshToken)
+        } catch {
+            return res.status(401).json({ ok: false, error: 1, data: null, message: 'Token de refresh inválido o vencido' })
+        }
+
+        if (decoded.type !== 'refresh') {
+            return res.status(401).json({ ok: false, error: 1, data: null, message: 'El token enviado no es un token de refresh' })
+        }
+
+        const promoter = await promoterService.getPromoterById(decoded.id)
+        if (!promoter) {
+            return res.status(404).json({ ok: false, error: 1, data: null, message: 'Promotor no encontrado' })
+        }
+
+        const tokenPayload: TokenPromoterPayload = {
+            id: promoter.id,
+            phone: promoter.phone,
+            email: promoter.email || undefined,
+        }
+
+        const token = Utils.generate_token(tokenPayload)
+        const new_refresh_token = Utils.generate_refresh_token(tokenPayload)
+
+        res.status(200).json({
+            ok: true,
+            error: 0,
+            data: { token, token_claim: token, refresh_token: new_refresh_token },
+            message: 'Token renovado exitosamente',
+        })
+    } catch (error) {
+        console.log("f.refreshPromoterToken error: ", error)
+        res.status(401).json({ ok: false, error: 1, data: null, message: 'Error al renovar el token' })
+    }
+}
+
+export const getAffiliationCode = async (req: Request, res: Response) => {
+    try {
+        const id_promoter = Number(req.params.id_promoter)
+        const promoter = await promoterService.getPromoterById(id_promoter)
+        if (!promoter) {
+            return res.status(404).json({ ok: false, error: 1, data: null, message: 'Promotor no encontrado' })
+        }
+        res.status(200).json({
+            ok: true,
+            error: 0,
+            data: { code: promoter.vc_referral_code },
+            message: 'Código de invitación obtenido exitosamente',
+        })
+    } catch (error) {
+        console.log("f.getAffiliationCode error: ", error)
+        res.status(500).json({ ok: false, error: 1, data: null, message: 'Error al obtener el código de invitación' })
     }
 }
 

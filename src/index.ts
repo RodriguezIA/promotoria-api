@@ -10,6 +10,7 @@ import adminRouter from "./app_admin/index"
 import superadminRouter from "./app_superadmin/index"
 import mobileRouter from "./app_mobile/index"
 import { clientRouter, productRouter, userAdminRouter, storeRouter, channelsSalesRouter, promoterRouter, questionRouter, requestRouter, orderRouter, taskRouter, financesRouter, taskSettingsRouter } from './modules'
+import promoterSelfPaymentsRouter from './modules/promoter-payments-self/promoter-self-payments.routes'
 import { errorHandler } from "./core/middleware"
 import { setupSwagger } from "./config/swagger"
 
@@ -49,6 +50,7 @@ app.use("/retailink-api/orders", orderRouter)
 app.use("/retailink-api/tasks", taskRouter)
 app.use("/retailink-api/finances", financesRouter)
 app.use("/retailink-api/task-settings", taskSettingsRouter)
+app.use("/retailink-api/payments", promoterSelfPaymentsRouter)
 
 // Manejo global de errores (multer, no controlados): debe ir después de todas las rutas.
 app.use(errorHandler)
