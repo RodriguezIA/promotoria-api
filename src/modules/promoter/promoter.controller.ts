@@ -88,7 +88,7 @@ export const loginPromoter = async(req: Request, res: Response) => {
         res.status(200).json({
             ok: true,
             error: 0,
-            data: { ...promoterWithoutPassword, token, refresh_token },
+            data: { ...promoterWithoutPassword, token, refresh_token, role: 'promoter' },
             message: `Promotor autenticado exitosamente por ${field}`,
         })
 
