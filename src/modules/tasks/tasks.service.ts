@@ -211,6 +211,13 @@ export class Task {
         if (!task || task.id_status !== 1) throw new Error('La tarea no esta activa o no existe')
         if (task.id_promoter !== null) throw new Error('La tarea ya tiene un promotor asignado')
 
+        // Un promotor solo puede tener una tarea activa a la vez.
+        const hasActiveTask = await prisma.tasks.findFirst({
+            where: { id_promoter, id_status: { gte: 2, lte: 6 } },
+            select: { id_task: true },
+        })
+        if (hasActiveTask) throw new Error('Ya tienes una tarea activa, termina la actual antes de aceptar otra')
+
         const rejected = await prisma.task_rejections.findUnique({
             where: { id_task_id_promoter: { id_task, id_promoter } }
         })
@@ -599,6 +606,15 @@ export class Task {
     }
 
     async getNearbyAvailableTasks(id_promoter: number, lat: number, lng: number, radiusMeters = 1000) {
+        // Un promotor solo puede tener una tarea activa a la vez (id_status 2-6:
+        // asignada, en camino, llegada, iniciada, en revision). Si ya tiene una,
+        // no se le ofrecen tareas nuevas.
+        const hasActiveTask = await prisma.tasks.findFirst({
+            where: { id_promoter, id_status: { gte: 2, lte: 6 } },
+            select: { id_task: true },
+        })
+        if (hasActiveTask) return []
+
         const [tasks, rejections] = await Promise.all([
             prisma.tasks.findMany({
                 where: {
