@@ -10,6 +10,7 @@ import orderRouter from './orders/orders.routes'
 import taskRouter from './tasks/tasks.routes'
 import financesRouter from './finances/finances.routes'
 import taskSettingsRouter from './task-settings/task-settings.routes'
+import appConfigRouter from './app-config/app-config.routes'
 
 export {
     clientRouter,
@@ -24,4 +25,5 @@ export {
     taskRouter,
     financesRouter,
     taskSettingsRouter,
+    appConfigRouter,
 }

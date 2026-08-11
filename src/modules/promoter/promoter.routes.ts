@@ -9,7 +9,7 @@ import {
   getPromoterBankAccounts, createPromoterBankAccount, getPromoterBankAccount,
   updatePromoterBankAccount, deletePromoterBankAccount, getPromoterById,
   updateFcmToken, updatePromoterLocation, refreshPromoterToken, getAffiliationCode,
-  updatePromoterImage,
+  updatePromoterImage, checkPhone,
 } from './promoter.controller'
 
 import {
@@ -23,6 +23,7 @@ const promoterRouter = Router()
 
 promoterRouter.get('/', authMiddleware, getPromoters)
 promoterRouter.post('/', validateBody(createPromoterSchema), createPromoter)
+promoterRouter.get('/check-phone/:phone', checkPhone)
 promoterRouter.post('/login', loginPromoter)
 promoterRouter.post('/refresh-token', refreshPromoterToken)
 promoterRouter.put('/update-location', validateBody(updateLocationPromoterSchema), updateLocationPromoter)

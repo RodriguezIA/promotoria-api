@@ -39,7 +39,8 @@ export type AssetEntity =
   | "promoter"
   | "client_charge"
   | "client_charge_order"
-  | "promoter_payment";
+  | "promoter_payment"
+  | "app_config";
 
 const ENTITY_SEGMENT: Record<AssetEntity, string> = {
   product: "products",
@@ -52,6 +53,7 @@ const ENTITY_SEGMENT: Record<AssetEntity, string> = {
   client_charge: "client_charges",
   client_charge_order: "client_charge_orders",
   promoter_payment: "promoter_payments",
+  app_config: "app_config",
 };
 
 interface OptimizeOpts {

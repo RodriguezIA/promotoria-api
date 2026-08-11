@@ -64,3 +64,5 @@ config.local.js
 /src/generated/prisma
 
 /generated/prisma
+keys/
+*firebase-adminsdk*.json

@@ -2,8 +2,15 @@ import bcrypt from 'bcrypt'
 import { prisma } from '../../core/prisma'
 
 import { CreatePromoterDTO, CreatePromoterBankAccountDTO, UpdatePromoterBankAccountDTO } from './promoter.dtos'
-
 export class Promoter {
+
+    async checkPhoneExists(phone: string): Promise<boolean> {
+        const promoter = await prisma.promoters.findUnique({
+            where: { phone },
+            select: { id: true },
+        })
+        return !!promoter
+    }
 
     async createPromoter(data: CreatePromoterDTO){
 
