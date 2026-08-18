@@ -118,6 +118,9 @@ export class StorageService {
     if (shouldOptimize) {
       const opts = optimize === true ? DEFAULT_OPTIMIZE : optimize;
       bodyBuffer = await sharp(input.buffer)
+        .rotate() // Auto-orienta segun el EXIF de la foto (las fotos de celular
+        // vienen "acostadas" con una etiqueta de rotacion; sin esto, sharp
+        // achica la imagen tal cual viene y se ve girada al mostrarla).
         .webp({ quality: opts.quality ?? 80 })
         .resize(opts.maxW, opts.maxH, { fit: "inside", withoutEnlargement: true })
         .toBuffer();
