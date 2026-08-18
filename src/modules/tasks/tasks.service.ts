@@ -497,10 +497,28 @@ export class Task {
     ) {
         const task = await prisma.tasks.findUnique({
             where: { id_task },
-            select: { id_promoter: true, id_status: true }
+            select: { id_promoter: true, id_status: true, id_store: true }
         })
         if (!task) throw new Error('Tarea no encontrada')
         if (task.id_promoter !== id_promoter) throw new Error('No tienes asignada esta tarea')
+
+        // Para saber, de las preguntas que se estan respondiendo, cuales son
+        // la pregunta de sistema "piezas en existencia" y a que producto
+        // pertenecen, para poder alimentar store_product_stock (mapa de
+        // inventario del cliente).
+        const rpqIds = answers.map(a => a.id_request_product_question)
+        const rpqInfo = await prisma.request_product_questions.findMany({
+            where: { id_request_product_question: { in: rpqIds } },
+            select: {
+                id_request_product_question: true,
+                request_product: { select: { id_product: true } },
+                question: { select: { b_stock_question: true } },
+            }
+        })
+        const rpqMap = new Map(rpqInfo.map(r => [
+            r.id_request_product_question,
+            { id_product: r.request_product.id_product, isStock: r.question.b_stock_question }
+        ]))
 
         const results = await prisma.$transaction(async (tx) => {
             const rows: any[] = []
@@ -526,6 +544,18 @@ export class Task {
                     }
                 })
                 rows.push(result)
+
+                const info = rpqMap.get(item.id_request_product_question)
+                if (info?.isStock && item.vc_answer !== null && item.vc_answer !== undefined) {
+                    const qty = parseInt(item.vc_answer, 10)
+                    if (!Number.isNaN(qty) && qty >= 0) {
+                        await tx.store_product_stock.upsert({
+                            where: { id_store_id_product: { id_store: task.id_store, id_product: info.id_product } },
+                            update: { i_quantity: qty, id_task, id_promoter },
+                            create: { id_store: task.id_store, id_product: info.id_product, i_quantity: qty, id_task, id_promoter },
+                        })
+                    }
+                }
             }
 
             return rows

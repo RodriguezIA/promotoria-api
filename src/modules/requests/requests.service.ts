@@ -11,6 +11,32 @@ import { resolveImages } from '../../core/asset-resolver'
 export class Request {
 
     /**
+     * La pregunta "¿Cuántas piezas hay en existencia?" es de sistema: gratis,
+     * numérica, y se agrega sola a todo producto de toda solicitud (el cliente
+     * no la configura). Solo existe una en toda la plataforma; si no existe
+     * aún, se crea la primera vez que se necesita.
+     */
+    private async getOrCreateStockQuestion(tx: Prisma.TransactionClient, id_user: number): Promise<number> {
+        const existing = await tx.questions.findFirst({
+            where: { b_stock_question: true },
+            select: { id_question: true },
+        })
+        if (existing) return existing.id_question
+
+        const created = await tx.questions.create({
+            data: {
+                id_user,
+                question: '¿Cuántas piezas hay en existencia?',
+                question_type: 'numeric',
+                f_cost: 0,
+                b_stock_question: true,
+            },
+            select: { id_question: true },
+        })
+        return created.id_question
+    }
+
+    /**
      * Calcula el costo real de la solicitud en el backend (nunca se confía en lo
      * que mande el navegador, porque es dinero real que después se factura).
      *
@@ -68,6 +94,8 @@ export class Request {
             })
 
             if (data.products && data.products.length > 0) {
+                const stockQuestionId = await this.getOrCreateStockQuestion(tx, data.id_user)
+
                 for (const product of data.products) {
                     const requestProduct = await tx.request_products.create({
                         data: {
@@ -86,6 +114,15 @@ export class Request {
                             })
                         }
                     }
+
+                    // La pregunta de piezas siempre va, la haya elegido el
+                    // cliente o no (y es gratis, no afecta el costo).
+                    await tx.request_product_questions.create({
+                        data: {
+                            id_request_product: requestProduct.id_request_product,
+                            id_question: stockQuestionId,
+                        }
+                    })
                 }
             }
 
@@ -316,15 +353,19 @@ export class Request {
 
                     if (product.questions) {
                         const existingQuestions = await tx.request_product_questions.findMany({
-                            where: { id_request_product: requestProductId, b_active: true }
+                            where: { id_request_product: requestProductId, b_active: true },
+                            include: { question: { select: { b_stock_question: true } } },
                         })
 
                         const incomingQuestionIds = product.questions
                             .filter(q => q.id_request_product_question)
                             .map(q => q.id_request_product_question!)
 
+                        // La pregunta de piezas nunca se desactiva desde aqui,
+                        // aunque el cliente no la mande en su lista (el cliente
+                        // no la ve ni la controla; es de sistema).
                         const questionsToDeactivate = existingQuestions.filter(
-                            eq => !incomingQuestionIds.includes(eq.id_request_product_question)
+                            eq => !eq.question.b_stock_question && !incomingQuestionIds.includes(eq.id_request_product_question)
                         )
 
                         for (const q of questionsToDeactivate) {
@@ -369,6 +410,25 @@ export class Request {
                                 })
                             }
                         }
+                    }
+
+                    // Garantiza que la pregunta de piezas siempre quede activa
+                    // en este producto, la haya mandado el cliente o no.
+                    const stockQuestionId = await this.getOrCreateStockQuestion(tx, data.id_user ?? request.id_user)
+                    const existingStockQuestion = await tx.request_product_questions.findFirst({
+                        where: { id_request_product: requestProductId, id_question: stockQuestionId }
+                    })
+                    if (existingStockQuestion) {
+                        if (!existingStockQuestion.b_active) {
+                            await tx.request_product_questions.update({
+                                where: { id_request_product_question: existingStockQuestion.id_request_product_question },
+                                data: { b_active: true, dt_update: new Date() }
+                            })
+                        }
+                    } else {
+                        await tx.request_product_questions.create({
+                            data: { id_request_product: requestProductId, id_question: stockQuestionId }
+                        })
                     }
                 }
             }

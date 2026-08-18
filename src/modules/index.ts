@@ -11,6 +11,7 @@ import taskRouter from './tasks/tasks.routes'
 import financesRouter from './finances/finances.routes'
 import taskSettingsRouter from './task-settings/task-settings.routes'
 import appConfigRouter from './app-config/app-config.routes'
+import stockRouter from './stock/stock.routes'
 
 export {
     clientRouter,
@@ -26,4 +27,5 @@ export {
     financesRouter,
     taskSettingsRouter,
     appConfigRouter,
+    stockRouter,
 }
