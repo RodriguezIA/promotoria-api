@@ -52,15 +52,13 @@ export const getStockMapData = async (req: Request, res: Response) => {
 
 export const bulkAssignStockMinimum = async (req: Request, res: Response) => {
     try {
-        const { id_products, i_minimum, id_channels, id_state, id_municipios } = req.body
+        const { id_stores, id_products, i_minimum } = req.body
         const id_user_updater = req.user?.id
 
-        const result = await stockService.bulkAssignMinimum({
+        const result = await stockService.bulkAssignToStores({
+            id_stores,
             id_products,
             i_minimum: Number(i_minimum),
-            id_channels,
-            id_state: id_state ? Number(id_state) : undefined,
-            id_municipios,
             id_user_updater,
         })
 

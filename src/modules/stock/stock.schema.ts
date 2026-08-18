@@ -7,11 +7,9 @@ export const setStockMinimumSchema = z.object({
 })
 
 export const bulkAssignStockMinimumSchema = z.object({
+  id_stores: z.array(z.number().int().positive()).min(1, 'Selecciona al menos una tienda'),
   id_products: z.array(z.number().int().positive()).min(1, 'Selecciona al menos un producto'),
   i_minimum: z.number().int().min(0, 'i_minimum debe ser 0 o mayor'),
-  id_channels: z.array(z.number().int().positive()).optional(),
-  id_state: z.number().int().positive().optional(),
-  id_municipios: z.array(z.number().int().positive()).optional(),
 })
 
 export const storeIdParamSchema = z.object({

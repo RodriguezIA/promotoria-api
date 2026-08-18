@@ -35,6 +35,34 @@ export class Stock {
     }
 
     /**
+     * Asigna el mismo minimo a varios productos, en una lista explicita de
+     * tiendas (las que el cliente elija a mano de la lista, tras revisarlas
+     * una por una — no todas las que cumplan un filtro a ciegas).
+     */
+    async bulkAssignToStores(input: {
+        id_stores: number[]
+        id_products: number[]
+        i_minimum: number
+        id_user_updater?: number
+    }) {
+        let assignments = 0
+        await prisma.$transaction(async (tx) => {
+            for (const id_store of input.id_stores) {
+                for (const id_product of input.id_products) {
+                    await tx.product_stock_minimums.upsert({
+                        where: { id_product_id_store: { id_product, id_store } },
+                        update: { i_minimum: input.i_minimum, id_user_updater: input.id_user_updater },
+                        create: { id_product, id_store, i_minimum: input.i_minimum, id_user_updater: input.id_user_updater },
+                    })
+                    assignments++
+                }
+            }
+        })
+
+        return { stores_affected: input.id_stores.length, assignments }
+    }
+
+    /**
      * Asigna el mismo minimo a varios productos, en varias tiendas a la vez,
      * filtrando por cadena(s) y/o estado y/o municipios especificos (si no
      * se manda municipio, aplica a todo el estado; si no se manda estado,
