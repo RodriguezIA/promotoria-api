@@ -49,3 +49,42 @@ export const getStockMapData = async (req: Request, res: Response) => {
         res.status(500).json({ ok: false, error: 1, data: null, message: 'Error al obtener los datos del mapa' })
     }
 }
+
+export const bulkAssignStockMinimum = async (req: Request, res: Response) => {
+    try {
+        const { id_products, i_minimum, id_channels, id_state, id_municipios } = req.body
+        const id_user_updater = req.user?.id
+
+        const result = await stockService.bulkAssignMinimum({
+            id_products,
+            i_minimum: Number(i_minimum),
+            id_channels,
+            id_state: id_state ? Number(id_state) : undefined,
+            id_municipios,
+            id_user_updater,
+        })
+
+        res.status(200).json({ ok: true, error: 0, data: result, message: 'Mínimos asignados exitosamente' })
+    } catch (error) {
+        console.error('f.bulkAssignStockMinimum: ', error)
+        res.status(500).json({ ok: false, error: 1, data: null, message: 'Error al asignar los mínimos' })
+    }
+}
+
+export const countStockMatchingStores = async (req: Request, res: Response) => {
+    try {
+        const { id_channels, id_state, id_municipios } = req.query
+        const parseIds = (v: unknown) => Array.isArray(v) ? v.map(Number) : (v ? [Number(v)] : undefined)
+
+        const count = await stockService.countMatchingStores({
+            id_channels: parseIds(id_channels),
+            id_state: id_state ? Number(id_state) : undefined,
+            id_municipios: parseIds(id_municipios),
+        })
+
+        res.status(200).json({ ok: true, error: 0, data: { count }, message: 'Conteo obtenido exitosamente' })
+    } catch (error) {
+        console.error('f.countStockMatchingStores: ', error)
+        res.status(500).json({ ok: false, error: 1, data: null, message: 'Error al contar las tiendas' })
+    }
+}

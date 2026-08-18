@@ -35,6 +35,98 @@ export class Stock {
     }
 
     /**
+     * Asigna el mismo minimo a varios productos, en varias tiendas a la vez,
+     * filtrando por cadena(s) y/o estado y/o municipios especificos (si no
+     * se manda municipio, aplica a todo el estado; si no se manda estado,
+     * aplica a todas las tiendas del pais que cumplan el filtro de cadena).
+     * Ejemplo real: "OXXO y Seven, todo Nuevo Leon" o "OXXO, Nuevo Leon,
+     * solo Guadalupe/Monterrey/Garcia".
+     */
+    async bulkAssignMinimum(input: {
+        id_products: number[]
+        i_minimum: number
+        id_channels?: number[]
+        id_state?: number
+        id_municipios?: number[]
+        id_user_updater?: number
+    }) {
+        const matchingStores = await prisma.stores.findMany({
+            where: {
+                i_status: 1,
+                ...(input.id_channels && input.id_channels.length > 0
+                    ? { id_channel_sale: { in: input.id_channels } }
+                    : {}),
+            },
+            select: { id_store: true },
+        })
+        const storeIds = matchingStores.map(s => s.id_store)
+        if (storeIds.length === 0) return { stores_affected: 0, assignments: 0 }
+
+        const addresses = await prisma.addresses.findMany({
+            where: {
+                entity_type: 'store',
+                entity_id: { in: storeIds },
+                is_active: true,
+                ...(input.id_state ? { id_state: input.id_state } : {}),
+                ...(input.id_municipios && input.id_municipios.length > 0
+                    ? { id_city: { in: input.id_municipios } }
+                    : {}),
+            },
+            select: { entity_id: true },
+        })
+        const finalStoreIds = addresses.map(a => a.entity_id)
+        if (finalStoreIds.length === 0) return { stores_affected: 0, assignments: 0 }
+
+        let assignments = 0
+        await prisma.$transaction(async (tx) => {
+            for (const id_store of finalStoreIds) {
+                for (const id_product of input.id_products) {
+                    await tx.product_stock_minimums.upsert({
+                        where: { id_product_id_store: { id_product, id_store } },
+                        update: { i_minimum: input.i_minimum, id_user_updater: input.id_user_updater },
+                        create: { id_product, id_store, i_minimum: input.i_minimum, id_user_updater: input.id_user_updater },
+                    })
+                    assignments++
+                }
+            }
+        })
+
+        return { stores_affected: finalStoreIds.length, assignments }
+    }
+
+    /**
+     * Cuenta cuantas tiendas cumplen un filtro, para mostrar una vista
+     * previa ("esto va a aplicar a 14 tiendas") antes de que el cliente
+     * confirme la asignacion masiva.
+     */
+    async countMatchingStores(input: { id_channels?: number[]; id_state?: number; id_municipios?: number[] }) {
+        const matchingStores = await prisma.stores.findMany({
+            where: {
+                i_status: 1,
+                ...(input.id_channels && input.id_channels.length > 0
+                    ? { id_channel_sale: { in: input.id_channels } }
+                    : {}),
+            },
+            select: { id_store: true },
+        })
+        const storeIds = matchingStores.map(s => s.id_store)
+        if (storeIds.length === 0) return 0
+
+        const count = await prisma.addresses.count({
+            where: {
+                entity_type: 'store',
+                entity_id: { in: storeIds },
+                is_active: true,
+                ...(input.id_state ? { id_state: input.id_state } : {}),
+                ...(input.id_municipios && input.id_municipios.length > 0
+                    ? { id_city: { in: input.id_municipios } }
+                    : {}),
+            },
+        })
+        return count
+    }
+
+    /**
      * Semaforo por producto en una tienda: rojo si esta por debajo del
      * minimo, amarillo si esta a 20% o menos de distancia del minimo (le
      * falta poco para llegar), verde si esta bien surtida. Si no hay lectura
