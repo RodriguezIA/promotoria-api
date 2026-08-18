@@ -9,14 +9,15 @@ import {
   getPromoterBankAccounts, createPromoterBankAccount, getPromoterBankAccount,
   updatePromoterBankAccount, deletePromoterBankAccount, getPromoterById,
   updateFcmToken, updatePromoterLocation, refreshPromoterToken, getAffiliationCode,
-  updatePromoterImage, checkPhone,
+  updatePromoterImage, checkPhone, updatePromoterProfile, updatePromoterPassword,
+  getPromoterReferrals,
 } from './promoter.controller'
 
 import {
   createPromoterSchema, loginPromoterSchema, updateLocationPromoterSchema,
   createPromoterBankAccountSchema, updatePromoterBankAccountSchema,
   promoterIdParamSchema, bankAccountIdParamSchema, updateFcmTokenSchema,
-  updatePromoterLocationSchema,
+  updatePromoterLocationSchema, updatePromoterProfileSchema, updatePromoterPasswordSchema,
 } from './promoter.schema'
 
 const promoterRouter = Router()
@@ -42,6 +43,19 @@ promoterRouter.put('/:id_promoter/location',
 // Código de invitación del promotor (para que invite a otros)
 promoterRouter.get('/:id_promoter/affiliation-code',
   authMiddleware, validateParams(promoterIdParamSchema), getAffiliationCode)
+
+// Listado de invitados del promotor: activo/inactivo, cuanto han generado y
+// cuanto le ha tocado a el (activador) por cada uno.
+promoterRouter.get('/:id_promoter/referrals',
+  authMiddleware, validateParams(promoterIdParamSchema), getPromoterReferrals)
+
+// Edicion de datos propios: nombre, apellido, correo, celular.
+promoterRouter.patch('/:id_promoter/profile',
+  authMiddleware, validateParams(promoterIdParamSchema), validateBody(updatePromoterProfileSchema), updatePromoterProfile)
+
+// Cambio de contraseña (pide la contraseña actual).
+promoterRouter.patch('/:id_promoter/password',
+  authMiddleware, validateParams(promoterIdParamSchema), validateBody(updatePromoterPasswordSchema), updatePromoterPassword)
 
 // Foto de perfil. La app manda PATCH con multipart, campo "photo".
 promoterRouter.patch('/:id_promoter/profile-photo',

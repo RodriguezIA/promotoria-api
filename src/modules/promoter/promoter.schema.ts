@@ -60,6 +60,18 @@ export const createPromoterBankAccountSchema = bankAccountBase.superRefine(bankA
 
 export const updatePromoterBankAccountSchema = bankAccountBase.partial().superRefine(bankAccountRefinement);
 
+export const updatePromoterProfileSchema = z.object({
+  name: z.string().min(1, 'name no puede estar vacío').optional(),
+  lastname: z.string().optional(),
+  email: z.string().email('email debe ser válido').optional().or(z.literal('')),
+  phone: z.string().min(1, 'phone no puede estar vacío').optional(),
+});
+
+export const updatePromoterPasswordSchema = z.object({
+  current_password: z.string().min(1, 'current_password es requerido'),
+  new_password: z.string().min(6, 'new_password debe tener al menos 6 caracteres'),
+});
+
 export const promoterIdParamSchema = z.object({
   id_promoter: z.string().regex(/^\d+$/, 'id_promoter debe ser un número'),
 });

@@ -82,6 +82,21 @@ export class Store {
                 }
             })
 
+            // Promotores activos por tienda: promotores con una tarea en curso
+            // (id_status 2-6: asignada, en camino, en ejecucion, en revision) en
+            // esa tienda ahora mismo. Se usa para que el cliente sepa cuanta
+            // cobertura ya tiene una zona antes de mandar una solicitud nueva.
+            const activeTasks = await prisma.tasks.findMany({
+                where: { id_status: { gte: 2, lte: 6 }, id_promoter: { not: null } },
+                select: { id_store: true, id_promoter: true },
+            })
+            const activePromotersByStore = new Map<number, Set<number>>()
+            for (const t of activeTasks) {
+                if (!t.id_promoter) continue
+                if (!activePromotersByStore.has(t.id_store)) activePromotersByStore.set(t.id_store, new Set())
+                activePromotersByStore.get(t.id_store)!.add(t.id_promoter)
+            }
+
             const storesWithAddress = await Promise.all(
                 stores.map(async (store) => {
                     const address = await prisma.addresses.findFirst({
@@ -108,7 +123,9 @@ export class Store {
                         }
                     })
 
-                    return { ...store, address }
+                    const i_active_promoters = activePromotersByStore.get(store.id_store)?.size ?? 0
+
+                    return { ...store, address, i_active_promoters }
                 })
             )
 

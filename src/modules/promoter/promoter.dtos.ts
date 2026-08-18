@@ -57,3 +57,15 @@ export interface UpdatePromoterBankAccountDTO {
     card_number?: string
     bank_name?: string
 }
+
+export interface UpdatePromoterProfileDTO {
+    name?: string
+    lastname?: string
+    email?: string
+    phone?: string
+}
+
+export interface UpdatePromoterPasswordDTO {
+    current_password: string
+    new_password: string
+}

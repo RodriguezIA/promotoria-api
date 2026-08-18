@@ -1,7 +1,10 @@
 import bcrypt from 'bcrypt'
 import { prisma } from '../../core/prisma'
 
-import { CreatePromoterDTO, CreatePromoterBankAccountDTO, UpdatePromoterBankAccountDTO } from './promoter.dtos'
+import {
+    CreatePromoterDTO, CreatePromoterBankAccountDTO, UpdatePromoterBankAccountDTO,
+    UpdatePromoterProfileDTO, UpdatePromoterPasswordDTO,
+} from './promoter.dtos'
 export class Promoter {
 
     async checkPhoneExists(phone: string): Promise<boolean> {
@@ -123,6 +126,102 @@ export class Promoter {
                 dt_updated: new Date().toISOString()
             }
         })
+    }
+
+    async updateProfile(id: number, data: UpdatePromoterProfileDTO) {
+        // Validamos unicidad de telefono/correo antes de intentar el update,
+        // para devolver un mensaje claro en vez del error crudo de MySQL.
+        if (data.phone) {
+            const existing = await prisma.promoters.findUnique({ where: { phone: data.phone } })
+            if (existing && existing.id !== id) throw new Error('Ese número de celular ya está registrado por otro promotor')
+        }
+        if (data.email) {
+            const existing = await prisma.promoters.findUnique({ where: { email: data.email } })
+            if (existing && existing.id !== id) throw new Error('Ese correo ya está registrado por otro promotor')
+        }
+
+        const updated = await prisma.promoters.update({
+            where: { id },
+            data: {
+                ...(data.name !== undefined ? { name: data.name } : {}),
+                ...(data.lastname !== undefined ? { lastname: data.lastname } : {}),
+                ...(data.email !== undefined ? { email: data.email || null } : {}),
+                ...(data.phone !== undefined ? { phone: data.phone } : {}),
+                dt_updated: new Date().toISOString(),
+            },
+        })
+
+        const { password, ...promoterWithoutPassword } = updated
+        return promoterWithoutPassword
+    }
+
+    async updatePassword(id: number, data: UpdatePromoterPasswordDTO) {
+        const promoter = await prisma.promoters.findUnique({ where: { id } })
+        if (!promoter) throw new Error('Promotor no encontrado')
+
+        const isValid = await bcrypt.compare(data.current_password, promoter.password)
+        if (!isValid) throw new Error('La contraseña actual no es correcta')
+
+        const hashedPassword = await bcrypt.hash(data.new_password, 10)
+        await prisma.promoters.update({
+            where: { id },
+            data: { password: hashedPassword, dt_updated: new Date().toISOString() },
+        })
+
+        await prisma.promoter_logs.create({
+            data: { id_promotor: id, vc_log: 'Promotor actualizó su contraseña' },
+        })
+    }
+
+    /**
+     * Listado de invitados de un promotor (a quienes activó con su código):
+     * si están activos, cuánto han generado (lo que se les ha pagado como
+     * promotores) y cuánto le ha tocado a él (activador) por cada uno.
+     */
+    async getReferrals(id_activator: number) {
+        const invitees = await prisma.promoters.findMany({
+            where: { id_activator },
+            select: { id: true, name: true, lastname: true, isActive: true, dt_register: true },
+            orderBy: { dt_register: 'desc' },
+        })
+        if (!invitees.length) return []
+
+        const inviteeIds = invitees.map(p => p.id)
+
+        // Lo que cada invitado ha generado como promotor (total pagado/por pagar
+        // a él por sus tareas), uniendo por tarea para mapear a cada invitado.
+        const paymentTasks = await prisma.promoter_payment_tasks.findMany({
+            where: { task: { id_promoter: { in: inviteeIds } } },
+            select: { f_amount: true, task: { select: { id_promoter: true } } },
+        })
+        const generatedByPromoter = new Map<number, number>()
+        for (const pt of paymentTasks) {
+            const idPromoter = pt.task.id_promoter
+            if (!idPromoter) continue
+            generatedByPromoter.set(idPromoter, (generatedByPromoter.get(idPromoter) ?? 0) + Number(pt.f_amount))
+        }
+
+        // Lo que le ha tocado a el activador por cada invitado.
+        const activatorTasks = await prisma.activator_payment_tasks.findMany({
+            where: {
+                id_promoter: { in: inviteeIds },
+                payment: { id_activator },
+            },
+            select: { f_amount: true, id_promoter: true },
+        })
+        const earnedFromInvitee = new Map<number, number>()
+        for (const at of activatorTasks) {
+            earnedFromInvitee.set(at.id_promoter, (earnedFromInvitee.get(at.id_promoter) ?? 0) + Number(at.f_amount))
+        }
+
+        return invitees.map(p => ({
+            id: p.id,
+            name: `${p.name}${p.lastname ? ' ' + p.lastname : ''}`,
+            isActive: p.isActive,
+            dt_register: p.dt_register,
+            generated: generatedByPromoter.get(p.id) ?? 0,
+            earnedForMe: earnedFromInvitee.get(p.id) ?? 0,
+        }))
     }
 
     async updateGeolocation(id: number, latitude: number, longitude: number){

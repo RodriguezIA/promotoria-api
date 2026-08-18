@@ -3,7 +3,10 @@ import { Request, Response } from 'express'
 import { Utils } from '../../core/utils'
 import { Promoter } from './promoter.service'
 import { StorageService } from '../../services/storage.service'
-import { CreatePromoterDTO, LoginPromoterDTO, TokenPromoterPayload, CreatePromoterBankAccountDTO, UpdatePromoterBankAccountDTO } from './promoter.dtos'
+import {
+    CreatePromoterDTO, LoginPromoterDTO, TokenPromoterPayload, CreatePromoterBankAccountDTO,
+    UpdatePromoterBankAccountDTO, UpdatePromoterProfileDTO, UpdatePromoterPasswordDTO,
+} from './promoter.dtos'
 
 
 const promoterService = new Promoter();
@@ -179,6 +182,43 @@ export const getAffiliationCode = async (req: Request, res: Response) => {
     } catch (error) {
         console.log("f.getAffiliationCode error: ", error)
         res.status(500).json({ ok: false, error: 1, data: null, message: 'Error al obtener el código de invitación' })
+    }
+}
+
+export const updatePromoterProfile = async (req: Request, res: Response) => {
+    try {
+        const id_promoter = Number(req.params.id_promoter)
+        const data: UpdatePromoterProfileDTO = req.body
+        const updated = await promoterService.updateProfile(id_promoter, data)
+        res.status(200).json({ ok: true, error: 0, data: updated, message: 'Perfil actualizado exitosamente' })
+    } catch (error) {
+        console.error('f.updatePromoterProfile: ', error)
+        const message = error instanceof Error ? error.message : 'Error al actualizar el perfil'
+        res.status(400).json({ ok: false, error: 1, data: null, message })
+    }
+}
+
+export const updatePromoterPassword = async (req: Request, res: Response) => {
+    try {
+        const id_promoter = Number(req.params.id_promoter)
+        const data: UpdatePromoterPasswordDTO = req.body
+        await promoterService.updatePassword(id_promoter, data)
+        res.status(200).json({ ok: true, error: 0, data: null, message: 'Contraseña actualizada exitosamente' })
+    } catch (error) {
+        console.error('f.updatePromoterPassword: ', error)
+        const message = error instanceof Error ? error.message : 'Error al actualizar la contraseña'
+        res.status(400).json({ ok: false, error: 1, data: null, message })
+    }
+}
+
+export const getPromoterReferrals = async (req: Request, res: Response) => {
+    try {
+        const id_promoter = Number(req.params.id_promoter)
+        const referrals = await promoterService.getReferrals(id_promoter)
+        res.status(200).json({ ok: true, error: 0, data: referrals, message: 'Invitados obtenidos exitosamente' })
+    } catch (error) {
+        console.error('f.getPromoterReferrals: ', error)
+        res.status(500).json({ ok: false, error: 1, data: null, message: 'Error al obtener los invitados' })
     }
 }
 
