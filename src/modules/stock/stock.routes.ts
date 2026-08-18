@@ -1,7 +1,7 @@
 import { Router } from 'express'
 
 import { authMiddleware, validateBody, validateParams } from '../../core/middleware'
-import { setStockMinimum, getStockMinimumsByStore, getStockMapData, bulkAssignStockMinimum, countStockMatchingStores } from './stock.controller'
+import { setStockMinimum, getStockMinimumsByStore, getStockMapData, bulkAssignStockMinimum, countStockMatchingStores, getStockMatchingStores } from './stock.controller'
 import { setStockMinimumSchema, storeIdParamSchema, bulkAssignStockMinimumSchema } from './stock.schema'
 
 const stockRouter = Router()
@@ -19,6 +19,7 @@ stockRouter.get('/minimums/:id_store', authMiddleware, validateParams(storeIdPar
 // que cumplan un filtro de cadena/estado/municipios (sin tener que entrar
 // tienda por tienda desde el mapa).
 stockRouter.get('/minimums/matching-stores/count', authMiddleware, countStockMatchingStores)
+stockRouter.get('/minimums/matching-stores', authMiddleware, getStockMatchingStores)
 stockRouter.post('/minimums/bulk-assign', authMiddleware, validateBody(bulkAssignStockMinimumSchema), bulkAssignStockMinimum)
 
 export default stockRouter

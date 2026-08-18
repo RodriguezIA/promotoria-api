@@ -88,3 +88,22 @@ export const countStockMatchingStores = async (req: Request, res: Response) => {
         res.status(500).json({ ok: false, error: 1, data: null, message: 'Error al contar las tiendas' })
     }
 }
+
+export const getStockMatchingStores = async (req: Request, res: Response) => {
+    try {
+        const { id_channels, id_state, id_municipios, id_products } = req.query
+        const parseIds = (v: unknown) => Array.isArray(v) ? v.map(Number) : (v ? [Number(v)] : undefined)
+
+        const stores = await stockService.getMatchingStores({
+            id_channels: parseIds(id_channels),
+            id_state: id_state ? Number(id_state) : undefined,
+            id_municipios: parseIds(id_municipios),
+            id_products: parseIds(id_products),
+        })
+
+        res.status(200).json({ ok: true, error: 0, data: stores, message: 'Tiendas obtenidas exitosamente' })
+    } catch (error) {
+        console.error('f.getStockMatchingStores: ', error)
+        res.status(500).json({ ok: false, error: 1, data: null, message: 'Error al obtener las tiendas' })
+    }
+}

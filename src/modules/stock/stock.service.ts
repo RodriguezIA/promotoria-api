@@ -127,6 +127,76 @@ export class Stock {
     }
 
     /**
+     * Lista (no solo cuenta) de tiendas que cumplen el filtro, cada una con
+     * cuantos de los productos seleccionados ya tienen minimo configurado
+     * ahi. Para que el cliente sepa, al volver a entrar, cuales tiendas ya
+     * toco y cuales le faltan.
+     */
+    async getMatchingStores(input: {
+        id_channels?: number[]
+        id_state?: number
+        id_municipios?: number[]
+        id_products?: number[]
+    }) {
+        const matchingStores = await prisma.stores.findMany({
+            where: {
+                i_status: 1,
+                ...(input.id_channels && input.id_channels.length > 0
+                    ? { id_channel_sale: { in: input.id_channels } }
+                    : {}),
+            },
+            select: { id_store: true, name: true, sales_channel: { select: { name: true } } },
+        })
+        const storeIds = matchingStores.map(s => s.id_store)
+        if (storeIds.length === 0) return []
+
+        const addresses = await prisma.addresses.findMany({
+            where: {
+                entity_type: 'store',
+                entity_id: { in: storeIds },
+                is_active: true,
+                ...(input.id_state ? { id_state: input.id_state } : {}),
+                ...(input.id_municipios && input.id_municipios.length > 0
+                    ? { id_city: { in: input.id_municipios } }
+                    : {}),
+            },
+            include: { city: { select: { name: true } } },
+        })
+        const addressByStore = new Map(addresses.map(a => [a.entity_id, a]))
+        const finalStoreIds = addresses.map(a => a.entity_id)
+        if (finalStoreIds.length === 0) return []
+
+        const existingMinimums = input.id_products && input.id_products.length > 0
+            ? await prisma.product_stock_minimums.findMany({
+                where: { id_store: { in: finalStoreIds }, id_product: { in: input.id_products } },
+                select: { id_store: true, id_product: true },
+            })
+            : []
+        const minimumsByStore = new Map<number, Set<number>>()
+        for (const m of existingMinimums) {
+            if (!minimumsByStore.has(m.id_store)) minimumsByStore.set(m.id_store, new Set())
+            minimumsByStore.get(m.id_store)!.add(m.id_product)
+        }
+
+        const totalProducts = input.id_products?.length ?? 0
+
+        return matchingStores
+            .filter(s => finalStoreIds.includes(s.id_store))
+            .map(s => {
+                const address = addressByStore.get(s.id_store)
+                const withMinimum = minimumsByStore.get(s.id_store)?.size ?? 0
+                return {
+                    id_store: s.id_store,
+                    name: s.name,
+                    channel_name: s.sales_channel?.name ?? null,
+                    municipio_name: address?.city?.name ?? null,
+                    products_with_minimum: withMinimum,
+                    products_total: totalProducts,
+                }
+            })
+    }
+
+    /**
      * Semaforo por producto en una tienda: rojo si esta por debajo del
      * minimo, amarillo si esta a 20% o menos de distancia del minimo (le
      * falta poco para llegar), verde si esta bien surtida. Si no hay lectura
