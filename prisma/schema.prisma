@@ -255,6 +255,11 @@ model promoters {
   dt_updated    DateTime  @default(now()) @db.Timestamp(0)
   dt_last_login DateTime? @db.DateTime(0)
   isActive      Boolean   @default(true)
+  /// Baja de cuenta solicitada por el promotor (borrado hibrido, requisito
+  /// de Google Play). El telefono NO se borra para conservar el
+  /// identificador historico y la integridad contable de tareas/pagos ya
+  /// realizados; en su lugar, se marca esta fecha y se revocan sus sesiones.
+  dt_deleted    DateTime? @db.Timestamp(0)
   latitude      Decimal?  @db.Decimal(10, 8)
   longitude     Decimal?  @db.Decimal(11, 8)
   vc_referral_code String? @unique(map: "uq_promoters_referral_code") @db.VarChar(20)
@@ -850,8 +855,12 @@ model promoter_bank_accounts {
   id_promoter         Int                   @db.UnsignedInt
   account_holder_name String                @db.VarChar(255)
   account_type        promoter_account_type
-  clabe               String?               @db.VarChar(18)
-  card_number         String?               @db.VarChar(20)
+  /// Cifrado con AES-256-GCM (ver EncryptionService). Nunca se guarda en
+  /// texto plano. Formato: "iv:authTag:cipherText".
+  clabe               String?               @db.Text
+  /// Cifrado con AES-256-GCM (ver EncryptionService). Nunca se guarda en
+  /// texto plano. Formato: "iv:authTag:cipherText".
+  card_number         String?               @db.Text
   bank_name           String                @db.VarChar(255)
   dt_register         DateTime              @default(now()) @db.Timestamp(0)
   dt_updated          DateTime              @default(now()) @updatedAt @db.Timestamp(0)

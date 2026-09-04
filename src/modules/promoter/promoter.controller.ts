@@ -222,6 +222,39 @@ export const getPromoterReferrals = async (req: Request, res: Response) => {
     }
 }
 
+/**
+ * Borrado hibrido, desde dentro de la app (usuario autenticado). Requisito
+ * de Google Play: borra fisicamente las cuentas bancarias y da de baja la
+ * cuenta del promotor (ver promoterService.deleteAccount para el detalle).
+ */
+export const deletePromoterAccount = async (req: Request, res: Response) => {
+    try {
+        const id_promoter = Number(req.params.id_promoter)
+        await promoterService.deleteAccount(id_promoter)
+        res.status(200).json({ ok: true, error: 0, data: null, message: 'Tu cuenta fue eliminada exitosamente' })
+    } catch (error) {
+        console.error('f.deletePromoterAccount: ', error)
+        res.status(500).json({ ok: false, error: 1, data: null, message: 'Error al eliminar la cuenta' })
+    }
+}
+
+/**
+ * Borrado hibrido desde la pagina publica de eliminacion de cuenta (sin
+ * sesion iniciada, requisito de Google Play). Se identifica al usuario por
+ * su numero de celular en vez de por token.
+ */
+export const requestAccountDeletionByPhone = async (req: Request, res: Response) => {
+    try {
+        const { phone, password } = req.body
+        await promoterService.deleteAccountByPhone(phone, password)
+        res.status(200).json({ ok: true, error: 0, data: null, message: 'La cuenta fue eliminada exitosamente' })
+    } catch (error) {
+        const message = error instanceof Error ? error.message : 'Error al eliminar la cuenta'
+        console.error('f.requestAccountDeletionByPhone: ', error)
+        res.status(400).json({ ok: false, error: 1, data: null, message })
+    }
+}
+
 export const updateFcmToken = async (req: Request, res: Response) => {
     try {
         const id_promoter = Number(req.params.id_promoter)

@@ -72,6 +72,11 @@ export const updatePromoterPasswordSchema = z.object({
   new_password: z.string().min(6, 'new_password debe tener al menos 6 caracteres'),
 });
 
+export const requestAccountDeletionSchema = z.object({
+  phone: z.string().min(1, 'El número de celular es requerido'),
+  password: z.string().min(1, 'La contraseña es requerida'),
+});
+
 export const promoterIdParamSchema = z.object({
   id_promoter: z.string().regex(/^\d+$/, 'id_promoter debe ser un número'),
 });

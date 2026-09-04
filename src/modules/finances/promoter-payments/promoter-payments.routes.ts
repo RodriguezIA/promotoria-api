@@ -8,6 +8,7 @@ import {
     getPromoterPaymentById,
     submitPromoterPayment,
     updatePromoterPaymentStatus,
+    revealBankAccount,
 } from './promoter-payments.controller'
 import { generatePaymentsSchema, updatePaymentPaymentSchema, updatePaymentStatusSchema } from './promoter-payments.schema'
 
@@ -76,6 +77,28 @@ promoterPaymentsRouter.post('/preview', authMiddleware, requireRole(ROLES.SUPER)
  */
 promoterPaymentsRouter.post('/', authMiddleware, requireRole(ROLES.SUPER), validateBody(generatePaymentsSchema), generatePromoterPayments)
 promoterPaymentsRouter.get('/', authMiddleware, requireRole(ROLES.SUPER), getAllPromoterPayments)
+
+/**
+ * @openapi
+ * /finances/promoter-payments/bank-accounts/{id_account}/reveal:
+ *   get:
+ *     tags: [Finances]
+ *     summary: Descifra el numero completo de una cuenta bancaria, exclusivamente para hacer la transferencia manual. Restringido a Admin/Finanzas y queda auditado.
+ *     parameters:
+ *       - in: path
+ *         name: id_account
+ *         required: true
+ *         schema: { type: integer }
+ *     responses:
+ *       200: { description: "Cuenta bancaria con el número completo descifrado." }
+ *       401: { $ref: '#/components/responses/Unauthorized' }
+ *       403: { description: "Rol sin permiso para ver datos financieros completos." }
+ *       404: { description: "Cuenta no encontrada." }
+ */
+// Va ANTES de '/:id_payment' a proposito: si no, Express confunde
+// "bank-accounts" con un id_payment y esta ruta nunca se alcanza (mismo
+// error que ya tuvimos con /minimums/matching-stores en el modulo de stock).
+promoterPaymentsRouter.get('/bank-accounts/:id_account/reveal', authMiddleware, requireRole(ROLES.SUPER, ROLES.ADMIN), revealBankAccount)
 
 /**
  * @openapi

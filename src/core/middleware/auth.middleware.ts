@@ -1,5 +1,6 @@
 import { Request, Response, NextFunction } from "express";
 import { Utils, TokenPayload } from '../../core/utils';
+import { prisma } from '../prisma';
 
 declare global {
     namespace Express {
@@ -37,6 +38,29 @@ export const authMiddleware = async (req: Request, res: Response, next: NextFunc
       const token = authHeader.split(' ')[1];
 
       const decoded = await Utils.verify_token(token);
+
+      // Los tokens de promotor son JWT sin registro en servidor (no hay
+      // tabla de sesiones), asi que no se pueden "apagar" antes de su
+      // expiracion (30-90 dias) por si solos. Para cumplir con el requisito
+      // de revocar la sesion al eliminar la cuenta, verificamos aqui mismo
+      // si el promotor ya solicito su baja (dt_deleted) y, de ser asi,
+      // rechazamos la peticion aunque el JWT siga siendo tecnicamente
+      // valido. Se detecta un token de promotor porque trae "phone" (los
+      // tokens de usuarios del panel no traen ese campo).
+      if ((decoded as any)?.phone && (decoded as any)?.id) {
+        const promoter = await prisma.promoters.findUnique({
+          where: { id: (decoded as any).id },
+          select: { dt_deleted: true },
+        })
+        if (promoter?.dt_deleted) {
+          res.status(401).json({
+            ok: false,
+            data: null,
+            message: 'Esta cuenta fue eliminada. Inicia sesión con una cuenta activa.'
+          });
+          return;
+        }
+      }
 
       req.user = decoded;
 

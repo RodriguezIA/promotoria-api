@@ -1,5 +1,6 @@
 import bcrypt from 'bcrypt'
 import { prisma } from '../../core/prisma'
+import { EncryptionService } from '../../services/encryption.service'
 
 import {
     CreatePromoterDTO, CreatePromoterBankAccountDTO, UpdatePromoterBankAccountDTO,
@@ -316,41 +317,79 @@ export class Promoter {
     }
 
     async createBankAccount(id_promoter: number, data: CreatePromoterBankAccountDTO) {
-        return await prisma.promoter_bank_accounts.create({
+        const created = await prisma.promoter_bank_accounts.create({
             data: {
                 id_promoter,
                 account_holder_name: data.account_holder_name,
                 account_type: data.account_type,
-                clabe: data.account_type === 'CLABE' ? data.clabe : null,
-                card_number: data.account_type === 'CARD' ? data.card_number : null,
+                // Nunca se guarda el numero en texto plano; se cifra con AES-256
+                // antes de tocar la base de datos.
+                clabe: data.account_type === 'CLABE' ? EncryptionService.encrypt(data.clabe) : null,
+                card_number: data.account_type === 'CARD' ? EncryptionService.encrypt(data.card_number) : null,
                 bank_name: data.bank_name,
             },
         })
+        return this.maskBankAccount(created)
+    }
+
+    /**
+     * Nunca regresa el numero completo: solo los ultimos 4 digitos. Para
+     * ver el numero completo hay que usar revealBankAccount, que esta
+     * restringido a roles de Admin/Finanzas y queda auditado.
+     */
+    private maskBankAccount<T extends { clabe: string | null; card_number: string | null }>(account: T) {
+        return {
+            ...account,
+            clabe: account.clabe ? EncryptionService.decryptToMasked(account.clabe) : null,
+            card_number: account.card_number ? EncryptionService.decryptToMasked(account.card_number) : null,
+        }
     }
 
     async getBankAccountsByPromoter(id_promoter: number) {
-        return await prisma.promoter_bank_accounts.findMany({
+        const accounts = await prisma.promoter_bank_accounts.findMany({
             where: { id_promoter, dt_deleted: null },
             orderBy: { dt_register: 'desc' },
         })
+        return accounts.map(a => this.maskBankAccount(a))
     }
 
     async getBankAccountById(id: number, id_promoter: number) {
-        return await prisma.promoter_bank_accounts.findFirst({
+        const account = await prisma.promoter_bank_accounts.findFirst({
             where: { id, id_promoter, dt_deleted: null },
         })
+        return account ? this.maskBankAccount(account) : null
     }
 
     async updateBankAccount(id: number, data: UpdatePromoterBankAccountDTO) {
-        return await prisma.promoter_bank_accounts.update({
+        const updated = await prisma.promoter_bank_accounts.update({
             where: { id },
             data: {
                 ...data,
+                // Si mandan un numero nuevo, se cifra; si no lo mandan, no se toca.
+                ...(data.clabe !== undefined ? { clabe: EncryptionService.encrypt(data.clabe) } : {}),
+                ...(data.card_number !== undefined ? { card_number: EncryptionService.encrypt(data.card_number) } : {}),
                 ...(data.account_type === 'CLABE' ? { card_number: null } : {}),
                 ...(data.account_type === 'CARD' ? { clabe: null } : {}),
                 dt_updated: new Date(),
             },
         })
+        return this.maskBankAccount(updated)
+    }
+
+    /**
+     * Regresa el numero COMPLETO, descifrado. Solo debe llamarse desde un
+     * endpoint protegido por rol de Admin/Finanzas, y quien la use debe
+     * registrar la consulta en la bitacora (ver
+     * finances/promoter-payments para el endpoint real).
+     */
+    async revealBankAccount(id: number) {
+        const account = await prisma.promoter_bank_accounts.findFirst({ where: { id, dt_deleted: null } })
+        if (!account) return null
+        return {
+            ...account,
+            clabe: EncryptionService.decrypt(account.clabe),
+            card_number: EncryptionService.decrypt(account.card_number),
+        }
     }
 
     async softDeleteBankAccount(id: number) {
@@ -358,6 +397,43 @@ export class Promoter {
             where: { id },
             data: { dt_deleted: new Date() },
         })
+    }
+
+    /**
+     * Borrado hibrido de cuenta (requisito de Google Play):
+     * 1. Hard delete: borra FISICAMENTE las cuentas bancarias del promotor
+     *    (el dato financiero no debe seguir existiendo en la BD).
+     * 2. Soft delete: marca al promotor como eliminado (dt_deleted) e
+     *    invalida isActive, PERO conserva su telefono para no romper el
+     *    identificador historico ni la integridad contable de tareas/pagos
+     *    ya realizados. authMiddleware revisa dt_deleted y rechaza
+     *    cualquier token de este promotor de aqui en adelante.
+     */
+    async deleteAccount(id_promoter: number) {
+        await prisma.$transaction(async (tx) => {
+            await tx.promoter_bank_accounts.deleteMany({ where: { id_promoter } })
+            await tx.promoters.update({
+                where: { id: id_promoter },
+                data: { dt_deleted: new Date(), isActive: false },
+            })
+        })
+    }
+
+    /**
+     * Version del borrado hibrido usada por la pagina publica de
+     * eliminacion de cuenta (sin sesion iniciada en la app): pide telefono +
+     * contraseña, igual que un login, para evitar que cualquiera borre la
+     * cuenta de otra persona con solo saber su numero de celular.
+     */
+    async deleteAccountByPhone(phone: string, password: string) {
+        const promoter = await prisma.promoters.findUnique({ where: { phone } })
+        if (!promoter) throw new Error('No se encontró ninguna cuenta con ese número de celular')
+        if (promoter.dt_deleted) throw new Error('Esta cuenta ya fue eliminada anteriormente')
+
+        const isValid = await bcrypt.compare(password, promoter.password)
+        if (!isValid) throw new Error('La contraseña no es correcta')
+
+        await this.deleteAccount(promoter.id)
     }
 
     // async updatePromoterImage(id: number, imageUrl: string) {

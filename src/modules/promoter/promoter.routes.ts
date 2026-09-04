@@ -10,7 +10,7 @@ import {
   updatePromoterBankAccount, deletePromoterBankAccount, getPromoterById,
   updateFcmToken, updatePromoterLocation, refreshPromoterToken, getAffiliationCode,
   updatePromoterImage, checkPhone, updatePromoterProfile, updatePromoterPassword,
-  getPromoterReferrals,
+  getPromoterReferrals, deletePromoterAccount, requestAccountDeletionByPhone,
 } from './promoter.controller'
 
 import {
@@ -18,6 +18,7 @@ import {
   createPromoterBankAccountSchema, updatePromoterBankAccountSchema,
   promoterIdParamSchema, bankAccountIdParamSchema, updateFcmTokenSchema,
   updatePromoterLocationSchema, updatePromoterProfileSchema, updatePromoterPasswordSchema,
+  requestAccountDeletionSchema,
 } from './promoter.schema'
 
 const promoterRouter = Router()
@@ -28,6 +29,12 @@ promoterRouter.get('/check-phone/:phone', checkPhone)
 promoterRouter.post('/login', loginPromoter)
 promoterRouter.post('/refresh-token', refreshPromoterToken)
 promoterRouter.put('/update-location', validateBody(updateLocationPromoterSchema), updateLocationPromoter)
+
+// Eliminacion de cuenta SIN sesion iniciada, para la pagina web publica que
+// exige Google Play. Va antes de '/:id' para que Express no la confunda con
+// un id de promotor.
+promoterRouter.post('/request-deletion', validateBody(requestAccountDeletionSchema), requestAccountDeletionByPhone)
+
 promoterRouter.get('/:id', authMiddleware, getPromoterById)
 
 // Sincroniza el FCM token fuera del login (rotación de token, reinstalación, etc.)
@@ -76,5 +83,9 @@ promoterRouter.put('/:id_promoter/bank-accounts/:id_account',
 
 promoterRouter.delete('/:id_promoter/bank-accounts/:id_account',
   authMiddleware, validateParams(bankAccountIdParamSchema), deletePromoterBankAccount)
+
+// Borrado hibrido de la cuenta, con sesion iniciada (boton dentro de la app).
+promoterRouter.delete('/:id_promoter/account',
+  authMiddleware, validateParams(promoterIdParamSchema), deletePromoterAccount)
 
 export default promoterRouter

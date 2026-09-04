@@ -2,8 +2,11 @@ import { Request, Response } from 'express'
 import { PromoterPayments } from './promoter-payments.service'
 import { StorageService } from '../../../services/storage.service'
 import { GeneratePaymentsDTO, PaymentFiltersDTO, UpdatePaymentPaymentDTO } from './promoter-payments.dto'
+import { Promoter } from '../../promoter/promoter.service'
+import { prisma } from '../../../core/prisma'
 
 const promoterPaymentsService = new PromoterPayments()
+const promoterService = new Promoter()
 
 function parseNumber(value: any): number | undefined {
     if (value === undefined || value === null || value === '') return undefined
@@ -129,5 +132,37 @@ export const updatePromoterPaymentStatus = async (req: Request, res: Response) =
     } catch (error) {
         console.error('UPDATE PROMOTER PAYMENT STATUS ERROR:', (error as any).message)
         res.status(409).json({ ok: false, error: 1, data: null, message: (error as any).message || 'Error al cancelar el pago', error_backend: error })
+    }
+}
+
+/**
+ * Descifrado bajo demanda del numero de cuenta/tarjeta completo, SOLO para
+ * hacer la transferencia manual del pago. Restringido a Admin/Finanzas
+ * (ver rutas) y queda registrado en bitacora (quien, que cuenta, cuando) —
+ * requisito de auditoria de Google Play.
+ */
+export const revealBankAccount = async (req: Request, res: Response) => {
+    try {
+        const id_account = Number(req.params.id_account)
+        const revealed = await promoterService.revealBankAccount(id_account)
+
+        if (!revealed) {
+            res.status(404).json({ ok: false, error: 1, data: null, message: 'Cuenta bancaria no encontrada' })
+            return
+        }
+
+        const id_user = req.user!.id
+        const last4 = (revealed.clabe || revealed.card_number || '').slice(-4)
+        await prisma.user_logs.create({
+            data: {
+                id_user,
+                log: `Consultó el número completo de la cuenta bancaria #${id_account} del promotor #${revealed.id_promoter} (terminación ${last4}), para realizar una transferencia manual.`,
+            },
+        })
+
+        res.status(200).json({ ok: true, error: 0, data: revealed, message: 'Cuenta obtenida exitosamente' })
+    } catch (error) {
+        console.error('REVEAL BANK ACCOUNT ERROR:', (error as any).message)
+        res.status(500).json({ ok: false, error: 1, data: null, message: 'Error al obtener la cuenta bancaria' })
     }
 }
