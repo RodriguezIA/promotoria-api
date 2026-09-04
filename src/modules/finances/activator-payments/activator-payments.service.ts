@@ -1,6 +1,7 @@
 import { prisma } from '../../../core/prisma'
 import { generateFolio } from '../../../services/folio.service'
 import { ACTIVATOR_PAYMENT_STATUS } from '../finances.constants'
+import { EncryptionService } from '../../../services/encryption.service'
 import {
     GenerateActivatorPaymentsDTO,
     ActivatorPaymentFiltersDTO,
@@ -223,12 +224,25 @@ export class ActivatorPayments {
         })
         if (!payment) return null
 
+        // Igual que en promoter-payments: las cuentas se guardan cifradas y
+        // nunca se exponen completas aqui, solo los ultimos 4 digitos. El
+        // numero completo se obtiene aparte, bajo demanda y auditado, via
+        // /finances/promoter-payments/bank-accounts/:id/reveal.
+        const maskedActivator = {
+            ...payment.activator,
+            promoter_bank_accounts: payment.activator.promoter_bank_accounts.map(acc => ({
+                ...acc,
+                clabe: acc.clabe ? EncryptionService.decryptToMasked(acc.clabe) : null,
+                card_number: acc.card_number ? EncryptionService.decryptToMasked(acc.card_number) : null,
+            })),
+        }
+
         const [evidences, logs] = await Promise.all([
             prisma.assets.findMany({ where: { entity_type: 'promoter_payment', entity_id: id_payment, is_active: true } }),
             prisma.activator_payment_logs.findMany({ where: { id_payment }, orderBy: { dt_register: 'desc' } })
         ])
 
-        return { ...payment, evidences, logs }
+        return { ...payment, activator: maskedActivator, evidences, logs }
     }
 
     async submitPayment(id_payment: number, data: UpdateActivatorPaymentPaymentDTO, id_user: number) {

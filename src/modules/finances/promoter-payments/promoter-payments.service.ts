@@ -2,6 +2,7 @@ import { prisma } from '../../../core/prisma'
 import { generateFolio } from '../../../services/folio.service'
 import { PROMOTER_PAYMENT_STATUS } from '../finances.constants'
 import { GeneratePaymentsDTO, PaymentFiltersDTO, UpdatePaymentPaymentDTO } from './promoter-payments.dto'
+import { EncryptionService } from '../../../services/encryption.service'
 
 interface EligibleTask {
   id_task: number
@@ -184,12 +185,26 @@ export class PromoterPayments {
         })
         if (!payment) return null
 
+        // Las cuentas bancarias se guardan cifradas (AES-256); nunca se
+        // exponen completas aqui. Solo los ultimos 4 digitos. El numero
+        // completo se obtiene aparte, bajo demanda, via el endpoint
+        // /bank-accounts/:id/reveal (auditado), justo antes de hacer la
+        // transferencia manual.
+        const maskedPromoter = {
+            ...payment.promoter,
+            promoter_bank_accounts: payment.promoter.promoter_bank_accounts.map(acc => ({
+                ...acc,
+                clabe: acc.clabe ? EncryptionService.decryptToMasked(acc.clabe) : null,
+                card_number: acc.card_number ? EncryptionService.decryptToMasked(acc.card_number) : null,
+            })),
+        }
+
         const [evidences, logs] = await Promise.all([
             prisma.assets.findMany({ where: { entity_type: 'promoter_payment', entity_id: id_payment, is_active: true } }),
             prisma.promoter_payment_logs.findMany({ where: { id_payment }, orderBy: { dt_register: 'desc' } })
         ])
 
-        return { ...payment, evidences, logs }
+        return { ...payment, promoter: maskedPromoter, evidences, logs }
     }
 
     async submitPayment(id_payment: number, data: UpdatePaymentPaymentDTO, id_user: number) {
