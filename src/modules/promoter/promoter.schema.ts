@@ -10,6 +10,9 @@ export const createPromoterSchema = z.object({
   latitude: z.number().optional(),
   longitude: z.number().optional(),
   referral_code: z.string().optional(),
+  accepted_terms: z.boolean().refine((val) => val === true, {
+    message: 'Debes aceptar los Términos y el Aviso de Privacidad para registrarte',
+  }),
 });
 
 export const loginPromoterSchema = z.object({

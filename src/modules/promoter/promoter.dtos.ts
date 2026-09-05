@@ -24,6 +24,7 @@ export interface CreatePromoterDTO {
     latitude?: number
     longitude?: number
     referral_code?: string
+    accepted_terms: boolean
 }
 
 export interface LoginPromoterDTO {

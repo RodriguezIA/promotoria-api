@@ -255,6 +255,11 @@ model promoters {
   dt_updated    DateTime  @default(now()) @db.Timestamp(0)
   dt_last_login DateTime? @db.DateTime(0)
   isActive      Boolean   @default(true)
+  /// Fecha en que el promotor acepto los Terminos y Condiciones / Aviso de
+  /// Privacidad al registrarse. Sirve como evidencia real de consentimiento
+  /// (no basta con un checkbox visual del lado del cliente que se pueda
+  /// evadir); se exige y valida del lado del servidor en createPromoter.
+  dt_terms_accepted DateTime? @db.Timestamp(0)
   /// Baja de cuenta solicitada por el promotor (borrado hibrido, requisito
   /// de Google Play). El telefono NO se borra para conservar el
   /// identificador historico y la integridad contable de tareas/pagos ya

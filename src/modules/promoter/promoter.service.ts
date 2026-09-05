@@ -42,6 +42,10 @@ export class Promoter {
                     latitude: data.latitude,
                     longitude: data.longitude,
                     id_activator,
+                    // El schema de validacion exige accepted_terms === true para
+                    // llegar hasta aqui; guardamos la fecha real como evidencia
+                    // de consentimiento (requisito de privacidad/Google Play).
+                    dt_terms_accepted: new Date(),
                     dt_register: new Date().toISOString(),
                     dt_updated: new Date().toISOString()
                 }
