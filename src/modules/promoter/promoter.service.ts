@@ -542,13 +542,16 @@ export class Promoter {
                 data: {
                     dt_deleted: new Date(),
                     isActive: false,
-                    // Le agregamos un prefijo al telefono en vez de borrarlo o
-                    // dejarlo igual: asi el numero real queda libre para que
-                    // la persona pueda volver a registrarse despues (el
-                    // telefono es unico en la tabla), pero el dato historico
-                    // sigue ahi, recuperable, para no romper la integridad
-                    // contable de tareas/pagos ya asociados a este id.
-                    phone: `eliminado_${Date.now()}_${promoter.phone}`,
+                    // La columna phone es VARCHAR(20) (los numeros reales ya
+                    // usan casi todo ese espacio), asi que no cabe un
+                    // telefono real + un prefijo/sufijo legible. En vez de
+                    // eso liberamos el numero con un valor corto y unico
+                    // (id + fecha en base36) — el numero original queda
+                    // disponible para volver a registrarse, y la identidad
+                    // historica se conserva por el id_promoter (no cambia),
+                    // que es lo que realmente usan las tareas/pagos ya
+                    // asociados a esta cuenta.
+                    phone: `del_${id_promoter}_${Date.now().toString(36)}`,
                 },
             })
         })
