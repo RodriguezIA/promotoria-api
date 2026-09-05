@@ -532,11 +532,24 @@ export class Promoter {
      *    cualquier token de este promotor de aqui en adelante.
      */
     async deleteAccount(id_promoter: number) {
+        const promoter = await prisma.promoters.findUnique({ where: { id: id_promoter }, select: { phone: true } })
+        if (!promoter) throw new Error('Promotor no encontrado')
+
         await prisma.$transaction(async (tx) => {
             await tx.promoter_bank_accounts.deleteMany({ where: { id_promoter } })
             await tx.promoters.update({
                 where: { id: id_promoter },
-                data: { dt_deleted: new Date(), isActive: false },
+                data: {
+                    dt_deleted: new Date(),
+                    isActive: false,
+                    // Le agregamos un prefijo al telefono en vez de borrarlo o
+                    // dejarlo igual: asi el numero real queda libre para que
+                    // la persona pueda volver a registrarse despues (el
+                    // telefono es unico en la tabla), pero el dato historico
+                    // sigue ahi, recuperable, para no romper la integridad
+                    // contable de tareas/pagos ya asociados a este id.
+                    phone: `eliminado_${Date.now()}_${promoter.phone}`,
+                },
             })
         })
     }
