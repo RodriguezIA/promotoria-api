@@ -112,11 +112,15 @@ export const loginPromoter = async(req: Request, res: Response) => {
 
     } catch (error) {
         console.log("f.loginPromoter error: ", error)
-        res.status(500).json({
+        const message = error instanceof Error ? error.message : "Error al iniciar sesión del promotor"
+        // Si la cuenta fue eliminada, mandamos un mensaje claro y estatus
+        // 403 en vez del generico 500, para que la app lo muestre tal cual.
+        const isDeletedAccount = message.includes('Esta cuenta fue eliminada')
+        res.status(isDeletedAccount ? 403 : 500).json({
             ok: false,
             error: 1,
             data: null,
-            message: "Error al iniciar sesión del promotor",
+            message: isDeletedAccount ? message : "Error al iniciar sesión del promotor",
         })
     }
 }

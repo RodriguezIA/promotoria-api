@@ -423,6 +423,13 @@ export class Promoter {
         const isValid = await bcrypt.compare(plainPassword, promoter.password);
         if (!isValid) return null;
 
+        // No dejamos que una cuenta ya eliminada "entre" a medias (login
+        // exitoso pero rechazada en la siguiente peticion por
+        // authMiddleware) — mejor un mensaje claro desde el login mismo.
+        if (promoter.dt_deleted) {
+            throw new Error('Esta cuenta fue eliminada. Regístrate de nuevo si quieres volver a usar Promotoria.')
+        }
+
         const asset = await prisma.assets.findFirst({
             where: { entity_type: 'promoter', entity_id: promoter.id, is_active: true },
             select: { vc_url: true },
