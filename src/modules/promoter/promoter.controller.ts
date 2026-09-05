@@ -255,6 +255,57 @@ export const requestAccountDeletionByPhone = async (req: Request, res: Response)
     }
 }
 
+/**
+ * "Olvidé mi contraseña", paso 1: manda un codigo de 6 digitos por correo.
+ */
+export const forgotPromoterPassword = async (req: Request, res: Response) => {
+    try {
+        const { phone } = req.body
+        const result = await promoterService.forgotPassword(phone)
+        res.status(200).json({
+            ok: true, error: 0, data: result,
+            message: `Te mandamos un código a ${result.maskedEmail}`,
+        })
+    } catch (error) {
+        const message = error instanceof Error ? error.message : 'Error al solicitar el código'
+        console.error('f.forgotPromoterPassword: ', error)
+        res.status(400).json({ ok: false, error: 1, data: null, message })
+    }
+}
+
+/**
+ * "Olvidé mi contraseña", paso 2: valida el codigo y cambia la contraseña.
+ */
+export const resetPromoterPasswordWithCode = async (req: Request, res: Response) => {
+    try {
+        const { phone, code, new_password } = req.body
+        await promoterService.resetPasswordWithCode(phone, code, new_password)
+        res.status(200).json({ ok: true, error: 0, data: null, message: 'Contraseña actualizada exitosamente' })
+    } catch (error) {
+        const message = error instanceof Error ? error.message : 'Error al restablecer la contraseña'
+        console.error('f.resetPromoterPasswordWithCode: ', error)
+        res.status(400).json({ ok: false, error: 1, data: null, message })
+    }
+}
+
+/**
+ * Respaldo para Admin/Finanzas: restablece la contraseña de un promotor sin
+ * correo registrado, y regresa la contraseña temporal para que el admin se
+ * la comparta por otro medio.
+ */
+export const adminResetPromoterPassword = async (req: Request, res: Response) => {
+    try {
+        const id_promoter = Number(req.params.id_promoter)
+        const id_user_admin = req.user!.id
+        const result = await promoterService.adminResetPassword(id_promoter, id_user_admin)
+        res.status(200).json({ ok: true, error: 0, data: result, message: 'Contraseña temporal generada exitosamente' })
+    } catch (error) {
+        const message = error instanceof Error ? error.message : 'Error al restablecer la contraseña'
+        console.error('f.adminResetPromoterPassword: ', error)
+        res.status(400).json({ ok: false, error: 1, data: null, message })
+    }
+}
+
 export const updateFcmToken = async (req: Request, res: Response) => {
     try {
         const id_promoter = Number(req.params.id_promoter)

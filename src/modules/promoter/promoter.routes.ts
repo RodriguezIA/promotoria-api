@@ -2,8 +2,9 @@ import { Router } from 'express'
 
 
 import { upload } from '../../core/middleware/upload.middleware'
-import { authMiddleware, validateBody, validateParams } from '../../core/middleware'
+import { authMiddleware, requireRole, validateBody, validateParams } from '../../core/middleware'
 import { uploadAny } from '../../core/middleware/upload.middleware'
+import { ROLES } from '../../core/constants/status.constants'
 import {
   updateLocationPromoter, createPromoter, loginPromoter, getPromoters,
   getPromoterBankAccounts, createPromoterBankAccount, getPromoterBankAccount,
@@ -11,6 +12,7 @@ import {
   updateFcmToken, updatePromoterLocation, refreshPromoterToken, getAffiliationCode,
   updatePromoterImage, checkPhone, updatePromoterProfile, updatePromoterPassword,
   getPromoterReferrals, deletePromoterAccount, requestAccountDeletionByPhone,
+  forgotPromoterPassword, resetPromoterPasswordWithCode, adminResetPromoterPassword,
 } from './promoter.controller'
 
 import {
@@ -18,7 +20,7 @@ import {
   createPromoterBankAccountSchema, updatePromoterBankAccountSchema,
   promoterIdParamSchema, bankAccountIdParamSchema, updateFcmTokenSchema,
   updatePromoterLocationSchema, updatePromoterProfileSchema, updatePromoterPasswordSchema,
-  requestAccountDeletionSchema,
+  requestAccountDeletionSchema, forgotPromoterPasswordSchema, resetPromoterPasswordWithCodeSchema,
 } from './promoter.schema'
 
 const promoterRouter = Router()
@@ -34,6 +36,11 @@ promoterRouter.put('/update-location', validateBody(updateLocationPromoterSchema
 // exige Google Play. Va antes de '/:id' para que Express no la confunda con
 // un id de promotor.
 promoterRouter.post('/request-deletion', validateBody(requestAccountDeletionSchema), requestAccountDeletionByPhone)
+
+// "Olvide mi contraseña", sin sesion iniciada (el promotor no puede loguearse).
+// Van antes de '/:id' por la misma razon que arriba.
+promoterRouter.post('/forgot-password', validateBody(forgotPromoterPasswordSchema), forgotPromoterPassword)
+promoterRouter.post('/reset-password', validateBody(resetPromoterPasswordWithCodeSchema), resetPromoterPasswordWithCode)
 
 promoterRouter.get('/:id', authMiddleware, getPromoterById)
 
@@ -87,5 +94,11 @@ promoterRouter.delete('/:id_promoter/bank-accounts/:id_account',
 // Borrado hibrido de la cuenta, con sesion iniciada (boton dentro de la app).
 promoterRouter.delete('/:id_promoter/account',
   authMiddleware, validateParams(promoterIdParamSchema), deletePromoterAccount)
+
+// Respaldo para Admin/Finanzas: restablece la contraseña de un promotor sin
+// correo registrado (no puede autoservirse). Regresa una contraseña
+// temporal para que el admin se la comparta por otro medio.
+promoterRouter.post('/:id_promoter/admin-reset-password',
+  authMiddleware, requireRole(ROLES.SUPER, ROLES.ADMIN), validateParams(promoterIdParamSchema), adminResetPromoterPassword)
 
 export default promoterRouter

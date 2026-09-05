@@ -80,6 +80,16 @@ export const requestAccountDeletionSchema = z.object({
   password: z.string().min(1, 'La contraseña es requerida'),
 });
 
+export const forgotPromoterPasswordSchema = z.object({
+  phone: z.string().min(1, 'El número de celular es requerido'),
+});
+
+export const resetPromoterPasswordWithCodeSchema = z.object({
+  phone: z.string().min(1, 'El número de celular es requerido'),
+  code: z.string().length(6, 'El código debe tener 6 dígitos'),
+  new_password: z.string().min(6, 'La nueva contraseña debe tener al menos 6 caracteres'),
+});
+
 export const promoterIdParamSchema = z.object({
   id_promoter: z.string().regex(/^\d+$/, 'id_promoter debe ser un número'),
 });

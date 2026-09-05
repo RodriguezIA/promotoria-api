@@ -255,6 +255,12 @@ model promoters {
   dt_updated    DateTime  @default(now()) @db.Timestamp(0)
   dt_last_login DateTime? @db.DateTime(0)
   isActive      Boolean   @default(true)
+  /// Codigo de 6 digitos + expiracion para "olvide mi contraseña" (se manda
+  /// por correo, ya que el login del promotor es por telefono y no siempre
+  /// tiene correo registrado). Si no tiene correo, no puede autoservirse y
+  /// el admin debe restablecerla desde el panel (ver PromoterDetalle).
+  reset_password_code    String?   @db.VarChar(6)
+  reset_password_expires DateTime? @db.Timestamp(0)
   /// Fecha en que el promotor acepto los Terminos y Condiciones / Aviso de
   /// Privacidad al registrarse. Sirve como evidencia real de consentimiento
   /// (no basta con un checkbox visual del lado del cliente que se pueda

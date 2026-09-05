@@ -1,3 +1,39 @@
+export const getPromoterPasswordResetCodeTemplate = (
+  userName: string,
+  code: string,
+): string => {
+  return `
+    <!DOCTYPE html>
+    <html lang="es">
+    <head>
+      <meta charset="UTF-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <title>Código para restablecer tu contraseña</title>
+      <style>
+        body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px; }
+        .container { background-color: #f4f4f4; border-radius: 10px; padding: 30px; }
+        .header { background-color: #2F7654; color: white; padding: 20px; text-align: center; border-radius: 10px 10px 0 0; }
+        .content { background-color: white; padding: 30px; border-radius: 0 0 10px 10px; }
+        .code { display: block; text-align: center; font-size: 32px; font-weight: bold; letter-spacing: 8px; color: #2F7654; margin: 24px 0; padding: 16px; background: #ECFDF5; border-radius: 8px; }
+        .footer { text-align: center; color: #888; font-size: 12px; margin-top: 20px; }
+      </style>
+    </head>
+    <body>
+      <div class="container">
+        <div class="header"><h1>Promotoria</h1></div>
+        <div class="content">
+          <p>Hola ${userName},</p>
+          <p>Recibimos una solicitud para restablecer la contraseña de tu cuenta de promotor. Usa este código en la app para continuar:</p>
+          <span class="code">${code}</span>
+          <p>Este código expira en 15 minutos. Si tú no solicitaste esto, puedes ignorar este correo — tu contraseña actual sigue funcionando.</p>
+        </div>
+      </div>
+      <div class="footer">Promotoria</div>
+    </body>
+    </html>
+  `
+}
+
 export const getPasswordResetTemplate = (
   userName: string,
   resetLink: string,

@@ -1,6 +1,8 @@
 import bcrypt from 'bcrypt'
 import { prisma } from '../../core/prisma'
 import { EncryptionService } from '../../services/encryption.service'
+import { Utils } from '../../core/utils'
+import { getPromoterPasswordResetCodeTemplate } from '../../docs/emails/auth'
 
 import {
     CreatePromoterDTO, CreatePromoterBankAccountDTO, UpdatePromoterBankAccountDTO,
@@ -176,6 +178,115 @@ export class Promoter {
         await prisma.promoter_logs.create({
             data: { id_promotor: id, vc_log: 'Promotor actualizó su contraseña' },
         })
+    }
+
+    /**
+     * "Olvidé mi contraseña", paso 1: genera un codigo de 6 digitos y lo
+     * manda por correo. El login del promotor es por telefono (no siempre
+     * tiene correo registrado), asi que si no tiene correo no se puede
+     * autoservir — debe pedirle a un admin que se lo restablezca desde el
+     * panel (ver adminResetPassword).
+     */
+    async forgotPassword(phone: string) {
+        const promoter = await prisma.promoters.findUnique({ where: { phone } })
+        if (!promoter) throw new Error('No se encontró ninguna cuenta con ese número de celular')
+        if (!promoter.email) {
+            throw new Error(
+                'Tu cuenta no tiene un correo registrado, así que no podemos mandarte un código. ' +
+                'Pídele a un administrador que te restablezca la contraseña.'
+            )
+        }
+
+        const code = Math.floor(100000 + Math.random() * 900000).toString()
+        const expiresAt = new Date(Date.now() + 15 * 60 * 1000) // 15 minutos
+
+        await prisma.promoters.update({
+            where: { id: promoter.id },
+            data: { reset_password_code: code, reset_password_expires: expiresAt },
+        })
+
+        const emailSent = await Utils.sendEmail(
+            promoter.email,
+            'Código para restablecer tu contraseña',
+            getPromoterPasswordResetCodeTemplate(promoter.name, code),
+        )
+        if (!emailSent) throw new Error('No se pudo enviar el correo con el código')
+
+        // Enmascaramos el correo en la respuesta (ej. "a***@gmail.com") para
+        // no revelar el correo completo a quien solo tenga el telefono.
+        const [user, domain] = promoter.email.split('@')
+        const maskedEmail = `${user.slice(0, 1)}${'*'.repeat(Math.max(user.length - 1, 1))}@${domain}`
+        return { maskedEmail }
+    }
+
+    /**
+     * "Olvidé mi contraseña", paso 2: valida el codigo (y que no haya
+     * expirado) y actualiza la contraseña.
+     */
+    async resetPasswordWithCode(phone: string, code: string, newPassword: string) {
+        const promoter = await prisma.promoters.findUnique({ where: { phone } })
+        if (!promoter) throw new Error('No se encontró ninguna cuenta con ese número de celular')
+
+        if (!promoter.reset_password_code || promoter.reset_password_code !== code) {
+            throw new Error('El código no es correcto')
+        }
+        if (!promoter.reset_password_expires || promoter.reset_password_expires < new Date()) {
+            throw new Error('El código ya expiró, solicita uno nuevo')
+        }
+
+        const hashedPassword = await bcrypt.hash(newPassword, 10)
+        await prisma.promoters.update({
+            where: { id: promoter.id },
+            data: {
+                password: hashedPassword,
+                reset_password_code: null,
+                reset_password_expires: null,
+                dt_updated: new Date().toISOString(),
+            },
+        })
+
+        await prisma.promoter_logs.create({
+            data: { id_promotor: promoter.id, vc_log: 'Contraseña restablecida vía código de recuperación' },
+        })
+    }
+
+    /**
+     * Respaldo para Admin/Finanzas desde el panel: genera una contraseña
+     * temporal nueva para un promotor (util cuando no tiene correo
+     * registrado y no puede autoservirse). El admin debe compartirsela por
+     * el medio que tenga (WhatsApp, llamada, etc.) — no queda mas remedio
+     * ya que no hay correo a donde mandarla.
+     */
+    async adminResetPassword(id_promoter: number, id_user_admin: number) {
+        const promoter = await prisma.promoters.findUnique({ where: { id: id_promoter } })
+        if (!promoter) throw new Error('Promotor no encontrado')
+
+        // Contraseña temporal legible (evita caracteres ambiguos como 0/O, 1/l).
+        const chars = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789'
+        const tempPassword = Array.from({ length: 8 }, () => chars[Math.floor(Math.random() * chars.length)]).join('')
+
+        const hashedPassword = await bcrypt.hash(tempPassword, 10)
+        await prisma.promoters.update({
+            where: { id: id_promoter },
+            data: {
+                password: hashedPassword,
+                reset_password_code: null,
+                reset_password_expires: null,
+                dt_updated: new Date().toISOString(),
+            },
+        })
+
+        await prisma.promoter_logs.create({
+            data: { id_promotor: id_promoter, vc_log: 'Un administrador restableció la contraseña de este promotor' },
+        })
+        await prisma.user_logs.create({
+            data: {
+                id_user: id_user_admin,
+                log: `Restableció la contraseña del promotor #${id_promoter} (${promoter.name}, ${promoter.phone})`,
+            },
+        })
+
+        return { tempPassword }
     }
 
     /**
