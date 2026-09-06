@@ -54,7 +54,7 @@ export class Task {
                 order: { select: { id_order: true, vc_folio: true, f_total: true, id_status: true } },
                 store: { select: { id_store: true, name: true, store_code: true } },
                 promoter: { select: { id: true, name: true, lastname: true, phone: true, email: true } },
-                request: { select: { id_request: true, vc_folio: true, vc_name: true, url_rack_image: true, f_value: true } }
+                request: { select: { id_request: true, vc_folio: true, vc_name: true, url_rack_image: true, f_value: true, b_preorder: true } }
             }
         })
         if (!task) return null
