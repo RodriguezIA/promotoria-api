@@ -4,6 +4,9 @@ export interface CreateRequestDTO {
     vc_name: string;
     f_value: number;
     url_rack_image?: string;
+    /// Extra "Prepedido": si esta activo, el promotor puede levantar un
+    /// pedido con el encargado de la tienda cuando falten piezas.
+    b_preorder?: boolean;
     products?: CreateRequestProductDTO[];
 }
 
@@ -14,6 +17,7 @@ export interface UpdateRequestDTO {
     f_value?: number;
     url_rack_image?: string;
     id_status?: number;
+    b_preorder?: boolean;
     products?: UpdateRequestProductDTO[];
 }
 
@@ -26,6 +30,7 @@ export interface RequestDTO {
     url_rack_image?: string;
     id_status: number;
     b_active: boolean;
+    b_preorder: boolean;
     dt_register: Date;
     dt_update: Date;
 }

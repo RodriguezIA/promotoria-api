@@ -11,6 +11,12 @@ function parseNumber(value: any): number | undefined {
     return isNaN(num) ? undefined : num
 }
 
+function parseBoolean(value: any): boolean | undefined {
+    if (value === undefined || value === null || value === '') return undefined
+    if (typeof value === 'boolean') return value
+    return value === 'true' || value === '1' || value === 1
+}
+
 function parseProducts(value: any): any[] | undefined {
     if (!value) return undefined
     if (Array.isArray(value)) return value
@@ -36,6 +42,7 @@ export const createRequest = async (req: Request, res: Response) => {
             vc_name: body.vc_name,
             f_value: parseNumber(body.f_value)!,
             url_rack_image: body.url_rack_image,
+            b_preorder: parseBoolean(body.b_preorder),
             products,
         }
 
@@ -177,6 +184,7 @@ export const updateRequest = async (req: Request, res: Response) => {
             f_value: parseNumber(body.f_value),
             url_rack_image,
             id_status: parseNumber(body.id_status),
+            b_preorder: parseBoolean(body.b_preorder),
             products,
         }
 

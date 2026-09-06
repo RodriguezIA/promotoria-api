@@ -224,6 +224,7 @@ model products {
   request_products request_products[]
   stock_minimums   product_stock_minimums[]
   stock_readings   store_product_stock[]
+  preorder_items   task_preorder_items[]
 
   @@index([id_client], map: "products_id_client_fkey")
 }
@@ -435,6 +436,10 @@ model requests {
   dt_update        DateTime           @default(now()) @db.Timestamp(0)
   id_status        Int                @default(1)
   b_active         Boolean            @default(true)
+  /// Extra "Prepedido": si esta activo, al terminar su conteo de piezas el
+  /// promotor puede levantar un pedido con el encargado de la tienda por lo
+  /// que le falte contra el minimo configurado, y mandarselo por WhatsApp.
+  b_preorder       Boolean            @default(false)
   url_rack_image   String?            @db.VarChar(500)
   order_items      order_items[]
   order_requests   order_requests[]
@@ -567,6 +572,40 @@ model task_rejections {
   @@index([id_promoter], map: "idx_task_rejections_promoter")
 }
 
+/// Pedido acordado entre el promotor y el encargado/dueño de la tienda,
+/// cuando la solicitud tiene el extra "Prepedido" activado (b_preorder).
+/// Se levanta cuando, tras el conteo de piezas, hay faltante contra el
+/// minimo configurado por el cliente para esa tienda/producto.
+model task_preorders {
+  id_preorder       Int      @id @default(autoincrement()) @db.UnsignedInt
+  id_task           Int      @db.UnsignedInt @unique
+  /// Numero de WhatsApp del encargado/dueño de la tienda (no del cliente
+  /// empresarial) — es a quien se le manda el mensaje con el pedido.
+  manager_whatsapp  String   @db.VarChar(20)
+  /// Firma electronica del encargado/dueño, capturada en pantalla y
+  /// guardada como imagen (ver StorageService).
+  manager_signature String   @db.VarChar(500)
+  /// Fecha en la que el encargado/dueño pidio que le entreguen el pedido.
+  preferred_date    DateTime @db.Date
+  /// 'MAÑANA' o 'TARDE' — turno de entrega preferido.
+  preferred_time    String   @db.VarChar(10)
+  dt_register       DateTime @default(now()) @db.Timestamp(0)
+  task              tasks    @relation(fields: [id_task], references: [id_task])
+  items             task_preorder_items[]
+}
+
+/// Renglones del pedido acordado: cuanto de cada producto se va a surtir.
+model task_preorder_items {
+  id_item     Int             @id @default(autoincrement()) @db.UnsignedInt
+  id_preorder Int             @db.UnsignedInt
+  id_product  Int
+  i_quantity  Int
+  preorder    task_preorders  @relation(fields: [id_preorder], references: [id_preorder])
+  product     products        @relation(fields: [id_product], references: [id_product])
+
+  @@index([id_preorder], map: "idx_preorder_item_preorder")
+}
+
 model tasks {
   id_task              Int        @id @default(autoincrement()) @db.UnsignedInt
   id_order             Int        @db.UnsignedInt
@@ -598,6 +637,7 @@ model tasks {
   charge_tasks         client_charge_tasks[]
   payment_tasks        promoter_payment_tasks[]
   activator_payment_tasks activator_payment_tasks[]
+  preorder             task_preorders?
 
   @@index([id_client], map: "tasks_id_client_fkey")
   @@index([id_order], map: "tasks_id_order_fkey")

@@ -90,6 +90,7 @@ export class Request {
                     vc_name: data.vc_name,
                     f_value,
                     url_rack_image: data.url_rack_image,
+                    b_preorder: data.b_preorder ?? false,
                 }
             })
 
@@ -274,6 +275,7 @@ export class Request {
                     f_value,
                     url_rack_image: data.url_rack_image,
                     id_status: data.id_status,
+                    b_preorder: data.b_preorder,
                     dt_update: new Date(),
                 }
             })

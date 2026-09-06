@@ -1,0 +1,75 @@
+import { Request, Response } from 'express'
+import { Preorder } from './preorder.service'
+
+const preorderService = new Preorder()
+
+export const getPreorderShortfall = async (req: Request, res: Response) => {
+    try {
+        const id_task = Number(req.params.id_task)
+        const result = await preorderService.getShortfall(id_task)
+        res.status(200).json({ ok: true, error: 0, data: result, message: 'Faltante calculado exitosamente' })
+    } catch (error) {
+        const message = error instanceof Error ? error.message : 'Error al calcular el faltante'
+        console.error('f.getPreorderShortfall: ', error)
+        res.status(400).json({ ok: false, error: 1, data: null, message })
+    }
+}
+
+export const createPreorder = async (req: Request, res: Response) => {
+    try {
+        const id_task = Number(req.params.id_task)
+        const { manager_whatsapp, preferred_date, preferred_time, items } = req.body
+
+        if (!req.file) {
+            res.status(400).json({ ok: false, error: 1, data: null, message: 'La firma es requerida' })
+            return
+        }
+        if (preferred_time !== 'MAÑANA' && preferred_time !== 'TARDE') {
+            res.status(400).json({ ok: false, error: 1, data: null, message: 'preferred_time debe ser MAÑANA o TARDE' })
+            return
+        }
+
+        const parsedItems = typeof items === 'string' ? JSON.parse(items) : items
+
+        const preorder = await preorderService.createPreorder({
+            id_task,
+            manager_whatsapp,
+            preferred_date: new Date(preferred_date),
+            preferred_time,
+            signature: { buffer: req.file.buffer, mime: req.file.mimetype },
+            items: parsedItems,
+        })
+
+        res.status(201).json({ ok: true, error: 0, data: preorder, message: 'Prepedido guardado exitosamente' })
+    } catch (error) {
+        const message = error instanceof Error ? error.message : 'Error al guardar el prepedido'
+        console.error('f.createPreorder: ', error)
+        res.status(400).json({ ok: false, error: 1, data: null, message })
+    }
+}
+
+export const getPreorder = async (req: Request, res: Response) => {
+    try {
+        const id_task = Number(req.params.id_task)
+        const preorder = await preorderService.getPreorder(id_task)
+        res.status(200).json({ ok: true, error: 0, data: preorder, message: 'Prepedido obtenido exitosamente' })
+    } catch (error) {
+        console.error('f.getPreorder: ', error)
+        res.status(500).json({ ok: false, error: 1, data: null, message: 'Error al obtener el prepedido' })
+    }
+}
+
+/**
+ * Todos los prepedidos de un cliente empresarial, para que los vea en su
+ * panel (que tienda, que dia/turno pidieron, y que se va a surtir).
+ */
+export const getPreordersByClient = async (req: Request, res: Response) => {
+    try {
+        const id_client = Number(req.params.id_client)
+        const preorders = await preorderService.getPreordersByClient(id_client)
+        res.status(200).json({ ok: true, error: 0, data: preorders, message: 'Prepedidos obtenidos exitosamente' })
+    } catch (error) {
+        console.error('f.getPreordersByClient: ', error)
+        res.status(500).json({ ok: false, error: 1, data: null, message: 'Error al obtener los prepedidos' })
+    }
+}
