@@ -882,6 +882,11 @@ model activator_payment_logs {
 model task_settings {
   id_setting              Int      @id @default(1)
   i_review_timeout_hours  Int      @default(24)
+  /// Como se cobra el extra "Prepedido" en una solicitud: monto fijo o
+  /// porcentaje sobre el total. El master lo puede cambiar cuando quiera
+  /// desde el panel, no esta fijo en el codigo.
+  preorder_pricing_type   String   @default("FIXED") @db.VarChar(10) // 'FIXED' | 'PERCENTAGE'
+  preorder_pricing_value  Decimal  @default(0) @db.Decimal(10, 2)
   id_user_updater         Int?     @db.UnsignedInt
   dt_updated               DateTime @default(now()) @updatedAt @db.Timestamp(0)
 }

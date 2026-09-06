@@ -16,7 +16,15 @@ export class Preorder {
     private async getTaskWithPreorderCheck(id_task: number) {
         const task = await prisma.tasks.findUnique({
             where: { id_task },
-            include: { request: { select: { b_preorder: true } }, store: { select: { id_store: true, name: true } } },
+            include: {
+                request: {
+                    select: {
+                        b_preorder: true,
+                        request_products: { select: { id_product: true } },
+                    }
+                },
+                store: { select: { id_store: true, name: true } },
+            },
         })
         if (!task) throw new Error('Tarea no encontrada')
         if (!task.request?.b_preorder) {
@@ -29,14 +37,19 @@ export class Preorder {
      * Compara, para la tienda de esta tarea, la ultima pieza contada
      * (store_product_stock, ya alimentada por la pregunta de sistema de
      * conteo de piezas) contra el minimo que el cliente configuro para esa
-     * tienda/producto (product_stock_minimums). Regresa solo los productos
-     * donde falte (quantity < minimum), con cuanto falta de cada uno.
+     * tienda/producto (product_stock_minimums). Solo considera los productos
+     * que son parte de ESTA solicitud (no todos los que tengan minimo
+     * configurado en la tienda, aunque sean de otras solicitudes/clientes).
+     * Regresa solo los productos donde falte (quantity < minimum).
      */
     async getShortfall(id_task: number) {
         const task = await this.getTaskWithPreorderCheck(id_task)
 
+        const requestProductIds = task.request.request_products.map(rp => rp.id_product)
+        if (requestProductIds.length === 0) return { store_name: task.store.name, items: [] }
+
         const minimums = await prisma.product_stock_minimums.findMany({
-            where: { id_store: task.id_store, product: { id_client: task.id_client } },
+            where: { id_store: task.id_store, id_product: { in: requestProductIds } },
             include: { product: { select: { id_product: true, name: true } } },
         })
         if (minimums.length === 0) return { store_name: task.store.name, items: [] }

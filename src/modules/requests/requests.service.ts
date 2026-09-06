@@ -7,8 +7,12 @@ import {
 } from './requests.dtos'
 import { generateFolio } from '../../services/folio.service'
 import { resolveImages } from '../../core/asset-resolver'
+import { TaskSettings } from '../task-settings/task-settings.service'
 
 export class Request {
+
+    private taskSettings = new TaskSettings()
+
 
     /**
      * La pregunta "¿Cuántas piezas hay en existencia?" es de sistema: gratis,
@@ -50,7 +54,8 @@ export class Request {
      */
     private async calculateRequestCost(
         tx: Prisma.TransactionClient,
-        products: { id_product: number, questions?: { id_question: number }[] }[]
+        products: { id_product: number, questions?: { id_question: number }[] }[],
+        b_preorder?: boolean,
     ): Promise<number> {
         const numProductos = products.length
         const base = numProductos <= 3 ? 45 : Math.min(45 + (Math.min(numProductos - 3, 3) * 15), 90)
@@ -74,13 +79,23 @@ export class Request {
             }
         }
 
-        return base + costoPreguntas
+        const subtotal = base + costoPreguntas
+
+        // Extra "Prepedido": el promotor hace trabajo extra (negociar con el
+        // encargado, capturar firma), asi que se cobra un cargo adicional
+        // configurable por el master (monto fijo o porcentaje).
+        let costoPrepedido = 0
+        if (b_preorder) {
+            costoPrepedido = await this.taskSettings.calculatePreorderSurcharge(subtotal)
+        }
+
+        return subtotal + costoPrepedido
     }
 
     async createRequest(data: CreateRequestDTO) {
         return await prisma.$transaction(async (tx) => {
             const vc_folio = await generateFolio(tx, data.id_client, 'requests')
-            const f_value = await this.calculateRequestCost(tx, data.products ?? [])
+            const f_value = await this.calculateRequestCost(tx, data.products ?? [], data.b_preorder)
 
             const request = await tx.requests.create({
                 data: {
@@ -264,7 +279,18 @@ export class Request {
             // única forma de saber el estado completo y correcto a cobrar). Si no
             // vienen productos, el f_value existente se deja tal cual, nunca se
             // confía en un f_value suelto que mande el navegador.
-            const f_value = data.products ? await this.calculateRequestCost(tx, data.products) : undefined
+            let f_value: number | undefined
+            if (data.products) {
+                // Si no mandan b_preorder explicito en este update, usamos el
+                // valor que ya tenia la solicitud, para no perder el cargo
+                // extra al recalcular el precio por otra razon.
+                let effectivePreorder = data.b_preorder
+                if (effectivePreorder === undefined) {
+                    const current = await tx.requests.findUnique({ where: { id_request }, select: { b_preorder: true } })
+                    effectivePreorder = current?.b_preorder ?? false
+                }
+                f_value = await this.calculateRequestCost(tx, data.products, effectivePreorder)
+            }
 
             const request = await tx.requests.update({
                 where: { id_request },
