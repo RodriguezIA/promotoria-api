@@ -9,6 +9,43 @@ import { NotificationService } from '../../services/notification.service'
 
 export class Task {
 
+    /**
+     * Calcula cuanto le corresponde de verdad al promotor por un grupo de
+     * tareas, usando el mismo porcentaje configurado en Finanzas y la misma
+     * formula que se usa al generar pagos reales (ver
+     * promoter-payments.service.ts:findEligibleTasks). Antes de esto, las
+     * pantallas de "cuanto genera" caian en un valor de respaldo (el total
+     * cobrado al cliente completo), porque nunca se calculaba esto aqui.
+     */
+    private async attachPromoterEarnings<
+        T extends { id_task: number; id_order: number; id_request: number | null; id_store: number }
+    >(tasks: T[]): Promise<Map<number, number>> {
+        const earningsByTask = new Map<number, number>()
+        if (tasks.length === 0) return earningsByTask
+
+        const settings = await prisma.finance_settings.findUnique({ where: { id_setting: 1 } })
+        const commissionPct = settings ? Number(settings.f_promoter_commission_percentage) : 0
+        if (commissionPct <= 0) return earningsByTask
+
+        const orderIds = [...new Set(tasks.map(t => t.id_order))]
+        const orderItems = await prisma.order_items.findMany({
+            where: { id_order: { in: orderIds } },
+            select: { id_order: true, id_request: true, id_store: true, f_value: true }
+        })
+        const valueMap = new Map<string, number>()
+        for (const oi of orderItems) {
+            valueMap.set(`${oi.id_order}:${oi.id_request}:${oi.id_store}`, Number(oi.f_value))
+        }
+
+        for (const t of tasks) {
+            if (t.id_request === null) continue
+            const baseValue = valueMap.get(`${t.id_order}:${t.id_request}:${t.id_store}`)
+            if (baseValue === undefined) continue
+            earningsByTask.set(t.id_task, Math.round(baseValue * (commissionPct / 100) * 100) / 100)
+        }
+        return earningsByTask
+    }
+
     async create(data: CreateTaskDTO) {
         const task = await prisma.$transaction(async (tx) => {
             const vc_folio = await generateFolio(tx, data.id_client, 'tasks')
@@ -122,8 +159,14 @@ export class Task {
             prisma.tasks.count({ where })
         ])
 
+        const earningsByTask = await this.attachPromoterEarnings(tasks)
+        const tasksWithEarnings = tasks.map(t => ({
+            ...t,
+            promoter_earnings: earningsByTask.get(t.id_task) ?? null,
+        }))
+
         return {
-            data: tasks,
+            data: tasksWithEarnings,
             meta: { total, page, limit, totalPages: Math.ceil(total / limit) }
         }
     }
@@ -140,7 +183,7 @@ export class Task {
             where,
             select: {
                 id_task: true, vc_folio: true, id_status: true, dt_register: true, i_notification_count: true,
-                id_request: true,
+                id_request: true, id_promoter_payment: true, id_order: true, id_store: true,
                 store: {
                     select: { id_store: true, name: true, store_code: true }
                 },
@@ -159,9 +202,11 @@ export class Task {
 
         const requestIds = tasks.filter(t => t.id_request).map(t => t.id_request!);
         const requestAssets = await resolveImages('request', requestIds);
+        const earningsByTask = await this.attachPromoterEarnings(tasks)
 
         return tasks.map(t => ({
             ...t,
+            promoter_earnings: earningsByTask.get(t.id_task) ?? null,
             request: t.request
                 ? { ...t.request, url_rack_image: requestAssets.get(t.request.id_request) ?? t.request.url_rack_image }
                 : null,
@@ -480,6 +525,10 @@ export class Task {
             vc_image_url: answerAssets.get(a.id_task_answer) ?? a.vc_image_url,
         }));
 
+        const earningsByTask = task.id_order && task.id_request
+            ? await this.attachPromoterEarnings([{ id_task, id_order: task.id_order, id_request: task.id_request, id_store: task.id_store }])
+            : new Map<number, number>()
+
         return {
             ...task,
             request: resolvedRequest,
@@ -487,6 +536,7 @@ export class Task {
             myAnswers: resolvedAnswers,
             arrangement_photo_url: arrangementAssets.get(id_task) ?? null,
             arrangement_photo_after_url: arrangementAfterAssets.get(id_task) ?? null,
+            promoter_earnings: earningsByTask.get(id_task) ?? null,
         }
     }
 
