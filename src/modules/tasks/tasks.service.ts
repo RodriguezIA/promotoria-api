@@ -456,11 +456,12 @@ export class Task {
 
         const productIds = task.request?.request_products.map(rp => rp.product.id_product) ?? [];
         const answerIds = myAnswers.map((a: any) => a.id_task_answer);
-        const [requestAssets, productAssets, answerAssets, arrangementAssets] = await Promise.all([
+        const [requestAssets, productAssets, answerAssets, arrangementAssets, arrangementAfterAssets] = await Promise.all([
             task.id_request ? resolveImages('request', [task.id_request]) : Promise.resolve(new Map<number, string>()),
             resolveImages('product', productIds),
             resolveImages('task_answer', answerIds),
             resolveImages('task_arrangement', [id_task]),
+            resolveImages('task_arrangement_after', [id_task]),
         ]);
 
         const resolvedRequest = task.request && task.id_request
@@ -485,6 +486,7 @@ export class Task {
             storeAddress,
             myAnswers: resolvedAnswers,
             arrangement_photo_url: arrangementAssets.get(id_task) ?? null,
+            arrangement_photo_after_url: arrangementAfterAssets.get(id_task) ?? null,
         }
     }
 
@@ -493,7 +495,8 @@ export class Task {
         id_promoter: number,
         answers: AnswerItemDTO[],
         images: Map<number, { buffer: Buffer; mime: string }>,
-        arrangementPhoto?: { buffer: Buffer; mime: string }
+        arrangementPhoto?: { buffer: Buffer; mime: string },
+        arrangementPhotoAfter?: { buffer: Buffer; mime: string }
     ) {
         const task = await prisma.tasks.findUnique({
             where: { id_task },
@@ -613,7 +616,22 @@ export class Task {
             arrangement_photo_url = url
         }
 
-        return { answers: results, arrangement_photo_url }
+        // Foto de "despues": el promotor la sube una vez que dejo el
+        // exhibidor tal cual la referencia del cliente. Se guarda aparte de
+        // la de "antes" (misma tarea, entidad distinta) para poder mostrar
+        // ambas al revisar la tarea.
+        let arrangement_photo_after_url: string | null = null
+        if (arrangementPhotoAfter) {
+            const { url } = await StorageService.uploadAsset({
+                entity: 'task_arrangement_after',
+                entity_id: id_task,
+                buffer: arrangementPhotoAfter.buffer,
+                mime: arrangementPhotoAfter.mime,
+            })
+            arrangement_photo_after_url = url
+        }
+
+        return { answers: results, arrangement_photo_url, arrangement_photo_after_url }
     }
 
     /**

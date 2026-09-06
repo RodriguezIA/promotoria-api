@@ -232,12 +232,17 @@ export const answerTaskQuestions = async (req: Request, res: Response) => {
 
     const files = req.files as Express.Multer.File[] | undefined
     let arrangementPhoto: { buffer: Buffer; mime: string } | undefined
+    let arrangementPhotoAfter: { buffer: Buffer; mime: string } | undefined
     const images = new Map<number, { buffer: Buffer; mime: string }>()
 
     if (files && files.length > 0) {
         for (const file of files) {
             if (file.fieldname === 'arrangement_photo') {
                 arrangementPhoto = { buffer: file.buffer, mime: file.mimetype }
+                continue
+            }
+            if (file.fieldname === 'arrangement_photo_after') {
+                arrangementPhotoAfter = { buffer: file.buffer, mime: file.mimetype }
                 continue
             }
             const match = file.fieldname.match(/^image_(\d+)$/)
@@ -248,7 +253,7 @@ export const answerTaskQuestions = async (req: Request, res: Response) => {
         }
     }
 
-    if (parsed.length === 0 && !arrangementPhoto && images.size === 0) {
+    if (parsed.length === 0 && !arrangementPhoto && !arrangementPhotoAfter && images.size === 0) {
         return res.status(400).json({ ok: false, error: 1, data: null, message: 'Debes enviar respuestas o al menos una imagen' })
     }
 
@@ -258,12 +263,12 @@ export const answerTaskQuestions = async (req: Request, res: Response) => {
             vc_answer: a.vc_answer ?? null,
         }))
 
-        const { answers: results, arrangement_photo_url } = await taskService.answerTaskQuestions(
-            Number(id_task), id_promoter, answers, images, arrangementPhoto
+        const { answers: results, arrangement_photo_url, arrangement_photo_after_url } = await taskService.answerTaskQuestions(
+            Number(id_task), id_promoter, answers, images, arrangementPhoto, arrangementPhotoAfter
         )
 
         res.status(200).json({
-            ok: true, error: 0, data: { answers: results, arrangement_photo_url },
+            ok: true, error: 0, data: { answers: results, arrangement_photo_url, arrangement_photo_after_url },
             message: `${results.length} respuesta(s) guardada(s) exitosamente`
         })
     } catch (error) {

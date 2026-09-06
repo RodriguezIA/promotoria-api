@@ -41,7 +41,8 @@ export type AssetEntity =
   | "client_charge_order"
   | "promoter_payment"
   | "app_config"
-  | "task_preorder_signature";
+  | "task_preorder_signature"
+  | "task_arrangement_after";
 
 const ENTITY_SEGMENT: Record<AssetEntity, string> = {
   product: "products",
@@ -56,6 +57,7 @@ const ENTITY_SEGMENT: Record<AssetEntity, string> = {
   promoter_payment: "promoter_payments",
   app_config: "app_config",
   task_preorder_signature: "task_preorder_signatures",
+  task_arrangement_after: "task_arrangements_after",
 };
 
 interface OptimizeOpts {
