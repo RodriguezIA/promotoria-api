@@ -45,7 +45,7 @@ export class Preorder {
     async getShortfall(id_task: number) {
         const task = await this.getTaskWithPreorderCheck(id_task)
 
-        const requestProductIds = task.request.request_products.map(rp => rp.id_product)
+        const requestProductIds = task.request!.request_products.map(rp => rp.id_product)
         if (requestProductIds.length === 0) return { store_name: task.store.name, items: [] }
 
         const minimums = await prisma.product_stock_minimums.findMany({
