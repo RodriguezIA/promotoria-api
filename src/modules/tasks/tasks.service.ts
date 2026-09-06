@@ -115,7 +115,7 @@ export class Task {
                     order: { select: { id_order: true, vc_folio: true, f_total: true } },
                     store: { select: { id_store: true, name: true } },
                     promoter: { select: { id: true, name: true, lastname: true, phone: true } },
-                    request: { select: { id_request: true, vc_folio: true, vc_name: true } }
+                    request: { select: { id_request: true, vc_folio: true, vc_name: true, f_value: true } }
                 },
                 orderBy: { dt_register: 'desc' }
             }),
