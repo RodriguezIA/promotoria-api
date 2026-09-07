@@ -69,6 +69,23 @@ export const getAllPromoterPayments = async (req: Request, res: Response) => {
     }
 }
 
+/**
+ * El promotor ve sus propios cortes de pago (fechas, ganancias, si ya se le
+ * pago). A diferencia de getAllPromoterPayments (solo SUPER), aqui no se
+ * acepta id_promoter del query — siempre es el del token, para que un
+ * promotor jamas pueda ver los cortes de otro.
+ */
+export const getMyPromoterPayments = async (req: Request, res: Response) => {
+    try {
+        const id_promoter = req.user!.id
+        const result = await promoterPaymentsService.list({ id_promoter, limit: 100 })
+        res.status(200).json({ ok: true, error: 0, data: result, message: 'Cortes de pago obtenidos exitosamente' })
+    } catch (error) {
+        console.error('GET MY PROMOTER PAYMENTS ERROR:', (error as any).message)
+        res.status(500).json({ ok: false, error: 1, data: null, message: 'Error al obtener tus cortes de pago', error_backend: error })
+    }
+}
+
 export const getPromoterPaymentById = async (req: Request, res: Response) => {
     try {
         const id_payment = Number(req.params.id_payment)

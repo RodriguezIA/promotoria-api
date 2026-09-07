@@ -15,6 +15,8 @@ export class PromoterSelfPayments {
             status: 'pagado',
             date: p.dt_payment,
             description: p.vc_folio,
+            dt_start: p.dt_start,
+            dt_end: p.dt_end,
         }))
     }
 

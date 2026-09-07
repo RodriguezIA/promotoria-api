@@ -5,6 +5,7 @@ import {
     previewPromoterPayments,
     generatePromoterPayments,
     getAllPromoterPayments,
+    getMyPromoterPayments,
     getPromoterPaymentById,
     submitPromoterPayment,
     updatePromoterPaymentStatus,
@@ -96,9 +97,11 @@ promoterPaymentsRouter.get('/', authMiddleware, requireRole(ROLES.SUPER), getAll
  *       404: { description: "Cuenta no encontrada." }
  */
 // Va ANTES de '/:id_payment' a proposito: si no, Express confunde
-// "bank-accounts" con un id_payment y esta ruta nunca se alcanza (mismo
-// error que ya tuvimos con /minimums/matching-stores en el modulo de stock).
+// "bank-accounts" (y "mine") con un id_payment y esta ruta nunca se alcanza
+// (mismo error que ya tuvimos con /minimums/matching-stores en el modulo de
+// stock).
 promoterPaymentsRouter.get('/bank-accounts/:id_account/reveal', authMiddleware, requireRole(ROLES.SUPER, ROLES.ADMIN), revealBankAccount)
+promoterPaymentsRouter.get('/mine', authMiddleware, getMyPromoterPayments)
 
 /**
  * @openapi
