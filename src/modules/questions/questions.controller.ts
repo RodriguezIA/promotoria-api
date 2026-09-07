@@ -33,6 +33,7 @@ export const getQuestionList = async (req: Request, res: Response) => {
     try {
         const id_client = req.params.id_client ? parseInt(req.params.id_client as string, 10) : undefined;
         const questions = await questionService.getQuestionList(id_client);
+        console.log(`GET QUESTION LIST: id_client param="${req.params.id_client}" parsed=${id_client} -> ${questions.length} preguntas encontradas`);
         res.status(200).json({
             ok: true,
             error: 0,
