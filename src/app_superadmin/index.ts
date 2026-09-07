@@ -715,10 +715,10 @@ superAdminRouter.put("/questions/:id_question", async (req: Request, res: Respon
 });
 
 // Eliminar pregunta (soft delete)
-superAdminRouter.delete("/questions/:id_question", async (req: Request, res: Response): Promise<void> => {
+superAdminRouter.delete("/questions/:id_question", authMiddleware, async (req: Request, res: Response): Promise<void> => {
   try {
     const { id_question } = req.params;
-    const { id_user } = req.body;
+    const id_user = req.user?.id;
 
     if (!id_user) {
       res.status(400).json({
@@ -737,6 +737,7 @@ superAdminRouter.delete("/questions/:id_question", async (req: Request, res: Res
       success: result.success,
     });
   } catch (error) {
+    console.error('SUPERADMIN DELETE QUESTION ERROR:', error);
     res.status(500).json({
       ok: false,
       error: "Error eliminando pregunta",
@@ -785,10 +786,10 @@ superAdminRouter.post("/questions/:id_question/clients/:id_client", async (req: 
 });
 
 // Desasignar pregunta de cliente
-superAdminRouter.delete("/questions/:id_question/clients/:id_client", async (req: Request, res: Response): Promise<void> => {
+superAdminRouter.delete("/questions/:id_question/clients/:id_client", authMiddleware, async (req: Request, res: Response): Promise<void> => {
   try {
     const { id_question, id_client } = req.params;
-    const { id_user } = req.body;
+    const id_user = req.user?.id;
 
     if (!id_user) {
       res.status(400).json({
@@ -810,6 +811,7 @@ superAdminRouter.delete("/questions/:id_question/clients/:id_client", async (req
       message: result.message,
     });
   } catch (error) {
+    console.error('SUPERADMIN UNASSIGN QUESTION FROM CLIENT ERROR:', error);
     res.status(500).json({
       ok: false,
       error: "Error desasignando pregunta del cliente",
