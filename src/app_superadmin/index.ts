@@ -597,6 +597,7 @@ superAdminRouter.get("/questions/:id_question", async (req: Request, res: Respon
       data: question,
     });
   } catch (error) {
+    console.error('SUPERADMIN GET QUESTION BY ID ERROR:', error);
     res.status(500).json({
       ok: false,
       error: "Error obteniendo pregunta",
@@ -888,6 +889,7 @@ superAdminRouter.get("/questions/:id_question/clients", async (req: Request, res
       data: clients,
     });
   } catch (error) {
+    console.error('SUPERADMIN GET QUESTION CLIENTS ERROR:', error);
     res.status(500).json({
       ok: false,
       error: "Error obteniendo clientes de la pregunta",
