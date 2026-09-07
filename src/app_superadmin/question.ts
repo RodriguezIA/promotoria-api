@@ -185,13 +185,12 @@ export class Question {
                     q.id_user,
                     q.question,
                     q.question_type,
-                    q.base_price,
-                    q.promoter_earns,
+                    q.f_cost AS base_price,
                     q.i_status,
-                    q.is_multiple,
                     q.min_value,
                     q.max_value,
                     q.max_photos,
+                    q.b_stock_question,
                     q.dt_register,
                     q.dt_updated,
                     u.name as created_by_name,
@@ -593,8 +592,6 @@ export class Question {
                 SELECT
                     qc.id_question_client,
                     qc.id_client,
-                    qc.client_price,
-                    qc.client_promoter_earns,
                     qc.dt_register as assigned_at,
                     c.name as client_name
                 FROM questions_client qc
