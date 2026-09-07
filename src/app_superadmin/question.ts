@@ -186,6 +186,7 @@ export class Question {
                     q.question,
                     q.question_type,
                     q.f_cost AS base_price,
+                    0 AS promoter_earns,
                     q.i_status,
                     q.min_value,
                     q.max_value,
@@ -592,10 +593,14 @@ export class Question {
                 SELECT
                     qc.id_question_client,
                     qc.id_client,
+                    q.f_cost AS client_price,
+                    0 AS client_promoter_earns,
+                    q.f_cost AS base_price,
                     qc.dt_register as assigned_at,
                     c.name as client_name
                 FROM questions_client qc
                 INNER JOIN clients c ON qc.id_client = c.id_client
+                INNER JOIN questions q ON qc.id_question = q.id_question
                 WHERE qc.id_question = ? AND qc.i_status = 1
                 ORDER BY c.name ASC
             `;
