@@ -33,7 +33,12 @@ export const getQuestionList = async (req: Request, res: Response) => {
     try {
         const id_client = req.params.id_client ? parseInt(req.params.id_client as string, 10) : undefined;
         const questions = await questionService.getQuestionList(id_client);
-        console.log(`GET QUESTION LIST: id_client param="${req.params.id_client}" parsed=${id_client} -> ${questions.length} preguntas encontradas`);
+        // Sin esto, el navegador (o un proxy en medio) puede quedarse con una
+        // respuesta vieja en cache y regresar 304 aunque los datos ya
+        // cambiaron de verdad en el servidor (justo lo que le paso a Vic:
+        // el servidor ya devolvia 13 preguntas, pero el navegador seguia
+        // usando su copia guardada de cuando habia 11).
+        res.set('Cache-Control', 'no-store');
         res.status(200).json({
             ok: true,
             error: 0,

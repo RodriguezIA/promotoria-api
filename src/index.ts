@@ -2,7 +2,7 @@ import "dotenv/config"
 import cors from "cors"
 import helmet from "helmet"
 import morgan from "morgan"
-import express, { Express } from "express"
+import express, { Express, Request, Response, NextFunction } from "express"
 import { startTaskNotificacitonScheduler, startEnRouteTimeoutScheduler, startReviewTimeoutScheduler, queues } from "./core/bullmq"
 import { initializeBullBoard, serverAdapter } from "./queues/helpers/bullboard"
 
@@ -26,6 +26,17 @@ app.use(helmet())
 app.use(express.json())
 app.use(express.urlencoded({ extended: true }))
 app.use(morgan("dev"))
+
+// Sin esto, el navegador (o un proxy en medio) puede quedarse con respuestas
+// viejas en cache y regresar 304 aunque los datos ya cambiaron de verdad en
+// el servidor (ej. crear una pregunta nueva y que la lista siga mostrando
+// solo las de antes hasta que el navegador decida refrescar su cache). Toda
+// esta API es dinamica, ninguna respuesta deberia cachearse del lado del
+// cliente.
+app.use((_req: Request, res: Response, next: NextFunction) => {
+  res.set("Cache-Control", "no-store")
+  next()
+})
 
 // Bull Board UI
 initializeBullBoard(queues)
