@@ -79,3 +79,31 @@ export const getStoreDeliveryHistory = async (req: Request, res: Response) => {
         res.status(500).json({ ok: false, error: 1, data: null, message: 'Error al obtener el historial de entregas' })
     }
 }
+
+export const getDriverSales = async (req: Request, res: Response) => {
+    try {
+        const id_client = req.user!.id_client
+        const id_driver = Number(req.params.id_driver)
+        const date_from = new Date(req.query.date_from as string)
+        const date_to = new Date(req.query.date_to as string)
+        const sales = await routesService.getDriverSales(id_driver, id_client, date_from, date_to)
+        res.status(200).json({ ok: true, error: 0, data: sales, message: 'Ventas obtenidas exitosamente' })
+    } catch (error) {
+        const message = error instanceof Error ? error.message : 'Error al obtener las ventas'
+        res.status(400).json({ ok: false, error: 1, data: null, message })
+    }
+}
+
+export const getDriverRoutesInRange = async (req: Request, res: Response) => {
+    try {
+        const id_client = req.user!.id_client
+        const id_driver = Number(req.params.id_driver)
+        const date_from = new Date(req.query.date_from as string)
+        const date_to = new Date(req.query.date_to as string)
+        const routes = await routesService.getDriverRoutesInRange(id_driver, id_client, date_from, date_to)
+        res.status(200).json({ ok: true, error: 0, data: routes, message: 'Rutas obtenidas exitosamente' })
+    } catch (error) {
+        const message = error instanceof Error ? error.message : 'Error al obtener las rutas'
+        res.status(400).json({ ok: false, error: 1, data: null, message })
+    }
+}

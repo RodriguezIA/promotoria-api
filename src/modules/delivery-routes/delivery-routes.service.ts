@@ -213,4 +213,64 @@ export class DeliveryRoutes {
             totals_by_product: Array.from(totalsByProduct.values()),
         }
     }
+
+    /**
+     * Ventas de un chofer en un rango de fechas: total vendido, piezas
+     * totales, y el desglose por tienda (para el boton "Ver ventas" en
+     * Choferes). Solo cuenta paradas ya visitadas con mercancia entregada.
+     */
+    async getDriverSales(id_driver: number, id_client: number, date_from: Date, date_to: Date) {
+        const driver = await prisma.drivers.findUnique({ where: { id_driver } })
+        if (!driver || driver.id_client !== id_client) throw new Error('Chofer no encontrado')
+
+        const stops = await prisma.delivery_route_stops.findMany({
+            where: {
+                i_status: 1,
+                b_delivered: true,
+                route: { id_driver, route_date: { gte: date_from, lte: date_to } },
+            },
+            include: {
+                store: { select: { id_store: true, name: true } },
+                items: { include: { product: { select: { name: true } } } },
+                route: { select: { route_date: true } },
+            },
+            orderBy: { dt_visited: 'desc' },
+        })
+
+        const total_charged = stops.reduce((sum, s) => sum + Number(s.f_total_charged ?? 0), 0)
+        const total_pieces = stops.reduce(
+            (sum, s) => sum + s.items.reduce((itemSum, item) => itemSum + item.i_quantity, 0),
+            0
+        )
+
+        return {
+            total_charged,
+            total_pieces,
+            total_visits: stops.length,
+            visits: stops,
+        }
+    }
+
+    /**
+     * Rutas de un chofer dentro de un rango de fechas, para el boton "Ruta"
+     * en Choferes.
+     */
+    async getDriverRoutesInRange(id_driver: number, id_client: number, date_from: Date, date_to: Date) {
+        const driver = await prisma.drivers.findUnique({ where: { id_driver } })
+        if (!driver || driver.id_client !== id_client) throw new Error('Chofer no encontrado')
+
+        return await prisma.delivery_routes.findMany({
+            where: { id_driver, route_date: { gte: date_from, lte: date_to } },
+            include: {
+                stops: {
+                    include: {
+                        store: { select: { id_store: true, name: true } },
+                        items: { include: { product: { select: { name: true } } } },
+                    },
+                    orderBy: { i_order: 'asc' },
+                },
+            },
+            orderBy: { route_date: 'desc' },
+        })
+    }
 }

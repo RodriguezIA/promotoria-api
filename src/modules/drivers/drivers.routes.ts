@@ -1,7 +1,7 @@
 import { Router } from 'express'
 import { authMiddleware, uploadAny } from '../../core/middleware'
 import {
-    createDriver, listDrivers, deactivateDriver, updateDriver, uploadDriverPhoto,
+    createDriver, listDrivers, deactivateDriver, suspendDriver, reactivateDriver, updateDriver, uploadDriverPhoto,
     driverLogin, getDriverProfile, updateDriverPassword, updateDriverLocation,
 } from './drivers.controller'
 
@@ -15,6 +15,8 @@ driversRouter.post('/', authMiddleware, createDriver)
 driversRouter.get('/', authMiddleware, listDrivers)
 driversRouter.put('/:id_driver', authMiddleware, updateDriver)
 driversRouter.delete('/:id_driver', authMiddleware, deactivateDriver)
+driversRouter.patch('/:id_driver/suspend', authMiddleware, suspendDriver)
+driversRouter.patch('/:id_driver/reactivate', authMiddleware, reactivateDriver)
 driversRouter.post('/:id_driver/photo', authMiddleware, uploadAny.single('file'), uploadDriverPhoto)
 
 // El chofer viendo/editando su propia sesion.

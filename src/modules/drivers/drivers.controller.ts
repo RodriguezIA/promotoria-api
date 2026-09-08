@@ -44,6 +44,30 @@ export const deactivateDriver = async (req: Request, res: Response) => {
     }
 }
 
+export const suspendDriver = async (req: Request, res: Response) => {
+    try {
+        const id_client = req.user!.id_client
+        const id_driver = Number(req.params.id_driver)
+        const driver = await driversService.suspend(id_driver, id_client)
+        res.status(200).json({ ok: true, error: 0, data: driver, message: 'Chofer suspendido exitosamente' })
+    } catch (error) {
+        const message = error instanceof Error ? error.message : 'Error al suspender al chofer'
+        res.status(400).json({ ok: false, error: 1, data: null, message })
+    }
+}
+
+export const reactivateDriver = async (req: Request, res: Response) => {
+    try {
+        const id_client = req.user!.id_client
+        const id_driver = Number(req.params.id_driver)
+        const driver = await driversService.reactivate(id_driver, id_client)
+        res.status(200).json({ ok: true, error: 0, data: driver, message: 'Chofer reactivado exitosamente' })
+    } catch (error) {
+        const message = error instanceof Error ? error.message : 'Error al reactivar al chofer'
+        res.status(400).json({ ok: false, error: 1, data: null, message })
+    }
+}
+
 export const updateDriver = async (req: Request, res: Response) => {
     try {
         const id_client = req.user!.id_client

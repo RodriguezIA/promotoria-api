@@ -17,10 +17,10 @@ export class Drivers {
 
     async listByClient(id_client: number) {
         return await prisma.drivers.findMany({
-            where: { id_client, i_status: 1 },
+            where: { id_client, i_status: { in: [1, 2] } },
             select: {
                 id_driver: true, name: true, phone: true, email: true, vc_photo: true,
-                dt_location_updated: true, dt_register: true,
+                i_status: true, dt_location_updated: true, dt_register: true,
             },
             orderBy: { name: 'asc' },
         })
@@ -30,6 +30,22 @@ export class Drivers {
         const driver = await prisma.drivers.findUnique({ where: { id_driver } })
         if (!driver || driver.id_client !== id_client) throw new Error('Chofer no encontrado')
         return await prisma.drivers.update({ where: { id_driver }, data: { i_status: 0 } })
+    }
+
+    /**
+     * Suspender: el chofer ya no puede iniciar sesion, pero sigue apareciendo
+     * en la lista (a diferencia de eliminar) por si se le quiere reactivar.
+     */
+    async suspend(id_driver: number, id_client: number) {
+        const driver = await prisma.drivers.findUnique({ where: { id_driver } })
+        if (!driver || driver.id_client !== id_client) throw new Error('Chofer no encontrado')
+        return await prisma.drivers.update({ where: { id_driver }, data: { i_status: 2 } })
+    }
+
+    async reactivate(id_driver: number, id_client: number) {
+        const driver = await prisma.drivers.findUnique({ where: { id_driver } })
+        if (!driver || driver.id_client !== id_client) throw new Error('Chofer no encontrado')
+        return await prisma.drivers.update({ where: { id_driver }, data: { i_status: 1 } })
     }
 
     async update(id_driver: number, id_client: number, input: { name?: string; phone?: string; email?: string; vc_photo?: string }) {
