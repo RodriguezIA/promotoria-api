@@ -2,13 +2,14 @@ import { Router } from 'express'
 import { authMiddleware, uploadAny } from '../../core/middleware'
 import {
     createDriver, listDrivers, deactivateDriver, suspendDriver, reactivateDriver, updateDriver, uploadDriverPhoto,
-    driverLogin, getDriverProfile, updateDriverPassword, updateDriverLocation,
+    driverLogin, checkDriverPhone, getDriverProfile, updateDriverPassword, updateDriverLocation,
 } from './drivers.controller'
 
 const driversRouter = Router()
 
 // Login del chofer — publico, es como obtiene su token.
 driversRouter.post('/login', driverLogin)
+driversRouter.get('/check-phone/:phone', checkDriverPhone)
 
 // Acciones del cliente empresarial sobre sus choferes (alta/baja/edicion).
 driversRouter.post('/', authMiddleware, createDriver)

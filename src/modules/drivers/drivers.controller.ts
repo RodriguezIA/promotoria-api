@@ -162,3 +162,19 @@ export const updateDriverLocation = async (req: Request, res: Response) => {
         res.status(500).json({ ok: false, error: 1, data: null, message: 'Error al actualizar la ubicación' })
     }
 }
+
+// Para el login unificado: saber si un celular ya es un chofer registrado,
+// sin necesitar la contraseña todavia.
+export const checkDriverPhone = async (req: Request, res: Response) => {
+    try {
+        const phone = String(req.params.phone || '').trim()
+        if (!phone) {
+            res.status(400).json({ ok: false, error: 1, data: null, message: 'Telefono requerido' })
+            return
+        }
+        const exists = await driversService.checkPhoneExists(phone)
+        res.status(200).json({ ok: true, error: 0, data: { exists }, message: 'Consulta exitosa' })
+    } catch (error) {
+        res.status(500).json({ ok: false, error: 1, data: null, message: 'Error al verificar el telefono' })
+    }
+}

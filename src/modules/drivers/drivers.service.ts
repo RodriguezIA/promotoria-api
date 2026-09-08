@@ -62,6 +62,11 @@ export class Drivers {
         return driver
     }
 
+    async checkPhoneExists(phone: string) {
+        const driver = await prisma.drivers.findFirst({ where: { phone, i_status: { in: [1, 2] } } })
+        return !!driver
+    }
+
     async changePassword(id_driver: number, current_password: string, new_password: string) {
         const driver = await prisma.drivers.findUnique({ where: { id_driver } })
         if (!driver) throw new Error('Chofer no encontrado')

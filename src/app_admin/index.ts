@@ -64,6 +64,33 @@ adminRouter.post(
   },
 );
 
+// Para el login unificado: saber si un celular ya es el usuario de un
+// cliente/master registrado, sin necesitar la contraseña todavia (mismo
+// patron que ya existe para promotores en /promoters/check-phone).
+adminRouter.get(
+  "/check-phone/:phone",
+  async (req: Request, res: Response): Promise<void> => {
+    try {
+      const phone = String(req.params.phone || "").trim();
+      if (!phone) {
+        res.status(400).json({ ok: false, error: 1, data: null, message: "Telefono requerido" });
+        return;
+      }
+      const userModel = getAdminUser();
+      let exists = true;
+      try {
+        await userModel.getUserByEmail(phone);
+      } catch {
+        exists = false;
+      }
+      res.status(200).json({ ok: true, error: 0, data: { exists }, message: "Consulta exitosa" });
+    } catch (error) {
+      console.error("CHECK PHONE ERROR:", error);
+      res.status(500).json({ ok: false, error: 1, data: null, message: "Error al verificar el telefono" });
+    }
+  },
+);
+
 adminRouter.post(
   "/restore-password",
   async (req: Request, res: Response): Promise<void> => {
