@@ -101,6 +101,7 @@ model clients {
   phone                   String             @default("") @db.VarChar(20)
   vc_url_situacion_fiscal String?            @db.VarChar(500)
   client_logs             client_logs[]
+  drivers                 drivers[]
   users                   users              @relation(fields: [id_user], references: [id_user], map: "fk_clients_user")
   orders                  orders[]
   products                products[]
@@ -547,6 +548,7 @@ model stores {
   tasks           tasks[]
   stock_minimums  product_stock_minimums[]
   stock_readings  store_product_stock[]
+  delivery_stops  delivery_route_stops[]
 
   @@index([id_user], map: "fk_store_user")
   @@index([id_channel_sale], map: "fk_store_channel")
@@ -610,6 +612,7 @@ model task_preorders {
   dt_updated        DateTime @default(now()) @updatedAt @db.Timestamp(0)
   task              tasks    @relation(fields: [id_task], references: [id_task])
   items             task_preorder_items[]
+  delivery_stops    delivery_route_stops[]
 }
 
 /// Renglones del pedido acordado: cuanto de cada producto se va a surtir.
@@ -953,4 +956,68 @@ model promoter_bank_accounts {
   promoter            promoters             @relation(fields: [id_promoter], references: [id])
 
   @@index([id_promoter], map: "idx_promoter_bank_accounts_promoter")
+}
+
+// ==================== LOGISTICA / CHOFERES ====================
+
+model drivers {
+  id_driver      Int              @id @default(autoincrement()) @db.UnsignedInt
+  id_client      Int              @db.UnsignedInt
+  name           String           @db.VarChar(150)
+  phone          String           @db.VarChar(20)
+  email          String?          @db.VarChar(255)
+  password_hash  String           @db.VarChar(255)
+  vc_photo       String?          @db.VarChar(500)
+  /// Ubicacion mas reciente del chofer, para poder ordenar su lista de
+  /// entregas de la mas cercana a la mas lejana.
+  latitude       Decimal?         @db.Decimal(10, 8)
+  longitude      Decimal?         @db.Decimal(11, 8)
+  dt_location_updated DateTime?   @db.Timestamp(0)
+  i_status       Int              @default(1) @db.TinyInt
+  dt_register    DateTime         @default(now()) @db.Timestamp(0)
+  dt_updated     DateTime         @default(now()) @updatedAt @db.Timestamp(0)
+  client         clients          @relation(fields: [id_client], references: [id_client])
+  routes         delivery_routes[]
+
+  @@index([id_client], map: "idx_drivers_client")
+}
+
+model delivery_routes {
+  id_route    Int                    @id @default(autoincrement()) @db.UnsignedInt
+  id_client   Int                    @db.UnsignedInt
+  id_driver   Int                    @db.UnsignedInt
+  route_date  DateTime               @db.Date
+  dt_register DateTime               @default(now()) @db.Timestamp(0)
+  driver      drivers                @relation(fields: [id_driver], references: [id_driver])
+  stops       delivery_route_stops[]
+
+  @@index([id_client], map: "idx_delivery_routes_client")
+  @@index([id_driver], map: "idx_delivery_routes_driver")
+}
+
+model delivery_route_stops {
+  id_stop              Int             @id @default(autoincrement()) @db.UnsignedInt
+  id_route             Int             @db.UnsignedInt
+  id_store             Int             @db.UnsignedInt
+  id_preorder          Int             @db.UnsignedInt
+  /// Orden dentro de la ruta (1, 2, 3...) — en modo lista se calcula del
+  /// mas cercano al chofer al mas lejano; en modo mapa, el orden en el que
+  /// el usuario fue palomeando las tiendas.
+  i_order              Int
+  /// 0 = por visitar, 1 = visitada
+  i_status             Int             @default(0) @db.TinyInt
+  /// Si ya se visito: si se dejo mercancia o no, y por que no si aplica.
+  b_delivered          Boolean?
+  vc_no_delivery_reason String?        @db.VarChar(500)
+  /// 'EFECTIVO' | 'TRANSFERENCIA' | 'CONSIGNA'
+  payment_method       String?         @db.VarChar(20)
+  f_amount_paid        Decimal?        @db.Decimal(10, 2)
+  dt_visited           DateTime?       @db.Timestamp(0)
+  dt_register          DateTime        @default(now()) @db.Timestamp(0)
+  route                delivery_routes @relation(fields: [id_route], references: [id_route])
+  store                stores          @relation(fields: [id_store], references: [id_store])
+  preorder             task_preorders  @relation(fields: [id_preorder], references: [id_preorder])
+
+  @@index([id_route], map: "idx_delivery_stops_route")
+  @@index([id_preorder], map: "idx_delivery_stops_preorder")
 }

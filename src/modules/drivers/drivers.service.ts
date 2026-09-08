@@ -1,0 +1,71 @@
+import bcrypt from 'bcrypt'
+import { prisma } from '../../core/prisma'
+
+export class Drivers {
+    async create(input: { id_client: number; name: string; phone: string; email?: string; password: string }) {
+        const password_hash = await bcrypt.hash(input.password, 10)
+        return await prisma.drivers.create({
+            data: {
+                id_client: input.id_client,
+                name: input.name,
+                phone: input.phone,
+                email: input.email,
+                password_hash,
+            },
+        })
+    }
+
+    async listByClient(id_client: number) {
+        return await prisma.drivers.findMany({
+            where: { id_client, i_status: 1 },
+            select: {
+                id_driver: true, name: true, phone: true, email: true, vc_photo: true,
+                dt_location_updated: true, dt_register: true,
+            },
+            orderBy: { name: 'asc' },
+        })
+    }
+
+    async deactivate(id_driver: number, id_client: number) {
+        const driver = await prisma.drivers.findUnique({ where: { id_driver } })
+        if (!driver || driver.id_client !== id_client) throw new Error('Chofer no encontrado')
+        return await prisma.drivers.update({ where: { id_driver }, data: { i_status: 0 } })
+    }
+
+    async update(id_driver: number, id_client: number, input: { name?: string; phone?: string; email?: string; vc_photo?: string }) {
+        const driver = await prisma.drivers.findUnique({ where: { id_driver } })
+        if (!driver || driver.id_client !== id_client) throw new Error('Chofer no encontrado')
+        return await prisma.drivers.update({ where: { id_driver }, data: input })
+    }
+
+    async login(phone: string, password: string) {
+        const driver = await prisma.drivers.findFirst({ where: { phone, i_status: 1 } })
+        if (!driver) throw new Error('Teléfono o contraseña incorrectos')
+        const valid = await bcrypt.compare(password, driver.password_hash)
+        if (!valid) throw new Error('Teléfono o contraseña incorrectos')
+        return driver
+    }
+
+    async changePassword(id_driver: number, current_password: string, new_password: string) {
+        const driver = await prisma.drivers.findUnique({ where: { id_driver } })
+        if (!driver) throw new Error('Chofer no encontrado')
+        const valid = await bcrypt.compare(current_password, driver.password_hash)
+        if (!valid) throw new Error('La contraseña actual no es correcta')
+        const password_hash = await bcrypt.hash(new_password, 10)
+        return await prisma.drivers.update({ where: { id_driver }, data: { password_hash } })
+    }
+
+    async updateLocation(id_driver: number, latitude: number, longitude: number) {
+        return await prisma.drivers.update({
+            where: { id_driver },
+            data: { latitude, longitude, dt_location_updated: new Date() },
+        })
+    }
+
+    async getById(id_driver: number) {
+        return await prisma.drivers.findUnique({
+            where: { id_driver },
+            select: { id_driver: true, id_client: true, name: true, phone: true, email: true, vc_photo: true },
+        })
+    }
+}
