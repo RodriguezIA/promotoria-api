@@ -73,3 +73,23 @@ export const getPreordersByClient = async (req: Request, res: Response) => {
         res.status(500).json({ ok: false, error: 1, data: null, message: 'Error al obtener los prepedidos' })
     }
 }
+
+/**
+ * El cliente empresarial marca un prepedido como surtido (o de vuelta a sin
+ * surtir) desde su panel de "Mis Prepedidos".
+ */
+export const updatePreorderStatus = async (req: Request, res: Response) => {
+    try {
+        const id_task = Number(req.params.id_task)
+        const { id_status } = req.body
+        if (id_status !== 0 && id_status !== 1) {
+            return res.status(400).json({ ok: false, error: 1, data: null, message: 'id_status debe ser 0 (sin surtir) o 1 (surtido)' })
+        }
+        const preorder = await preorderService.updatePreorderStatus(id_task, id_status)
+        res.status(200).json({ ok: true, error: 0, data: preorder, message: 'Estatus actualizado exitosamente' })
+    } catch (error) {
+        const message = error instanceof Error ? error.message : 'Error al actualizar el estatus'
+        console.error('f.updatePreorderStatus: ', error)
+        res.status(400).json({ ok: false, error: 1, data: null, message })
+    }
+}

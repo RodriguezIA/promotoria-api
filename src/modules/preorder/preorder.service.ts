@@ -160,4 +160,18 @@ export class Preorder {
             orderBy: { preferred_date: 'asc' },
         })
     }
+
+    /**
+     * Marca un prepedido como surtido (ya se le entrego la mercancia a la
+     * tienda) o de vuelta a sin surtir. Lo usa el cliente empresarial desde
+     * su panel de "Mis Prepedidos".
+     */
+    async updatePreorderStatus(id_task: number, id_status: number) {
+        const preorder = await prisma.task_preorders.findUnique({ where: { id_task } })
+        if (!preorder) throw new Error('Prepedido no encontrado')
+        return await prisma.task_preorders.update({
+            where: { id_task },
+            data: { id_status },
+        })
+    }
 }

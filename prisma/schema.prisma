@@ -589,7 +589,11 @@ model task_preorders {
   preferred_date    DateTime @db.Date
   /// 'MAÑANA' o 'TARDE' — turno de entrega preferido.
   preferred_time    String   @db.VarChar(10)
+  /// 0 = sin surtir (recien levantado, todavia no se entrega), 1 = surtido
+  /// (ya se le entrego la mercancia a la tienda).
+  id_status         Int      @default(0) @db.TinyInt
   dt_register       DateTime @default(now()) @db.Timestamp(0)
+  dt_updated        DateTime @default(now()) @updatedAt @db.Timestamp(0)
   task              tasks    @relation(fields: [id_task], references: [id_task])
   items             task_preorder_items[]
 }

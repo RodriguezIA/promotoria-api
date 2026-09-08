@@ -2,7 +2,7 @@ import { Router } from 'express'
 
 import { authMiddleware } from '../../core/middleware'
 import { upload } from '../../core/middleware/upload.middleware'
-import { getPreorderShortfall, createPreorder, getPreorder, getPreordersByClient } from './preorder.controller'
+import { getPreorderShortfall, createPreorder, getPreorder, getPreordersByClient, updatePreorderStatus } from './preorder.controller'
 
 const preorderRouter = Router()
 
@@ -20,5 +20,6 @@ preorderRouter.get('/tasks/:id_task/shortfall', authMiddleware, getPreorderShort
 // su WhatsApp, dia/turno de entrega, y su firma electronica (imagen).
 preorderRouter.post('/tasks/:id_task', authMiddleware, upload.single('signature'), createPreorder)
 preorderRouter.get('/tasks/:id_task', authMiddleware, getPreorder)
+preorderRouter.patch('/tasks/:id_task/status', authMiddleware, updatePreorderStatus)
 
 export default preorderRouter
