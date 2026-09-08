@@ -119,7 +119,7 @@ export class Task {
 
     async getAll(filters?: {
         id_client?: number; id_order?: number; id_promoter?: number; id_status?: number
-        id_request?: number; dt_from?: string; dt_to?: string
+        id_request?: number; id_store?: number; dt_from?: string; dt_to?: string
         page?: number; limit?: number
     }) {
         const page = filters?.page ?? 1
@@ -132,6 +132,7 @@ export class Task {
         if (filters?.id_promoter !== undefined) where.id_promoter = filters.id_promoter
         if (filters?.id_status !== undefined) where.id_status = filters.id_status
         if (filters?.id_request) where.id_request = filters.id_request
+        if (filters?.id_store) where.id_store = filters.id_store
         if (filters?.dt_from || filters?.dt_to) {
             where.dt_register = {}
             if (filters.dt_from) where.dt_register.gte = new Date(filters.dt_from)

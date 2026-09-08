@@ -51,13 +51,14 @@ export const getTaskById = async (req: Request, res: Response) => {
 
 export const getTasks = async (req: Request, res: Response) => {
     try {
-        const { id_client, id_order, id_promoter, id_status, id_request, dt_from, dt_to, page, limit } = req.query
+        const { id_client, id_order, id_promoter, id_status, id_request, id_store, dt_from, dt_to, page, limit } = req.query
         const result = await taskService.getAll({
             id_client: id_client ? Number(id_client) : undefined,
             id_order: id_order ? Number(id_order) : undefined,
             id_promoter: id_promoter !== undefined ? Number(id_promoter) : undefined,
             id_status: id_status !== undefined ? Number(id_status) : undefined,
             id_request: id_request ? Number(id_request) : undefined,
+            id_store: id_store ? Number(id_store) : undefined,
             dt_from: dt_from ? String(dt_from) : undefined,
             dt_to: dt_to ? String(dt_to) : undefined,
             page: page ? Number(page) : undefined,
