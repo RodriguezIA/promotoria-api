@@ -48,7 +48,7 @@ export class DeliveryRoutes {
         id_client: number
         id_driver: number
         route_date: Date
-        stops: { id_store: number; id_preorder: number }[]
+        stops: { id_store: number; id_preorder?: number | null }[]
     }) {
         const driver = await prisma.drivers.findUnique({ where: { id_driver: input.id_driver } })
         if (!driver || driver.id_client !== input.id_client) throw new Error('Chofer no encontrado')
@@ -62,7 +62,7 @@ export class DeliveryRoutes {
                 data: input.stops.map((stop, index) => ({
                     id_route: route.id_route,
                     id_store: stop.id_store,
-                    id_preorder: stop.id_preorder,
+                    id_preorder: stop.id_preorder ?? null,
                     i_order: index + 1,
                 })),
             })

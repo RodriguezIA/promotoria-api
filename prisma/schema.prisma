@@ -999,7 +999,9 @@ model delivery_route_stops {
   id_stop              Int             @id @default(autoincrement()) @db.UnsignedInt
   id_route             Int             @db.UnsignedInt
   id_store             Int             @db.UnsignedInt
-  id_preorder          Int             @db.UnsignedInt
+  /// Puede no haber pedido — algunas visitas son solo de revision/entrega
+  /// general, sin un prepedido especifico detras.
+  id_preorder          Int?            @db.UnsignedInt
   /// Orden dentro de la ruta (1, 2, 3...) — en modo lista se calcula del
   /// mas cercano al chofer al mas lejano; en modo mapa, el orden en el que
   /// el usuario fue palomeando las tiendas.
@@ -1016,7 +1018,7 @@ model delivery_route_stops {
   dt_register          DateTime        @default(now()) @db.Timestamp(0)
   route                delivery_routes @relation(fields: [id_route], references: [id_route])
   store                stores          @relation(fields: [id_store], references: [id_store])
-  preorder             task_preorders  @relation(fields: [id_preorder], references: [id_preorder])
+  preorder             task_preorders? @relation(fields: [id_preorder], references: [id_preorder])
 
   @@index([id_route], map: "idx_delivery_stops_route")
   @@index([id_preorder], map: "idx_delivery_stops_preorder")
