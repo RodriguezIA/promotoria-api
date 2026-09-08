@@ -240,6 +240,7 @@ model products {
   stock_minimums    product_stock_minimums[]
   stock_readings    store_product_stock[]
   preorder_items    task_preorder_items[]
+  delivery_stop_items delivery_stop_items[]
 
   @@index([id_client], map: "products_id_client_fkey")
 }
@@ -1011,15 +1012,40 @@ model delivery_route_stops {
   /// Si ya se visito: si se dejo mercancia o no, y por que no si aplica.
   b_delivered          Boolean?
   vc_no_delivery_reason String?        @db.VarChar(500)
-  /// 'EFECTIVO' | 'TRANSFERENCIA' | 'CONSIGNA'
-  payment_method       String?         @db.VarChar(20)
-  f_amount_paid        Decimal?        @db.Decimal(10, 2)
+  /// true si la mercancia se dejo a consignacion (no se cobro nada al
+  /// momento de la entrega).
+  b_consigna           Boolean         @default(false)
+  /// Cuanto se cobro en efectivo y cuanto por transferencia — pueden venir
+  /// los dos a la vez si el pago se dividio.
+  f_amount_cash        Decimal?        @db.Decimal(10, 2)
+  f_amount_transfer    Decimal?        @db.Decimal(10, 2)
+  /// Valor total de lo entregado, calculado con el precio a tienda de cada
+  /// producto (delivery_stop_items) al momento de la entrega.
+  f_total_charged      Decimal?        @db.Decimal(10, 2)
   dt_visited           DateTime?       @db.Timestamp(0)
   dt_register          DateTime        @default(now()) @db.Timestamp(0)
   route                delivery_routes @relation(fields: [id_route], references: [id_route])
   store                stores          @relation(fields: [id_store], references: [id_store])
   preorder             task_preorders? @relation(fields: [id_preorder], references: [id_preorder])
+  items                delivery_stop_items[]
 
   @@index([id_route], map: "idx_delivery_stops_route")
   @@index([id_preorder], map: "idx_delivery_stops_preorder")
+}
+
+/// Que productos (y cuantos) se dejaron realmente en una parada de la
+/// ruta -- puede no coincidir exacto con lo que decia el prepedido
+/// original (sustituciones, faltantes, etc). f_unit_price guarda el
+/// precio a tienda del producto al momento de la entrega, para que el
+/// historial no cambie si despues se actualiza el precio del producto.
+model delivery_stop_items {
+  id_item     Int                  @id @default(autoincrement()) @db.UnsignedInt
+  id_stop     Int                  @db.UnsignedInt
+  id_product  Int
+  i_quantity  Int
+  f_unit_price Decimal             @db.Decimal(10, 2)
+  stop        delivery_route_stops @relation(fields: [id_stop], references: [id_stop])
+  product     products             @relation(fields: [id_product], references: [id_product])
+
+  @@index([id_stop], map: "idx_delivery_stop_items_stop")
 }

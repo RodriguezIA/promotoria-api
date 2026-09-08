@@ -79,6 +79,7 @@ export class DeliveryRoutes {
                     include: {
                         store: { select: { id_store: true, name: true } },
                         preorder: { include: { items: { include: { product: { select: { name: true } } } } } },
+                        items: { include: { product: { select: { id_product: true, name: true } } } },
                     },
                     orderBy: { i_order: 'asc' },
                 },
@@ -95,6 +96,7 @@ export class DeliveryRoutes {
                     include: {
                         store: { select: { id_store: true, name: true } },
                         preorder: { include: { items: { include: { product: { select: { name: true } } } } } },
+                        items: { include: { product: { select: { id_product: true, name: true } } } },
                     },
                     orderBy: { i_order: 'asc' },
                 },
@@ -122,8 +124,10 @@ export class DeliveryRoutes {
         i_status?: number
         b_delivered?: boolean
         vc_no_delivery_reason?: string
-        payment_method?: 'EFECTIVO' | 'TRANSFERENCIA' | 'CONSIGNA'
-        f_amount_paid?: number
+        b_consigna?: boolean
+        f_amount_cash?: number
+        f_amount_transfer?: number
+        items?: { id_product: number; quantity: number }[]
     }) {
         const stop = await prisma.delivery_route_stops.findUnique({
             where: { id_stop },
@@ -131,12 +135,82 @@ export class DeliveryRoutes {
         })
         if (!stop || stop.route.id_driver !== id_driver) throw new Error('Parada no encontrada')
 
-        return await prisma.delivery_route_stops.update({
-            where: { id_stop },
-            data: {
-                ...input,
-                dt_visited: input.i_status === 1 ? new Date() : undefined,
-            },
+        return await prisma.$transaction(async (tx) => {
+            let f_total_charged: number | undefined = undefined
+
+            if (input.items && input.items.length > 0) {
+                const productIds = input.items.map(i => i.id_product)
+                const products = await tx.products.findMany({
+                    where: { id_product: { in: productIds } },
+                    select: { id_product: true, f_store_price: true },
+                })
+                const priceMap = new Map(products.map(p => [p.id_product, Number(p.f_store_price ?? 0)]))
+
+                await tx.delivery_stop_items.deleteMany({ where: { id_stop } })
+                await tx.delivery_stop_items.createMany({
+                    data: input.items.map(item => ({
+                        id_stop,
+                        id_product: item.id_product,
+                        i_quantity: item.quantity,
+                        f_unit_price: priceMap.get(item.id_product) ?? 0,
+                    })),
+                })
+                f_total_charged = input.items.reduce(
+                    (sum, item) => sum + item.quantity * (priceMap.get(item.id_product) ?? 0),
+                    0
+                )
+            }
+
+            return await tx.delivery_route_stops.update({
+                where: { id_stop },
+                data: {
+                    i_status: input.i_status,
+                    b_delivered: input.b_delivered,
+                    vc_no_delivery_reason: input.vc_no_delivery_reason,
+                    b_consigna: input.b_consigna,
+                    f_amount_cash: input.f_amount_cash,
+                    f_amount_transfer: input.f_amount_transfer,
+                    f_total_charged,
+                    dt_visited: input.i_status === 1 ? new Date() : undefined,
+                },
+            })
         })
+    }
+
+    /**
+     * Historial de entregas de una tienda: cada visita ya completada, con
+     * los productos que realmente se dejaron y cuanto se cobro. Es lo que
+     * el cliente ve dentro del detalle de la tienda en Logistica, para ir
+     * llevando la cuenta de cuanto se le ha entregado/cobrado en total.
+     */
+    async getStoreDeliveryHistory(id_store: number, id_client: number) {
+        const stops = await prisma.delivery_route_stops.findMany({
+            where: {
+                id_store,
+                i_status: 1,
+                route: { id_client },
+            },
+            include: {
+                items: { include: { product: { select: { id_product: true, name: true } } } },
+                route: { include: { driver: { select: { name: true } } } },
+            },
+            orderBy: { dt_visited: 'desc' },
+        })
+
+        const totalCharged = stops.reduce((sum, s) => sum + Number(s.f_total_charged ?? 0), 0)
+        const totalsByProduct = new Map<number, { name: string; quantity: number }>()
+        stops.forEach(stop => {
+            stop.items.forEach(item => {
+                const current = totalsByProduct.get(item.id_product) ?? { name: item.product.name, quantity: 0 }
+                current.quantity += item.i_quantity
+                totalsByProduct.set(item.id_product, current)
+            })
+        })
+
+        return {
+            visits: stops,
+            total_charged: totalCharged,
+            totals_by_product: Array.from(totalsByProduct.values()),
+        }
     }
 }

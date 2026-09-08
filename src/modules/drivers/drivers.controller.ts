@@ -92,7 +92,7 @@ export const driverLogin = async (req: Request, res: Response) => {
         const token = Utils.generate_token(payload as any)
         res.status(200).json({
             ok: true, error: 0,
-            data: { token, driver: { id_driver: driver.id_driver, name: driver.name, phone: driver.phone, email: driver.email, vc_photo: driver.vc_photo } },
+            data: { token, driver: { id_driver: driver.id_driver, id_client: driver.id_client, name: driver.name, phone: driver.phone, email: driver.email, vc_photo: driver.vc_photo } },
             message: 'Inicio de sesión exitoso',
         })
     } catch (error) {

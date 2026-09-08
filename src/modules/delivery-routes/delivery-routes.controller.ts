@@ -68,3 +68,14 @@ export const updateStop = async (req: Request, res: Response) => {
         res.status(400).json({ ok: false, error: 1, data: null, message })
     }
 }
+
+export const getStoreDeliveryHistory = async (req: Request, res: Response) => {
+    try {
+        const id_client = req.user!.id_client
+        const id_store = Number(req.params.id_store)
+        const history = await routesService.getStoreDeliveryHistory(id_store, id_client)
+        res.status(200).json({ ok: true, error: 0, data: history, message: 'Historial de entregas obtenido exitosamente' })
+    } catch (error) {
+        res.status(500).json({ ok: false, error: 1, data: null, message: 'Error al obtener el historial de entregas' })
+    }
+}
