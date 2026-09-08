@@ -38,6 +38,10 @@ export const createProduct = async (req: Request, res: Response) => {
             id_client,
             name,
             description: body.description,
+            i_stock: body.i_stock !== undefined && body.i_stock !== '' ? parseNumber(body.i_stock) ?? null : null,
+            b_allow_backorder: body.b_allow_backorder === 'true' || body.b_allow_backorder === true,
+            i_backorder_days: body.i_backorder_days !== undefined && body.i_backorder_days !== '' ? parseNumber(body.i_backorder_days) ?? null : null,
+            f_store_price: body.f_store_price !== undefined && body.f_store_price !== '' ? Number(body.f_store_price) : null,
         };
 
         const product = await productService.createProduct(payload);

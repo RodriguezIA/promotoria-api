@@ -210,21 +210,35 @@ model product_logs {
 }
 
 model products {
-  id_product       Int                @id @default(autoincrement())
-  id_user          Int                @db.UnsignedInt
-  id_client        Int                @db.UnsignedInt
-  vc_folio         String?            @unique(map: "uq_products_folio") @db.VarChar(50)
-  name             String             @db.VarChar(255)
-  description      String?            @db.Text
-  vc_image         String?            @db.VarChar(500)
-  i_status         Int?               @default(1) @db.TinyInt
-  dt_created       DateTime?          @default(now()) @db.Timestamp(0)
-  dt_updated       DateTime?          @default(now()) @updatedAt @db.Timestamp(0)
-  client           clients            @relation(fields: [id_client], references: [id_client])
-  request_products request_products[]
-  stock_minimums   product_stock_minimums[]
-  stock_readings   store_product_stock[]
-  preorder_items   task_preorder_items[]
+  id_product        Int                @id @default(autoincrement())
+  id_user           Int                @db.UnsignedInt
+  id_client         Int                @db.UnsignedInt
+  vc_folio          String?            @unique(map: "uq_products_folio") @db.VarChar(50)
+  name              String             @db.VarChar(255)
+  description       String?            @db.Text
+  vc_image          String?            @db.VarChar(500)
+  i_status          Int?               @default(1) @db.TinyInt
+  /// Piezas disponibles ahora mismo. NULL = el cliente no maneja stock para
+  /// este producto (se surte sin restriccion, comportamiento de antes).
+  i_stock           Int?               @db.UnsignedInt
+  /// Si esta prendido, cuando un pedido pide mas piezas de las que hay en
+  /// i_stock, el faltante se puede surtir despues (backorder) en vez de
+  /// simplemente topar al stock disponible.
+  b_allow_backorder Boolean            @default(false)
+  /// Dias que tarda en surtirse el faltante cuando b_allow_backorder esta
+  /// prendido (ej. 20 o 30 dias, lo que el cliente decida).
+  i_backorder_days  Int?               @db.UnsignedSmallInt
+  /// Costo que se le cobra a la tienda por este producto (para que el dueño
+  /// del negocio sepa cuanto va a pagar por su pedido). Distinto del costo
+  /// de las preguntas del checklist.
+  f_store_price     Decimal?           @db.Decimal(10, 2)
+  dt_created        DateTime?          @default(now()) @db.Timestamp(0)
+  dt_updated        DateTime?          @default(now()) @updatedAt @db.Timestamp(0)
+  client            clients            @relation(fields: [id_client], references: [id_client])
+  request_products  request_products[]
+  stock_minimums    product_stock_minimums[]
+  stock_readings    store_product_stock[]
+  preorder_items    task_preorder_items[]
 
   @@index([id_client], map: "products_id_client_fkey")
 }
@@ -600,12 +614,23 @@ model task_preorders {
 
 /// Renglones del pedido acordado: cuanto de cada producto se va a surtir.
 model task_preorder_items {
-  id_item     Int             @id @default(autoincrement()) @db.UnsignedInt
-  id_preorder Int             @db.UnsignedInt
-  id_product  Int
-  i_quantity  Int
-  preorder    task_preorders  @relation(fields: [id_preorder], references: [id_preorder])
-  product     products        @relation(fields: [id_product], references: [id_product])
+  id_item              Int             @id @default(autoincrement()) @db.UnsignedInt
+  id_preorder          Int             @db.UnsignedInt
+  id_product           Int
+  i_quantity           Int
+  /// Cuanto de i_quantity se surte de inmediato (con el stock disponible en
+  /// ese momento). Si el producto no maneja stock, o alcanza el stock
+  /// completo, esto es igual a i_quantity.
+  i_quantity_immediate Int?
+  /// Cuanto de i_quantity queda pendiente por surtir despues (backorder).
+  /// NULL o 0 si no aplico backorder para este renglon.
+  i_quantity_backorder Int?
+  /// Dias de entrega prometidos para i_quantity_backorder (copiado del
+  /// producto al momento de crear el prepedido, para que quede fijo aunque
+  /// el cliente cambie despues la configuracion del producto).
+  i_backorder_days     Int?
+  preorder             task_preorders  @relation(fields: [id_preorder], references: [id_preorder])
+  product              products        @relation(fields: [id_product], references: [id_product])
 
   @@index([id_preorder], map: "idx_preorder_item_preorder")
 }

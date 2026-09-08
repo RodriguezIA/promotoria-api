@@ -17,6 +17,10 @@ export class Product {
                     name: newProductPayload.name,
                     description: newProductPayload.description || '',
                     vc_image: newProductPayload.vc_image || '',
+                    i_stock: newProductPayload.i_stock ?? null,
+                    b_allow_backorder: newProductPayload.b_allow_backorder ?? false,
+                    i_backorder_days: newProductPayload.i_backorder_days ?? null,
+                    f_store_price: newProductPayload.f_store_price ?? null,
                 }
             })
 
@@ -106,6 +110,10 @@ export class Product {
                 data: {
                     name: newProductPayload.name,
                     description: newProductPayload.description || '',
+                    i_stock: newProductPayload.i_stock ?? null,
+                    b_allow_backorder: newProductPayload.b_allow_backorder ?? false,
+                    i_backorder_days: newProductPayload.i_backorder_days ?? null,
+                    f_store_price: newProductPayload.f_store_price ?? null,
                 },
                 where: {
                     id_product: id_product

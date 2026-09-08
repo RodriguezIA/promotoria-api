@@ -50,7 +50,7 @@ export class Preorder {
 
         const minimums = await prisma.product_stock_minimums.findMany({
             where: { id_store: task.id_store, id_product: { in: requestProductIds } },
-            include: { product: { select: { id_product: true, name: true } } },
+            include: { product: { select: { id_product: true, name: true, i_stock: true, b_allow_backorder: true, i_backorder_days: true } } },
         })
         if (minimums.length === 0) return { store_name: task.store.name, items: [] }
 
@@ -69,6 +69,12 @@ export class Preorder {
                     quantity,
                     minimum: m.i_minimum,
                     shortfall: Math.max(shortfall, 0),
+                    // Para que la app pueda avisar de una vez cuanto se
+                    // puede surtir de inmediato vs a cuantos dias, sin tener
+                    // que adivinar — mismos datos que usa createPreorder.
+                    available_stock: m.product.i_stock,
+                    allow_backorder: m.product.b_allow_backorder,
+                    backorder_days: m.product.i_backorder_days,
                 }
             })
             .filter(item => item.shortfall > 0)
@@ -118,13 +124,50 @@ export class Preorder {
                     preferred_time: input.preferred_time,
                 },
             })
-            await tx.task_preorder_items.createMany({
-                data: input.items.map(item => ({
-                    id_preorder: created.id_preorder,
-                    id_product: item.id_product,
-                    i_quantity: item.quantity,
-                })),
+
+            // Reparto inmediato/pendiente segun el stock configurado por el
+            // cliente para cada producto. Si el producto no maneja stock
+            // (i_stock null), se surte completo de inmediato, igual que
+            // antes de esta funcionalidad.
+            const productIds = input.items.map(i => i.id_product)
+            const products = await tx.products.findMany({
+                where: { id_product: { in: productIds } },
+                select: { id_product: true, i_stock: true, b_allow_backorder: true, i_backorder_days: true },
             })
+            const productMap = new Map(products.map(p => [p.id_product, p]))
+
+            for (const item of input.items) {
+                const product = productMap.get(item.id_product)
+                let immediate = item.quantity
+                let backorder = 0
+                let backorderDays: number | null = null
+
+                if (product && product.i_stock !== null) {
+                    immediate = Math.min(item.quantity, product.i_stock)
+                    const remaining = item.quantity - immediate
+                    if (remaining > 0 && product.b_allow_backorder) {
+                        backorder = remaining
+                        backorderDays = product.i_backorder_days
+                    }
+                    // Se descuenta del stock solo lo que se surte de inmediato.
+                    await tx.products.update({
+                        where: { id_product: item.id_product },
+                        data: { i_stock: { decrement: immediate } },
+                    })
+                }
+
+                await tx.task_preorder_items.create({
+                    data: {
+                        id_preorder: created.id_preorder,
+                        id_product: item.id_product,
+                        i_quantity: item.quantity,
+                        i_quantity_immediate: immediate,
+                        i_quantity_backorder: backorder > 0 ? backorder : null,
+                        i_backorder_days: backorder > 0 ? backorderDays : null,
+                    },
+                })
+            }
+
             return created
         })
 
