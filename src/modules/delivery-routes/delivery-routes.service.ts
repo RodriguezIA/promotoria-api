@@ -88,7 +88,7 @@ export class DeliveryRoutes {
     }
 
     async getRoutesByDriver(id_driver: number) {
-        return await prisma.delivery_routes.findMany({
+        const routes = await prisma.delivery_routes.findMany({
             where: { id_driver },
             include: {
                 stops: {
@@ -101,6 +101,21 @@ export class DeliveryRoutes {
             },
             orderBy: { route_date: 'desc' },
         })
+
+        const storeIds = [...new Set(routes.flatMap(r => r.stops.map(s => s.id_store)))]
+        const addresses = await prisma.addresses.findMany({
+            where: { entity_type: 'store', entity_id: { in: storeIds }, is_active: true },
+            select: { entity_id: true, latitude: true, longitude: true, street: true },
+        })
+        const addressByStore = new Map(addresses.map(a => [a.entity_id, a]))
+
+        return routes.map(route => ({
+            ...route,
+            stops: route.stops.map(stop => ({
+                ...stop,
+                store: { ...stop.store, address: addressByStore.get(stop.id_store) ?? null },
+            })),
+        }))
     }
 
     async updateStop(id_stop: number, id_driver: number, input: {
