@@ -2,7 +2,7 @@ import { Router } from 'express'
 import { authMiddleware, uploadAny } from '../../core/middleware'
 import {
     createDriver, listDrivers, deactivateDriver, suspendDriver, reactivateDriver, updateDriver, uploadDriverPhoto,
-    driverLogin, checkDriverPhone, getDriverProfile, updateDriverPassword, updateDriverLocation,
+    driverLogin, checkDriverPhone, createStoreByDriver, getDriverProfile, updateDriverPassword, updateDriverLocation,
 } from './drivers.controller'
 
 const driversRouter = Router()
@@ -24,5 +24,6 @@ driversRouter.post('/:id_driver/photo', authMiddleware, uploadAny.single('file')
 driversRouter.get('/me/profile', authMiddleware, getDriverProfile)
 driversRouter.patch('/me/password', authMiddleware, updateDriverPassword)
 driversRouter.patch('/me/location', authMiddleware, updateDriverLocation)
+driversRouter.post('/me/stores', authMiddleware, createStoreByDriver)
 
 export default driversRouter

@@ -178,3 +178,14 @@ export const checkDriverPhone = async (req: Request, res: Response) => {
         res.status(500).json({ ok: false, error: 1, data: null, message: 'Error al verificar el telefono' })
     }
 }
+
+export const createStoreByDriver = async (req: Request, res: Response) => {
+    try {
+        const id_driver = req.user!.id
+        const store = await driversService.createStore(id_driver, req.body)
+        res.status(201).json({ ok: true, error: 0, data: store, message: 'Tienda dada de alta exitosamente' })
+    } catch (error) {
+        const message = error instanceof Error ? error.message : 'Error al dar de alta la tienda'
+        res.status(400).json({ ok: false, error: 1, data: null, message })
+    }
+}

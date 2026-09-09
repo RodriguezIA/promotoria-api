@@ -1,5 +1,6 @@
 import bcrypt from 'bcrypt'
 import { prisma } from '../../core/prisma'
+import { Store } from '../stores/store.service'
 
 export class Drivers {
     async create(input: { id_client: number; name: string; phone: string; email?: string; password: string }) {
@@ -65,6 +66,55 @@ export class Drivers {
     async checkPhoneExists(phone: string) {
         const driver = await prisma.drivers.findFirst({ where: { phone, i_status: { in: [1, 2] } } })
         return !!driver
+    }
+
+    /**
+     * Un chofer puede dar de alta una tienda nueva de su mismo cliente,
+     * directo desde su celular en campo. Las tiendas se guardan ligadas a
+     * un usuario (id_user), no directo al cliente, asi que se busca
+     * cualquier usuario activo de ese cliente para atribuirle el alta.
+     */
+    async createStore(id_driver: number, input: {
+        name: string
+        id_channel_sale?: number
+        store_code?: string
+        id_state: number
+        id_city: number
+        street?: string
+        ext_number?: string
+        postal_code?: string
+        latitude?: string
+        longitude?: string
+    }) {
+        const driver = await prisma.drivers.findUnique({ where: { id_driver } })
+        if (!driver) throw new Error('Chofer no encontrado')
+
+        const representante = await prisma.users.findFirst({
+            where: { id_client: driver.id_client, i_status: 1 },
+        })
+        if (!representante) throw new Error('No se encontró un usuario del cliente para dar de alta la tienda')
+
+        const mexico = await prisma.countries.findFirst({ where: { name: { contains: 'exico' } } })
+
+        const storeService = new Store()
+        return await storeService.createStore({
+            id_user: representante.id_user,
+            id_channel_sale: input.id_channel_sale,
+            name: input.name,
+            store_code: input.store_code,
+            address: {
+                entity_type: 'store',
+                entity_id: 0,
+                id_country: mexico?.id ?? 1,
+                id_state: input.id_state,
+                id_city: input.id_city,
+                street: input.street || 'Sin especificar',
+                ext_number: input.ext_number || 'S/N',
+                postal_code: input.postal_code || '00000',
+                latitude: input.latitude,
+                longitude: input.longitude,
+            },
+        })
     }
 
     async changePassword(id_driver: number, current_password: string, new_password: string) {
