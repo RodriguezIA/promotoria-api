@@ -1,10 +1,22 @@
 import { Router, Request, Response, NextFunction } from 'express'
 import { ZodSchema } from 'zod'
 import { uploadAny } from '../../core/middleware/upload.middleware'
+import { authMiddleware } from '../../core/middleware/auth.middleware'
 import { createSaleChannel, getSaleChannel, getSalesChannelList, updateSaleChannel, deleteSaleChannel } from './channel_sales.controller'
 import { createChannelSalesSchema, updateChannelSalesSchema } from './channel_sales.schema'
 
 const channelsSalesRouter = Router()
+
+/**
+ * Solo el master puede crear/editar/eliminar canales de venta.
+ */
+const masterOnly = (req: Request, res: Response, next: NextFunction): void => {
+  if (req.user?.i_rol !== 1) {
+    res.status(403).json({ ok: false, error: 1, data: null, message: 'No autorizado' })
+    return
+  }
+  next()
+}
 
 /**
  * Helper para validar el campo `data` (JSON string) en requests multipart.
@@ -61,7 +73,7 @@ const validateMultipartData = (schema: ZodSchema) => {
  *     responses:
  *       200: { description: "Lista de canales." }
  */
-channelsSalesRouter.post('/', uploadAny.single('file'), validateMultipartData(createChannelSalesSchema), createSaleChannel);
+channelsSalesRouter.post('/', authMiddleware, masterOnly, uploadAny.single('file'), validateMultipartData(createChannelSalesSchema), createSaleChannel);
 channelsSalesRouter.get('/', getSalesChannelList);
 
 /**
@@ -112,7 +124,7 @@ channelsSalesRouter.get('/', getSalesChannelList);
  *       200: { description: "Canal eliminado." }
  */
 channelsSalesRouter.get('/:id_channel', getSaleChannel);
-channelsSalesRouter.put('/:id_channel', uploadAny.single('file'), validateMultipartData(updateChannelSalesSchema), updateSaleChannel);
-channelsSalesRouter.delete('/:id_channel', deleteSaleChannel);
+channelsSalesRouter.put('/:id_channel', authMiddleware, masterOnly, uploadAny.single('file'), validateMultipartData(updateChannelSalesSchema), updateSaleChannel);
+channelsSalesRouter.delete('/:id_channel', authMiddleware, masterOnly, deleteSaleChannel);
 
 export default channelsSalesRouter
