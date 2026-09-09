@@ -1,7 +1,7 @@
 import { Router } from 'express'
 import { authMiddleware, uploadAny } from '../../core/middleware'
 import {
-    createDriver, listDrivers, deactivateDriver, suspendDriver, reactivateDriver, updateDriver, uploadDriverPhoto,
+    createDriver, listDrivers, listDriversByClient, deactivateDriver, suspendDriver, reactivateDriver, updateDriver, uploadDriverPhoto,
     driverLogin, checkDriverPhone, createStoreByDriver, getDriverProfile, updateDriverPassword, updateDriverLocation,
 } from './drivers.controller'
 
@@ -14,6 +14,7 @@ driversRouter.get('/check-phone/:phone', checkDriverPhone)
 // Acciones del cliente empresarial sobre sus choferes (alta/baja/edicion).
 driversRouter.post('/', authMiddleware, createDriver)
 driversRouter.get('/', authMiddleware, listDrivers)
+driversRouter.get('/by-client/:id_client', authMiddleware, listDriversByClient)
 driversRouter.put('/:id_driver', authMiddleware, updateDriver)
 driversRouter.delete('/:id_driver', authMiddleware, deactivateDriver)
 driversRouter.patch('/:id_driver/suspend', authMiddleware, suspendDriver)

@@ -32,6 +32,24 @@ export const listDrivers = async (req: Request, res: Response) => {
     }
 }
 
+// Solo para el master: ver los choferes de cualquier cliente, no solo el
+// propio (i_rol !== 1 nunca tiene id_client=0, asi que este endpoint solo
+// tiene sentido para el rol de master/superadmin).
+export const listDriversByClient = async (req: Request, res: Response) => {
+    try {
+        if (req.user!.i_rol !== 1) {
+            res.status(403).json({ ok: false, error: 1, data: null, message: 'No autorizado' })
+            return
+        }
+        const id_client = Number(req.params.id_client)
+        const drivers = await driversService.listByClient(id_client)
+        res.status(200).json({ ok: true, error: 0, data: drivers, message: 'Choferes obtenidos exitosamente' })
+    } catch (error) {
+        console.error('LIST DRIVERS BY CLIENT ERROR:', error)
+        res.status(500).json({ ok: false, error: 1, data: null, message: 'Error al obtener los choferes' })
+    }
+}
+
 export const deactivateDriver = async (req: Request, res: Response) => {
     try {
         const id_client = req.user!.id_client
