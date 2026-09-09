@@ -123,7 +123,17 @@ export class Drivers {
         const valid = await bcrypt.compare(current_password, driver.password_hash)
         if (!valid) throw new Error('La contraseña actual no es correcta')
         const password_hash = await bcrypt.hash(new_password, 10)
-        return await prisma.drivers.update({ where: { id_driver }, data: { password_hash } })
+        return await prisma.drivers.update({ where: { id_driver }, data: { password_hash, must_change_password: false } })
+    }
+
+    /**
+     * Solo el master la usa: resetea la contraseña de un chofer a "1234" y
+     * marca must_change_password para que en su siguiente login se le pida
+     * poner una nueva antes de dejarlo usar el resto del panel.
+     */
+    async resetPasswordToDefault(id_driver: number) {
+        const password_hash = await bcrypt.hash('1234', 10)
+        return await prisma.drivers.update({ where: { id_driver }, data: { password_hash, must_change_password: true } })
     }
 
     async updateLocation(id_driver: number, latitude: number, longitude: number) {

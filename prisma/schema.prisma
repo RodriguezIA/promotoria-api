@@ -708,6 +708,9 @@ model users {
   lastname               String                 @db.VarChar(100)
   reset_password_token   String?                @db.VarChar(500)
   reset_password_expires DateTime?              @db.Timestamp(0)
+  /// El master reseteo la contraseña (queda en "1234") y esta persona debe
+  /// poner una nueva antes de poder usar el resto del sistema.
+  must_change_password   Boolean                @default(false)
   id_client              Int                    @default(0) @db.UnsignedInt
   id_user_creator        Int                    @default(0) @db.UnsignedInt
   client_logs            client_logs[]
@@ -975,6 +978,9 @@ model drivers {
   longitude      Decimal?         @db.Decimal(11, 8)
   dt_location_updated DateTime?   @db.Timestamp(0)
   i_status       Int              @default(1) @db.TinyInt
+  /// El master/cliente reseteo la contraseña (queda en "1234") y el chofer
+  /// debe poner una nueva antes de poder usar el resto del panel.
+  must_change_password Boolean    @default(false)
   dt_register    DateTime         @default(now()) @db.Timestamp(0)
   dt_updated     DateTime         @default(now()) @updatedAt @db.Timestamp(0)
   client         clients          @relation(fields: [id_client], references: [id_client])

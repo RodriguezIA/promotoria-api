@@ -91,6 +91,29 @@ adminRouter.get(
   },
 );
 
+// Solo el master puede resetear la contraseña de un usuario a "1234". En
+// su siguiente login, el sistema le pedira poner una nueva antes de dejarlo
+// avanzar (must_change_password).
+adminRouter.patch(
+  "/users/:id_user/reset-password",
+  authMiddleware,
+  async (req: Request, res: Response): Promise<void> => {
+    try {
+      if (req.user!.i_rol !== 1) {
+        res.status(403).json({ ok: false, error: 1, data: null, message: "No autorizado" });
+        return;
+      }
+      const id_user = Number(req.params.id_user);
+      const userModel = getAdminUser();
+      await userModel.resetPasswordToDefault(id_user);
+      res.status(200).json({ ok: true, error: 0, data: null, message: "Contraseña restablecida a 1234" });
+    } catch (error) {
+      console.error("RESET PASSWORD ERROR:", error);
+      res.status(500).json({ ok: false, error: 1, data: null, message: "Error al restablecer la contraseña" });
+    }
+  },
+);
+
 adminRouter.post(
   "/restore-password",
   async (req: Request, res: Response): Promise<void> => {

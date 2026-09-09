@@ -141,7 +141,7 @@ export class User {
   async getUserByEmail(email: string): Promise<IUser> {
     try {
       const [result]: any[] = await this.db.query(
-        "SELECT id_user, email, password, i_rol, dt_register, dt_updated, name, lastname, id_client FROM users WHERE email = ? LIMIT 1",
+        "SELECT id_user, email, password, i_rol, dt_register, dt_updated, name, lastname, id_client, must_change_password FROM users WHERE email = ? LIMIT 1",
         [email],
       );
       const user_finded = result[0];
@@ -256,6 +256,25 @@ export class User {
     const query = `
       UPDATE users
       SET password = ?,
+          must_change_password = 0,
+          reset_password_token = NULL,
+          reset_password_expires = NULL
+      WHERE id_user = ?
+    `;
+    await this.db.query(query, [hashedPassword, userId]);
+  }
+
+  /**
+   * Solo el master la usa: resetea la contraseña de un usuario a "1234" y
+   * marca must_change_password para que en su siguiente login se le pida
+   * poner una nueva antes de dejarlo usar el resto del sistema.
+   */
+  async resetPasswordToDefault(userId: number) {
+    const hashedPassword = await Utils.hash_password("1234");
+    const query = `
+      UPDATE users
+      SET password = ?,
+          must_change_password = 1,
           reset_password_token = NULL,
           reset_password_expires = NULL
       WHERE id_user = ?

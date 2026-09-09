@@ -11,6 +11,7 @@ export interface IUser {
   dt_updated: string;
   reset_password_token?: string;
   reset_password_expires?: Date;
+  must_change_password?: boolean;
 }
 
 export interface IUserLog {

@@ -74,6 +74,22 @@ export const suspendDriver = async (req: Request, res: Response) => {
     }
 }
 
+// Solo el master puede resetear la contraseña de un chofer a "1234".
+export const resetDriverPassword = async (req: Request, res: Response) => {
+    try {
+        if (req.user!.i_rol !== 1) {
+            res.status(403).json({ ok: false, error: 1, data: null, message: 'No autorizado' })
+            return
+        }
+        const id_driver = Number(req.params.id_driver)
+        await driversService.resetPasswordToDefault(id_driver)
+        res.status(200).json({ ok: true, error: 0, data: null, message: 'Contraseña restablecida a 1234' })
+    } catch (error) {
+        const message = error instanceof Error ? error.message : 'Error al restablecer la contraseña'
+        res.status(400).json({ ok: false, error: 1, data: null, message })
+    }
+}
+
 export const reactivateDriver = async (req: Request, res: Response) => {
     try {
         const id_client = req.user!.id_client
@@ -134,7 +150,7 @@ export const driverLogin = async (req: Request, res: Response) => {
         const token = Utils.generate_token(payload as any)
         res.status(200).json({
             ok: true, error: 0,
-            data: { token, driver: { id_driver: driver.id_driver, id_client: driver.id_client, name: driver.name, phone: driver.phone, email: driver.email, vc_photo: driver.vc_photo } },
+            data: { token, driver: { id_driver: driver.id_driver, id_client: driver.id_client, name: driver.name, phone: driver.phone, email: driver.email, vc_photo: driver.vc_photo, must_change_password: driver.must_change_password } },
             message: 'Inicio de sesión exitoso',
         })
     } catch (error) {
