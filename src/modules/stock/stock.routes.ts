@@ -1,7 +1,7 @@
 import { Router } from 'express'
 
 import { authMiddleware, validateBody, validateParams } from '../../core/middleware'
-import { setStockMinimum, getStockMinimumsByStore, getStockMapData, bulkAssignStockMinimum, countStockMatchingStores, getStockMatchingStores } from './stock.controller'
+import { setStockMinimum, getStockMinimumsByStore, getStockMapData, bulkAssignStockMinimum, countStockMatchingStores, getStockMatchingStores, getStockReadingsByStore } from './stock.controller'
 import { setStockMinimumSchema, storeIdParamSchema, bulkAssignStockMinimumSchema } from './stock.schema'
 
 const stockRouter = Router()
@@ -25,5 +25,10 @@ stockRouter.get('/minimums/matching-stores', authMiddleware, getStockMatchingSto
 stockRouter.post('/minimums/bulk-assign', authMiddleware, validateBody(bulkAssignStockMinimumSchema), bulkAssignStockMinimum)
 
 stockRouter.get('/minimums/:id_store', authMiddleware, validateParams(storeIdParamSchema), getStockMinimumsByStore)
+
+// Lecturas reales de existencia que el promotor conto en una tienda —
+// para que el chofer, al entregar, vea lo que de verdad esta en el
+// anaquel, no solo el minimo configurado.
+stockRouter.get('/readings/:id_store', authMiddleware, getStockReadingsByStore)
 
 export default stockRouter

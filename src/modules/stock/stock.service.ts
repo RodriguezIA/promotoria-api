@@ -350,4 +350,18 @@ export class Stock {
 
         return result
     }
+
+    /**
+     * Lecturas de existencia que el promotor conto realmente en una tienda
+     * (store_product_stock), con la fecha de la ultima actualizacion. Es lo
+     * que ve el chofer al entregar: solo los productos que el promotor de
+     * verdad reviso en esa tienda, no todo el catalogo del cliente.
+     */
+    async getReadingsByStore(id_store: number) {
+        return await prisma.store_product_stock.findMany({
+            where: { id_store },
+            include: { product: { select: { id_product: true, name: true, vc_image: true } } },
+            orderBy: { dt_register: 'desc' },
+        })
+    }
 }

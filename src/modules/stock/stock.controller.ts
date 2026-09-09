@@ -105,3 +105,14 @@ export const getStockMatchingStores = async (req: Request, res: Response) => {
         res.status(500).json({ ok: false, error: 1, data: null, message: 'Error al obtener las tiendas' })
     }
 }
+
+export const getStockReadingsByStore = async (req: Request, res: Response) => {
+    try {
+        const id_store = Number(req.params.id_store)
+        const readings = await stockService.getReadingsByStore(id_store)
+        res.status(200).json({ ok: true, error: 0, data: readings, message: 'Existencias obtenidas exitosamente' })
+    } catch (error) {
+        console.error('f.getStockReadingsByStore: ', error)
+        res.status(500).json({ ok: false, error: 1, data: null, message: 'Error al obtener las existencias' })
+    }
+}
