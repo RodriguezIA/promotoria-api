@@ -195,7 +195,7 @@ export class Preorder {
      * quiere recibirlo, y que se va a surtir.
      */
     async getPreordersByClient(id_client: number) {
-        return await prisma.task_preorders.findMany({
+        const preorders = await prisma.task_preorders.findMany({
             where: { task: { id_client } },
             include: {
                 items: { include: { product: { select: { id_product: true, name: true } } } },
@@ -210,6 +210,33 @@ export class Preorder {
             },
             orderBy: { preferred_date: 'asc' },
         })
+
+        // El estado/municipio de la tienda vive en la tabla generica de
+        // direcciones (entity_type='store'), no directo en el modelo store.
+        const storeIds = [...new Set(preorders.map(p => p.task.store.id_store))]
+        const addresses = storeIds.length
+            ? await prisma.addresses.findMany({
+                where: { entity_type: 'store', entity_id: { in: storeIds }, is_active: true },
+                select: {
+                    entity_id: true,
+                    city: { select: { name: true } },
+                    state: { select: { name: true } },
+                },
+            })
+            : []
+        const addressByStore = new Map(addresses.map(a => [a.entity_id, a]))
+
+        return preorders.map(p => ({
+            ...p,
+            task: {
+                ...p.task,
+                store: {
+                    ...p.task.store,
+                    city: addressByStore.get(p.task.store.id_store)?.city?.name ?? null,
+                    state: addressByStore.get(p.task.store.id_store)?.state?.name ?? null,
+                },
+            },
+        }))
     }
 
     /**
