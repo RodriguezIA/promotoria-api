@@ -288,9 +288,13 @@ export class Task {
         if (!task || task.id_status !== 1) throw new Error('La tarea no esta activa o no existe')
         if (task.id_promoter !== null) throw new Error('La tarea ya tiene un promotor asignado')
 
-        // Un promotor solo puede tener una tarea activa a la vez.
+        // Un promotor solo puede tener una tarea EN LA QUE ESTA TRABAJANDO
+        // a la vez (asignada, en camino o en ejecucion). Una tarea que ya
+        // envio a revision (6) ya no depende de el, asi que no cuenta como
+        // "activa" para este limite -- puede aceptar otra mientras espera
+        // que el cliente la apruebe.
         const hasActiveTask = await prisma.tasks.findFirst({
-            where: { id_promoter, id_status: { gte: 2, lte: 6 } },
+            where: { id_promoter, id_status: { gte: 2, lte: 5 } },
             select: { id_task: true },
         })
         if (hasActiveTask) throw new Error('Ya tienes una tarea activa, termina la actual antes de aceptar otra')
