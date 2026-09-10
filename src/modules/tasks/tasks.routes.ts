@@ -2,7 +2,7 @@ import { Router } from 'express'
 
 import { authMiddleware, debugBasicAuthMiddleware, validateBody } from '../../core/middleware'
 import { uploadAny } from '../../core/middleware/upload.middleware'
-import { createTask,getMyTasks, getMyTaskHistory, getTaskById, getTasks, updateTask, deleteTask, acceptTask, rejectTask, getTaskChecklist, answerTaskQuestions, completeTask, assignPromoterToTask, getNearbyTasks, forceNotifyTask, approveTask, cancelTask } from './tasks.controller'
+import { createTask,getMyTasks, getMyTaskHistory, getTaskById, getTasks, getTasksStatusSummary, updateTask, deleteTask, acceptTask, rejectTask, getTaskChecklist, answerTaskQuestions, completeTask, assignPromoterToTask, getNearbyTasks, forceNotifyTask, approveTask, cancelTask } from './tasks.controller'
 import { forceNotifyTaskSchema, cancelTaskSchema } from './tasks.schema'
 
 const taskRouter = Router()
@@ -139,6 +139,7 @@ taskRouter.get('/nearby', authMiddleware, getNearbyTasks)
  */
 // Admin: CRUD
 taskRouter.post('/', authMiddleware, createTask)
+taskRouter.get('/status-summary', authMiddleware, getTasksStatusSummary)
 taskRouter.get('/', authMiddleware, getTasks)
 
 /**

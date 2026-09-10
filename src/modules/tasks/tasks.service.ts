@@ -177,6 +177,32 @@ export class Task {
         }
     }
 
+    /**
+     * Resumen de cuantas tareas de un cliente caen en cada una de las 4
+     * categorias que ve el cliente en el listado de Pedidos, antes de
+     * entrar al detalle: Pendientes (nadie la ha tomado), En progreso
+     * (un promotor ya la acepto y la esta trabajando), Completadas (el
+     * promotor ya la termino, esperando que el cliente la revise) y
+     * Finalizadas (el cliente ya la aprobo).
+     */
+    async getStatusSummary(id_client: number) {
+        const counts = await prisma.tasks.groupBy({
+            by: ['id_status'],
+            where: { id_client },
+            _count: { id_task: true },
+        })
+
+        const countFor = (statuses: number[]) =>
+            counts.filter(c => statuses.includes(c.id_status)).reduce((sum, c) => sum + c._count.id_task, 0)
+
+        return {
+            pendientes: countFor([1]),
+            en_progreso: countFor([2, 3, 4]),
+            completadas: countFor([6]),
+            finalizadas: countFor([7]),
+        }
+    }
+
     async getTasksByPromoter(id_promoter: number, id_status?: number | number[]) {
         const where: any = { id_promoter }
         if (id_status !== undefined) {

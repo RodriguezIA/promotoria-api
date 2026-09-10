@@ -49,6 +49,20 @@ export const getTaskById = async (req: Request, res: Response) => {
     }
 }
 
+export const getTasksStatusSummary = async (req: Request, res: Response) => {
+    try {
+        const id_client = Number(req.query.id_client)
+        if (!id_client) {
+            res.status(400).json({ ok: false, error: 1, data: null, message: 'id_client es requerido' })
+            return
+        }
+        const summary = await taskService.getStatusSummary(id_client)
+        res.status(200).json({ ok: true, error: 0, data: summary, message: 'Resumen obtenido exitosamente' })
+    } catch (error) {
+        res.status(500).json({ ok: false, error: 1, data: null, message: 'Error al obtener el resumen', error_backend: (error as any).message })
+    }
+}
+
 export const getTasks = async (req: Request, res: Response) => {
     try {
         const { id_client, id_order, id_promoter, id_status, id_request, id_store, dt_from, dt_to, page, limit } = req.query
