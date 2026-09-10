@@ -1,7 +1,7 @@
 import { Router } from 'express'
 import { authMiddleware, requireRole, uploadVideo } from '../../core/middleware'
 import { ROLES } from '../../core/constants/status.constants'
-import { getLoginVideo, uploadLoginVideo, removeLoginVideo, getTaskInstructions, setTaskInstructions } from './app-config.controller'
+import { getLoginVideo, uploadLoginVideo, removeLoginVideo, getTaskInstructions, setTaskInstructions, getWhatsappSoporteClientes, setWhatsappSoporteClientes, getWhatsappSoportePromotores, setWhatsappSoportePromotores } from './app-config.controller'
 
 const appConfigRouter = Router()
 
@@ -16,5 +16,13 @@ appConfigRouter.delete('/login-video', authMiddleware, requireRole(ROLES.SUPER),
 // publico para que la app lo consulte, solo el master lo puede editar.
 appConfigRouter.get('/task-instructions', getTaskInstructions)
 appConfigRouter.put('/task-instructions', authMiddleware, requireRole(ROLES.SUPER), setTaskInstructions)
+
+// WhatsApp de soporte a clientes (boton "Contactar Soporte" en Mi Negocio)
+// y a promotores (login sin cuenta encontrada) — publicos para consulta,
+// solo el master los edita.
+appConfigRouter.get('/whatsapp-soporte-clientes', getWhatsappSoporteClientes)
+appConfigRouter.put('/whatsapp-soporte-clientes', authMiddleware, requireRole(ROLES.SUPER), setWhatsappSoporteClientes)
+appConfigRouter.get('/whatsapp-soporte-promotores', getWhatsappSoportePromotores)
+appConfigRouter.put('/whatsapp-soporte-promotores', authMiddleware, requireRole(ROLES.SUPER), setWhatsappSoportePromotores)
 
 export default appConfigRouter

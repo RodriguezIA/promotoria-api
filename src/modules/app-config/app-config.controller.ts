@@ -66,3 +66,44 @@ export const setTaskInstructions = async (req: Request, res: Response) => {
         res.status(500).json({ ok: false, error: 1, data: null, message: 'Error al actualizar el texto' })
     }
 }
+
+const WHATSAPP_SOPORTE_CLIENTES_DEFAULT = ''
+const WHATSAPP_SOPORTE_PROMOTORES_DEFAULT = '5218117105018'
+
+export const getWhatsappSoporteClientes = async (req: Request, res: Response) => {
+    try {
+        const data = await appConfigService.getSetting('whatsapp_soporte_clientes', WHATSAPP_SOPORTE_CLIENTES_DEFAULT)
+        res.status(200).json({ ok: true, error: 0, data, message: 'Configuración obtenida exitosamente' })
+    } catch (error) {
+        res.status(500).json({ ok: false, error: 1, data: null, message: 'Error al obtener la configuración' })
+    }
+}
+
+export const setWhatsappSoporteClientes = async (req: Request, res: Response) => {
+    try {
+        const value = String(req.body.value || '').trim()
+        const data = await appConfigService.setSetting('whatsapp_soporte_clientes', value)
+        res.status(200).json({ ok: true, error: 0, data, message: 'Número actualizado exitosamente' })
+    } catch (error) {
+        res.status(500).json({ ok: false, error: 1, data: null, message: 'Error al actualizar el número' })
+    }
+}
+
+export const getWhatsappSoportePromotores = async (req: Request, res: Response) => {
+    try {
+        const data = await appConfigService.getSetting('whatsapp_soporte_promotores', WHATSAPP_SOPORTE_PROMOTORES_DEFAULT)
+        res.status(200).json({ ok: true, error: 0, data, message: 'Configuración obtenida exitosamente' })
+    } catch (error) {
+        res.status(500).json({ ok: false, error: 1, data: null, message: 'Error al obtener la configuración' })
+    }
+}
+
+export const setWhatsappSoportePromotores = async (req: Request, res: Response) => {
+    try {
+        const value = String(req.body.value || '').trim()
+        const data = await appConfigService.setSetting('whatsapp_soporte_promotores', value)
+        res.status(200).json({ ok: true, error: 0, data, message: 'Número actualizado exitosamente' })
+    } catch (error) {
+        res.status(500).json({ ok: false, error: 1, data: null, message: 'Error al actualizar el número' })
+    }
+}
