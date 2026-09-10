@@ -96,7 +96,7 @@ export class Task {
         })
         if (!task) return null
 
-        const [storeAddress, requestAssets] = await Promise.all([
+        const [storeAddress, requestAssets, clientLogo] = await Promise.all([
             prisma.addresses.findFirst({
                 where: { entity_type: 'store', entity_id: task.id_store, is_active: true },
                 select: {
@@ -108,13 +108,18 @@ export class Task {
                 }
             }),
             task.id_request ? resolveImages('request', [task.id_request]) : Promise.resolve(new Map<number, string>()),
+            task.id_client ? resolveImages('client_logo', [task.id_client]) : Promise.resolve(new Map<number, string>()),
         ])
 
         const request = task.request && task.id_request
             ? { ...task.request, url_rack_image: requestAssets.get(task.id_request) ?? task.request.url_rack_image }
             : task.request;
 
-        return { ...task, request, storeAddress }
+        const client = task.client
+            ? { ...task.client, logo_url: clientLogo.get(task.id_client) ?? null }
+            : task.client;
+
+        return { ...task, request, client, storeAddress }
     }
 
     async getAll(filters?: {

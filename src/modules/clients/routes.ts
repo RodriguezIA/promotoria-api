@@ -1,7 +1,7 @@
 import { Router } from 'express'
 import { authMiddleware, validateBody } from "../../core/middleware"
 import { uploadAny } from "../../core/middleware/upload.middleware"
-import { createClient, getClient, getClientsList, uploadClientDoc, deleteClient, getCountriesList, getCitiesList, getStatesList} from './controller';
+import { createClient, getClient, getClientsList, uploadClientDoc, uploadClientLogo, getClientLogo, deleteClient, getCountriesList, getCitiesList, getStatesList} from './controller';
 import { createClientSchema } from './client.schema'
 
 const clientRouter = Router();
@@ -150,6 +150,9 @@ clientRouter.get('/:id_client', authMiddleware, getClient);
  *       401: { $ref: '#/components/responses/Unauthorized' }
  */
 clientRouter.post('/:id_client/docs', authMiddleware, uploadAny.single('file'), uploadClientDoc);
+clientRouter.post('/:id_client/logo', authMiddleware, uploadAny.single('file'), uploadClientLogo);
+// Publico: la app del promotor lo consulta al mostrar la oferta de tarea.
+clientRouter.get('/:id_client/logo', getClientLogo);
 
 clientRouter.delete('/:id_client', authMiddleware, deleteClient);
 

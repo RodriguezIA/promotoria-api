@@ -4,6 +4,7 @@ import { Utils } from '../../core/utils'
 import { Client } from './client.service'
 import { createClientData } from './client.dto'
 import { StorageService } from '../../services/storage.service'
+import { resolveImages } from '../../core/asset-resolver'
 
 
 const clientService = new Client();
@@ -237,3 +238,37 @@ export const getCitiesList = async (req: Request, res: Response) => {
         });
     }
 }
+// Logo del cliente (ej. Sabritas, Coca-Cola) — se usa en la app del
+// promotor en vez del mapa estatico al momento de ofrecer una tarea.
+export const uploadClientLogo = async (req: Request, res: Response) => {
+  const { id_client } = req.params;
+
+  if (!req.file) {
+    res.status(400).json({ ok: false, error: 1, data: null, message: 'No se recibió ninguna imagen' });
+    return;
+  }
+
+  try {
+    const { url } = await StorageService.uploadAsset({
+      entity: 'client_logo',
+      entity_id: Number(id_client),
+      buffer: req.file.buffer,
+      mime: req.file.mimetype,
+    });
+
+    res.json({ ok: true, error: 0, data: { url }, message: 'Logo actualizado exitosamente' });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ ok: false, error: 1, data: null, message: 'Error al subir el logo' });
+  }
+};
+
+export const getClientLogo = async (req: Request, res: Response) => {
+  try {
+    const id_client = Number(req.params.id_client);
+    const assetMap = await resolveImages('client_logo', [id_client]);
+    res.json({ ok: true, error: 0, data: { url: assetMap.get(id_client) ?? null }, message: 'Consulta exitosa' });
+  } catch (error) {
+    res.status(500).json({ ok: false, error: 1, data: null, message: 'Error al obtener el logo' });
+  }
+};
