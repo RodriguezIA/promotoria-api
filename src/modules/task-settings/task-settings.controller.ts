@@ -15,7 +15,8 @@ export const getTaskSettings = async (req: Request, res: Response) => {
 
 export const updateTaskSettings = async (req: Request, res: Response) => {
     try {
-        const updated = await taskSettingsService.update(req.body.i_review_timeout_hours, req.user!.id)
+        const { i_review_timeout_hours, i_order_auto_close_hours } = req.body
+        const updated = await taskSettingsService.update({ i_review_timeout_hours, i_order_auto_close_hours }, req.user!.id)
         res.status(200).json({ ok: true, error: 0, data: updated, message: 'Configuración actualizada exitosamente' })
     } catch (error) {
         console.error('UPDATE TASK SETTINGS ERROR:', (error as any).message)

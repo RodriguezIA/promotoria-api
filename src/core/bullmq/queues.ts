@@ -20,6 +20,9 @@ export const enRouteTimeoutQueue = new Queue('en_route_timeout_queue', { connect
 //  6 QUEUE de timeout de revisión de tareas por el cliente (auto-aprobar si no responde a tiempo)
 export const reviewTimeoutQueue = new Queue('review_timeout_queue', { connection: connectionQueue })
 
+//  7 QUEUE de cierre automatico de pedidos que llevan mucho tiempo abiertos
+export const orderAutoCloseQueue = new Queue('order_auto_close_queue', { connection: connectionQueue })
+
 
 export async function startTaskNotificacitonScheduler(): Promise<void> {
     const REPEAT_INTERVAL_MS = process.env.NODE_ENV === 'production' ? 30 * 60_000 : 60_000;
@@ -79,4 +82,19 @@ export async function startReviewTimeoutScheduler(): Promise<void> {
     });
 
     console.log(`[Queues] Timeout de revisión de tareas configurado cada ${REPEAT_INTERVAL_MS / 1000}s`);
+}
+
+export async function startOrderAutoCloseScheduler(): Promise<void> {
+    // Cada 15 min es suficiente precisión para una ventana medida en horas.
+    const REPEAT_INTERVAL_MS = 15 * 60_000;
+
+    await orderAutoCloseQueue.add('check_order_auto_close', {}, {
+        repeat: {
+            every: REPEAT_INTERVAL_MS,
+            immediately: true
+        },
+        jobId: 'order_auto_close_cron_job',
+    });
+
+    console.log(`[Queues] Cierre automático de pedidos configurado cada ${REPEAT_INTERVAL_MS / 1000}s`);
 }

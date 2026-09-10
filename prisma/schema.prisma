@@ -918,6 +918,10 @@ model activator_payment_logs {
 model task_settings {
   id_setting              Int      @id @default(1)
   i_review_timeout_hours  Int      @default(24)
+  /// Despues de cuantas horas sin que el cliente cierre un pedido, se
+  /// cierra solo (cancelando las tareas que nadie tomo, para que dejen de
+  /// mandar notificaciones de "nueva tarea disponible" indefinidamente).
+  i_order_auto_close_hours Int     @default(24)
   /// Como se cobra el extra "Prepedido" en una solicitud: monto fijo o
   /// porcentaje sobre el total. El master lo puede cambiar cuando quiera
   /// desde el panel, no esta fijo en el codigo.

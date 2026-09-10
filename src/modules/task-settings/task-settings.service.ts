@@ -7,11 +7,15 @@ export class TaskSettings {
         return await prisma.task_settings.create({ data: { id_setting: 1 } })
     }
 
-    async update(i_review_timeout_hours: number, id_user_updater: number) {
+    async update(input: { i_review_timeout_hours?: number; i_order_auto_close_hours?: number }, id_user_updater: number) {
         await this.get()
         return await prisma.task_settings.update({
             where: { id_setting: 1 },
-            data: { i_review_timeout_hours, id_user_updater }
+            data: {
+                ...(input.i_review_timeout_hours !== undefined ? { i_review_timeout_hours: input.i_review_timeout_hours } : {}),
+                ...(input.i_order_auto_close_hours !== undefined ? { i_order_auto_close_hours: input.i_order_auto_close_hours } : {}),
+                id_user_updater,
+            }
         })
     }
 

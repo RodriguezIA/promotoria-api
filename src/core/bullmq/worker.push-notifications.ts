@@ -8,13 +8,14 @@ export const pushNotificationWorker = new Worker('push_notification_queue', asyn
     console.log(`[PushWorker] Job ${job.id} recibido: tarea ${id_task}, promotor ${id_promoter}, token ${fcm_token ? fcm_token.slice(0, 12) + '…' : 'sin token'}`);
 
     // 1. Verificación de seguridad: ¿Alguien más ya aceptó la tarea mientras este job esperaba su "delay"?
+    // O se cancelo (por ejemplo, se cerro el pedido) mientras esperaba.
     const taskCheck = await prisma.tasks.findUnique({
         where: { id_task },
-        select: { id_promoter: true }
+        select: { id_promoter: true, id_status: true }
     });
 
-    if (taskCheck?.id_promoter !== null) {
-        console.log(`[PushWorker] Abortando envío a promotor ${id_promoter}. La tarea ${id_task} ya fue tomada.`);
+    if (taskCheck?.id_promoter !== null || taskCheck?.id_status !== 1) {
+        console.log(`[PushWorker] Abortando envío a promotor ${id_promoter}. La tarea ${id_task} ya no esta disponible.`);
         return; 
     }
 
