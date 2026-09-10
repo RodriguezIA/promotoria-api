@@ -111,8 +111,26 @@ export class Order {
             prisma.orders.count({ where })
         ])
 
+        // Cuantas tareas de cada pedido estan "por autorizar" (el promotor
+        // ya las termino, esperando que el cliente las revise). Se calcula
+        // en una sola consulta agrupada, en vez de una por pedido.
+        const orderIds = orders.map(o => o.id_order)
+        const pendingAuthCounts = orderIds.length
+            ? await prisma.tasks.groupBy({
+                by: ['id_order'],
+                where: { id_order: { in: orderIds }, id_status: 6 },
+                _count: { id_task: true },
+            })
+            : []
+        const pendingAuthByOrder = new Map(pendingAuthCounts.map(c => [c.id_order, c._count.id_task]))
+
+        const ordersWithPendingAuth = orders.map(o => ({
+            ...o,
+            i_pending_authorization: pendingAuthByOrder.get(o.id_order) ?? 0,
+        }))
+
         return {
-            data: orders,
+            data: ordersWithPendingAuth,
             meta: {
                 total,
                 page,
