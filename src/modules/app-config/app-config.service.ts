@@ -30,4 +30,22 @@ export class AppConfigService {
         })
         return { url: null }
     }
+
+    /**
+     * Textos configurables (ej. mensaje de instrucciones al aceptar tarea),
+     * para que el master los edite sin necesitar actualizar la app.
+     */
+    async getSetting(key: string, defaultValue: string) {
+        const setting = await prisma.app_settings.findUnique({ where: { vc_key: key } })
+        return { key, value: setting?.vc_value ?? defaultValue }
+    }
+
+    async setSetting(key: string, value: string) {
+        const setting = await prisma.app_settings.upsert({
+            where: { vc_key: key },
+            create: { vc_key: key, vc_value: value },
+            update: { vc_value: value },
+        })
+        return { key: setting.vc_key, value: setting.vc_value }
+    }
 }

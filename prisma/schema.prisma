@@ -1055,3 +1055,13 @@ model delivery_stop_items {
 
   @@index([id_stop], map: "idx_delivery_stop_items_stop")
 }
+
+/// Textos configurables del sistema que el master puede editar sin
+/// necesitar una actualizacion de la app o del panel (ej. el mensaje de
+/// instrucciones que ve el promotor al aceptar una tarea).
+model app_settings {
+  id_setting  Int      @id @default(autoincrement()) @db.UnsignedInt
+  vc_key      String   @unique @db.VarChar(100)
+  vc_value    String   @db.Text
+  dt_updated  DateTime @default(now()) @updatedAt @db.Timestamp(0)
+}

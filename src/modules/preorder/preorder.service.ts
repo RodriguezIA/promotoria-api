@@ -48,36 +48,44 @@ export class Preorder {
         const requestProductIds = task.request!.request_products.map(rp => rp.id_product)
         if (requestProductIds.length === 0) return { store_name: task.store.name, items: [] }
 
+        // Se traen SIEMPRE todos los productos de la solicitud, no solo los
+        // que ya tienen un minimo configurado en esa tienda -- si no hay
+        // minimo, se ofrecen igual para prepedido, solo que sin poder
+        // calcular un faltante exacto (se deja en 0 y el promotor decide
+        // cuanto pedir a mano).
+        const products = await prisma.products.findMany({
+            where: { id_product: { in: requestProductIds } },
+            select: { id_product: true, name: true, i_stock: true, b_allow_backorder: true, i_backorder_days: true },
+        })
+
         const minimums = await prisma.product_stock_minimums.findMany({
             where: { id_store: task.id_store, id_product: { in: requestProductIds } },
-            include: { product: { select: { id_product: true, name: true, i_stock: true, b_allow_backorder: true, i_backorder_days: true } } },
         })
-        if (minimums.length === 0) return { store_name: task.store.name, items: [] }
+        const minimumByProduct = new Map(minimums.map(m => [m.id_product, m.i_minimum]))
 
         const readings = await prisma.store_product_stock.findMany({
-            where: { id_store: task.id_store, id_product: { in: minimums.map(m => m.id_product) } },
+            where: { id_store: task.id_store, id_product: { in: requestProductIds } },
         })
         const readingByProduct = new Map(readings.map(r => [r.id_product, r.i_quantity]))
 
-        const items = minimums
-            .map(m => {
-                const quantity = readingByProduct.get(m.id_product) ?? 0
-                const shortfall = m.i_minimum - quantity
-                return {
-                    id_product: m.id_product,
-                    name: m.product.name,
-                    quantity,
-                    minimum: m.i_minimum,
-                    shortfall: Math.max(shortfall, 0),
-                    // Para que la app pueda avisar de una vez cuanto se
-                    // puede surtir de inmediato vs a cuantos dias, sin tener
-                    // que adivinar — mismos datos que usa createPreorder.
-                    available_stock: m.product.i_stock,
-                    allow_backorder: m.product.b_allow_backorder,
-                    backorder_days: m.product.i_backorder_days,
-                }
-            })
-            .filter(item => item.shortfall > 0)
+        const items = products.map(product => {
+            const quantity = readingByProduct.get(product.id_product) ?? 0
+            const minimum = minimumByProduct.get(product.id_product) ?? 0
+            const shortfall = minimum - quantity
+            return {
+                id_product: product.id_product,
+                name: product.name,
+                quantity,
+                minimum,
+                shortfall: Math.max(shortfall, 0),
+                // Para que la app pueda avisar de una vez cuanto se
+                // puede surtir de inmediato vs a cuantos dias, sin tener
+                // que adivinar — mismos datos que usa createPreorder.
+                available_stock: product.i_stock,
+                allow_backorder: product.b_allow_backorder,
+                backorder_days: product.i_backorder_days,
+            }
+        })
 
         return { store_name: task.store.name, items }
     }

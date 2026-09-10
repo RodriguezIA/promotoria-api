@@ -298,19 +298,39 @@ export class Task {
     /**
      * Aprueba una tarea en revisión (id_status 6, "En revisión" en el
      * vocabulario real de la app) -> pasa a 7 ("Terminada con éxito").
+     * Notifica por push al promotor para que vea su comisión aplicada sin
+     * tener que reabrir la app.
      */
     async reviewApprove(id_task: number) {
         const task = await prisma.tasks.findUnique({
             where: { id_task },
-            select: { id_status: true }
+            select: {
+                id_status: true,
+                promoter: { select: { fcm_token: true } },
+                store: { select: { name: true } },
+            }
         })
         if (!task) throw new Error('Tarea no encontrada')
         if (task.id_status !== 6) throw new Error('Solo se puede aprobar una tarea en revisión')
 
-        return await prisma.tasks.update({
+        const updated = await prisma.tasks.update({
             where: { id_task },
             data: { id_status: 7, dt_update: new Date() },
         })
+
+        if (task.promoter?.fcm_token) {
+            try {
+                await NotificationService.sendPushNotification(task.promoter.fcm_token, {
+                    title: '¡Tarea aprobada!',
+                    body: `Tu tarea en ${task.store?.name ?? 'la tienda'} fue aprobada y tu comisión ya se aplicó.`,
+                    data: { type: 'task_approved' },
+                })
+            } catch (error) {
+                console.error(`[Task] Error al notificar aprobación de la tarea ${id_task}:`, error)
+            }
+        }
+
+        return updated
     }
 
     /**
