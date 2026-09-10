@@ -174,7 +174,8 @@ export const acceptTask = async (req: Request, res: Response) => {
         res.status(200).json({ ok: true, error: 0, data: task, message: 'Tarea aceptada exitosamente' })
     } catch (error) {
         const msg = (error as any).message
-        const status = msg.includes('no esta activa') || msg.includes('ya tiene') || msg.includes('ya rechazo') ? 400 : 500
+        const lower = msg.toLowerCase()
+        const status = lower.includes('no esta activa') || lower.includes('ya tiene') || lower.includes('ya rechazo') ? 400 : 500
         res.status(status).json({ ok: false, error: 1, data: null, message: msg, error_backend: msg })
     }
 }
