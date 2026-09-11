@@ -47,6 +47,18 @@ export const getRoutesByClient = async (req: Request, res: Response) => {
     }
 }
 
+export const setRouteActive = async (req: Request, res: Response) => {
+    try {
+        const id_client = req.user!.id_client
+        const id_route = Number(req.params.id_route)
+        const { is_active } = req.body
+        const route = await routesService.setRouteActive(id_route, id_client, !!is_active)
+        res.status(200).json({ ok: true, error: 0, data: route, message: 'Ruta actualizada exitosamente' })
+    } catch (error) {
+        res.status(500).json({ ok: false, error: 1, data: null, message: (error as any).message || 'Error al actualizar la ruta' })
+    }
+}
+
 export const getMyRoutes = async (req: Request, res: Response) => {
     try {
         const id_driver = req.user!.id

@@ -88,6 +88,12 @@ export class DeliveryRoutes {
         })
     }
 
+    async setRouteActive(id_route: number, id_client: number, is_active: boolean) {
+        const route = await prisma.delivery_routes.findUnique({ where: { id_route } })
+        if (!route || route.id_client !== id_client) throw new Error('Ruta no encontrada')
+        return await prisma.delivery_routes.update({ where: { id_route }, data: { is_active } })
+    }
+
     async getRoutesByDriver(id_driver: number) {
         const routes = await prisma.delivery_routes.findMany({
             where: { id_driver },

@@ -999,6 +999,10 @@ model delivery_routes {
   id_client   Int                    @db.UnsignedInt
   id_driver   Int                    @db.UnsignedInt
   route_date  DateTime               @db.Date
+  /// El cliente puede desactivar una ruta ya organizada (por ejemplo, si ya
+  /// no se va a usar) sin borrar su historial -- asi sabe la ultima vez
+  /// que se uso con solo ver route_date.
+  is_active   Boolean                @default(true)
   dt_register DateTime               @default(now()) @db.Timestamp(0)
   driver      drivers                @relation(fields: [id_driver], references: [id_driver])
   stops       delivery_route_stops[]
