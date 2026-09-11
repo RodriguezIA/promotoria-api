@@ -16,6 +16,7 @@ import preorderRouter from './preorder/preorder.routes'
 import driversRouter from './drivers/drivers.routes'
 import deliveryRoutesRouter from './delivery-routes/delivery-routes.routes'
 import routeTemplatesRouter from './route-templates/route-templates.routes'
+import routeSchedulesRouter from './route-schedules/route-schedules.routes'
 
 export {
     clientRouter,
@@ -36,4 +37,5 @@ export {
     driversRouter,
     deliveryRoutesRouter,
     routeTemplatesRouter,
+    routeSchedulesRouter,
 }

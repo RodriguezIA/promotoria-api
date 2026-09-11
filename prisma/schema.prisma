@@ -989,6 +989,7 @@ model drivers {
   dt_updated     DateTime         @default(now()) @updatedAt @db.Timestamp(0)
   client         clients          @relation(fields: [id_client], references: [id_client])
   routes         delivery_routes[]
+  route_schedules route_driver_schedules[]
 
   @@index([id_client], map: "idx_drivers_client")
 }
@@ -1081,6 +1082,7 @@ model route_templates {
   dt_register       DateTime @default(now()) @db.Timestamp(0)
   dt_updated        DateTime @default(now()) @updatedAt @db.Timestamp(0)
   stores            route_template_stores[]
+  schedules         route_driver_schedules[]
 
   @@index([id_client], map: "idx_route_templates_client")
 }
@@ -1093,4 +1095,29 @@ model route_template_stores {
 
   @@unique([id_route_template, id_store], map: "uq_route_template_store")
   @@index([id_route_template], map: "idx_route_template_stores_template")
+}
+
+/// Asigna una ruta (route_templates) a un chofer para que se le genere sola
+/// cada cierto tiempo, en vez de que el cliente tenga que entrar cada
+/// semana a organizarla a mano. Se crea desde "Organizar Ruta" al marcar
+/// "repetir automatico". Un worker revisa esta tabla a diario.
+model route_driver_schedules {
+  id_schedule       Int              @id @default(autoincrement()) @db.UnsignedInt
+  id_client         Int              @db.UnsignedInt
+  id_route_template Int              @db.UnsignedInt
+  id_driver         Int              @db.UnsignedInt
+  /// 1=lunes ... 7=domingo
+  day_of_week       Int              @db.TinyInt
+  /// Cada cuantas semanas se repite: 1=cada semana, 2=cada 2, 3=cada 3, 4=cada 4
+  interval_weeks    Int              @db.TinyInt
+  /// Semana de referencia para contar el intervalo (la fecha en que se creo
+  /// la primer ruta de esta asignacion). No cambia aunque pasen las semanas.
+  anchor_date       DateTime         @db.Date
+  is_active         Boolean          @default(true)
+  dt_register       DateTime         @default(now()) @db.Timestamp(0)
+  route_template    route_templates  @relation(fields: [id_route_template], references: [id_route_template], onDelete: Cascade)
+  driver            drivers          @relation(fields: [id_driver], references: [id_driver])
+
+  @@index([id_client], map: "idx_route_schedules_client")
+  @@index([id_route_template], map: "idx_route_schedules_template")
 }

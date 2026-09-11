@@ -3,13 +3,13 @@ import cors from "cors"
 import helmet from "helmet"
 import morgan from "morgan"
 import express, { Express, Request, Response, NextFunction } from "express"
-import { startTaskNotificacitonScheduler, startEnRouteTimeoutScheduler, startReviewTimeoutScheduler, startOrderAutoCloseScheduler, queues } from "./core/bullmq"
+import { startTaskNotificacitonScheduler, startEnRouteTimeoutScheduler, startReviewTimeoutScheduler, startOrderAutoCloseScheduler, startRouteScheduleScheduler, queues } from "./core/bullmq"
 import { initializeBullBoard, serverAdapter } from "./queues/helpers/bullboard"
 
 import adminRouter from "./app_admin/index"
 import superadminRouter from "./app_superadmin/index"
 import mobileRouter from "./app_mobile/index"
-import { clientRouter, productRouter, userAdminRouter, storeRouter, channelsSalesRouter, promoterRouter, questionRouter, requestRouter, orderRouter, taskRouter, financesRouter, taskSettingsRouter, appConfigRouter, stockRouter, preorderRouter, driversRouter, deliveryRoutesRouter, routeTemplatesRouter } from './modules'
+import { clientRouter, productRouter, userAdminRouter, storeRouter, channelsSalesRouter, promoterRouter, questionRouter, requestRouter, orderRouter, taskRouter, financesRouter, taskSettingsRouter, appConfigRouter, stockRouter, preorderRouter, driversRouter, deliveryRoutesRouter, routeTemplatesRouter, routeSchedulesRouter } from './modules'
 import promoterSelfPaymentsRouter from './modules/promoter-payments-self/promoter-self-payments.routes'
 import { errorHandler } from "./core/middleware"
 import { setupSwagger } from "./config/swagger"
@@ -45,6 +45,7 @@ startTaskNotificacitonScheduler()
 startEnRouteTimeoutScheduler()
 startReviewTimeoutScheduler()
 startOrderAutoCloseScheduler()
+startRouteScheduleScheduler()
 
 app.use("/retailink-api/superadmin", superadminRouter)
 app.use("/retailink-api/admin", adminRouter)
@@ -67,6 +68,7 @@ app.use("/retailink-api/payments", promoterSelfPaymentsRouter)
 app.use("/retailink-api/stock", stockRouter)
 app.use("/retailink-api/preorder", preorderRouter)
 app.use("/retailink-api/route-templates", routeTemplatesRouter)
+app.use("/retailink-api/route-schedules", routeSchedulesRouter)
 app.use("/retailink-api/drivers", driversRouter)
 app.use("/retailink-api/delivery-routes", deliveryRoutesRouter)
 

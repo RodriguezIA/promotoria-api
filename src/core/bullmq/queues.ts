@@ -23,6 +23,9 @@ export const reviewTimeoutQueue = new Queue('review_timeout_queue', { connection
 //  7 QUEUE de cierre automatico de pedidos que llevan mucho tiempo abiertos
 export const orderAutoCloseQueue = new Queue('order_auto_close_queue', { connection: connectionQueue })
 
+//  8 QUEUE de asignaciones automaticas de rutas a choferes (recurrentes)
+export const routeScheduleQueue = new Queue('route_schedule_queue', { connection: connectionQueue })
+
 
 export async function startTaskNotificacitonScheduler(): Promise<void> {
     const REPEAT_INTERVAL_MS = process.env.NODE_ENV === 'production' ? 30 * 60_000 : 60_000;
@@ -97,4 +100,21 @@ export async function startOrderAutoCloseScheduler(): Promise<void> {
     });
 
     console.log(`[Queues] Cierre automático de pedidos configurado cada ${REPEAT_INTERVAL_MS / 1000}s`);
+}
+
+export async function startRouteScheduleScheduler(): Promise<void> {
+    // Una vez al dia basta -- las asignaciones son por dia de la semana, no
+    // por hora. Se corre tambien "immediately" al arrancar el servidor por
+    // si quedo pendiente algo de un reinicio.
+    const REPEAT_INTERVAL_MS = 24 * 60 * 60_000;
+
+    await routeScheduleQueue.add('check_route_schedules', {}, {
+        repeat: {
+            every: REPEAT_INTERVAL_MS,
+            immediately: true,
+        },
+        jobId: 'route_schedule_cron_job',
+    });
+
+    console.log(`[Queues] Asignaciones automaticas de rutas configuradas cada ${REPEAT_INTERVAL_MS / 1000}s`);
 }
