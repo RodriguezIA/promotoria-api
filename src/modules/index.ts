@@ -15,6 +15,7 @@ import stockRouter from './stock/stock.routes'
 import preorderRouter from './preorder/preorder.routes'
 import driversRouter from './drivers/drivers.routes'
 import deliveryRoutesRouter from './delivery-routes/delivery-routes.routes'
+import routeTemplatesRouter from './route-templates/route-templates.routes'
 
 export {
     clientRouter,
@@ -34,4 +35,5 @@ export {
     preorderRouter,
     driversRouter,
     deliveryRoutesRouter,
+    routeTemplatesRouter,
 }

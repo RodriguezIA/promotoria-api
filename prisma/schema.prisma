@@ -1069,3 +1069,34 @@ model app_settings {
   vc_value    String   @db.Text
   dt_updated  DateTime @default(now()) @updatedAt @db.Timestamp(0)
 }
+
+/// Ruta reutilizable que el cliente arma una vez (nombre + tiendas + con que
+/// frecuencia se repite), para no tener que buscar tienda por tienda cada
+/// vez que organiza una ruta de entrega. Al "Organizar ruta" en Logistica,
+/// puede adjuntar una de estas para que le rellene las tiendas de una vez.
+model route_templates {
+  id_route_template Int      @id @default(autoincrement()) @db.UnsignedInt
+  id_client         Int      @db.UnsignedInt
+  name              String   @db.VarChar(150)
+  /// 'DIAS' (dias especificos de la semana, ver recurrence_days),
+  /// 'SEMANA' (toda la semana), 'QUINCENA' (toda la quincena), 'MES' (todo el mes)
+  recurrence_type   String   @db.VarChar(10)
+  /// Solo aplica cuando recurrence_type = 'DIAS'. Numeros 1-7 (1=lunes)
+  /// separados por coma, ej "1,3,5" para lunes/miercoles/viernes.
+  recurrence_days   String?  @db.VarChar(20)
+  dt_register       DateTime @default(now()) @db.Timestamp(0)
+  dt_updated        DateTime @default(now()) @updatedAt @db.Timestamp(0)
+  stores            route_template_stores[]
+
+  @@index([id_client], map: "idx_route_templates_client")
+}
+
+model route_template_stores {
+  id_route_template_store Int              @id @default(autoincrement()) @db.UnsignedInt
+  id_route_template       Int              @db.UnsignedInt
+  id_store                Int              @db.UnsignedInt
+  route_template          route_templates  @relation(fields: [id_route_template], references: [id_route_template], onDelete: Cascade)
+
+  @@unique([id_route_template, id_store], map: "uq_route_template_store")
+  @@index([id_route_template], map: "idx_route_template_stores_template")
+}
