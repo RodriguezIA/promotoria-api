@@ -19,7 +19,7 @@ export const getPendingPreorders = async (req: Request, res: Response) => {
 export const createRoute = async (req: Request, res: Response) => {
     try {
         const id_client = req.user!.id_client
-        const { id_driver, route_date, stops, id_schedule } = req.body
+        const { id_driver, route_date, stops, id_schedule, id_route_template } = req.body
         if (!id_driver || !route_date || !Array.isArray(stops) || stops.length === 0) {
             res.status(400).json({ ok: false, error: 1, data: null, message: 'id_driver, route_date y stops son requeridos' })
             return
@@ -29,6 +29,7 @@ export const createRoute = async (req: Request, res: Response) => {
             id_driver: Number(id_driver),
             route_date: new Date(route_date),
             id_schedule: id_schedule ? Number(id_schedule) : null,
+            id_route_template: id_route_template ? Number(id_route_template) : null,
             stops,
         })
         res.status(201).json({ ok: true, error: 0, data: route, message: 'Ruta creada exitosamente' })

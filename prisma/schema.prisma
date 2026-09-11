@@ -1009,9 +1009,14 @@ model delivery_routes {
   /// mostrar la frecuencia en "Rutas Creadas" y para la activacion/
   /// desactivacion automatica.
   id_schedule Int?                   @db.UnsignedInt
+  /// A que ruta reutilizable (nombre + tiendas) pertenece esta ruta ya
+  /// organizada -- se guarda SIEMPRE, se repita automatico o no, para que
+  /// el nombre aparezca en "Rutas Creadas" y para poder adjuntarla despues.
+  id_route_template Int?             @db.UnsignedInt
   dt_register DateTime               @default(now()) @db.Timestamp(0)
   driver      drivers                @relation(fields: [id_driver], references: [id_driver])
   schedule    route_driver_schedules? @relation(fields: [id_schedule], references: [id_schedule])
+  route_template route_templates?    @relation(fields: [id_route_template], references: [id_route_template])
   stops       delivery_route_stops[]
 
   @@index([id_client], map: "idx_delivery_routes_client")
@@ -1095,6 +1100,7 @@ model route_templates {
   dt_updated        DateTime @default(now()) @updatedAt @db.Timestamp(0)
   stores            route_template_stores[]
   schedules         route_driver_schedules[]
+  routes            delivery_routes[]
 
   @@index([id_client], map: "idx_route_templates_client")
 }

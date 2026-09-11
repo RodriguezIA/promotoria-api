@@ -49,6 +49,7 @@ export class DeliveryRoutes {
         id_driver: number
         route_date: Date
         id_schedule?: number | null
+        id_route_template?: number | null
         stops: { id_store: number; id_preorder?: number | null }[]
     }) {
         const driver = await prisma.drivers.findUnique({ where: { id_driver: input.id_driver } })
@@ -57,7 +58,7 @@ export class DeliveryRoutes {
 
         return await prisma.$transaction(async (tx) => {
             const route = await tx.delivery_routes.create({
-                data: { id_client: input.id_client, id_driver: input.id_driver, route_date: input.route_date, id_schedule: input.id_schedule ?? null },
+                data: { id_client: input.id_client, id_driver: input.id_driver, route_date: input.route_date, id_schedule: input.id_schedule ?? null, id_route_template: input.id_route_template ?? null },
             })
             await tx.delivery_route_stops.createMany({
                 data: input.stops.map((stop, index) => ({
@@ -113,6 +114,7 @@ export class DeliveryRoutes {
             include: {
                 driver: { select: { id_driver: true, name: true, phone: true } },
                 schedule: { select: { id_schedule: true, day_of_week: true, interval_weeks: true } },
+                route_template: { select: { id_route_template: true, name: true } },
                 stops: {
                     include: {
                         store: { select: { id_store: true, name: true } },
