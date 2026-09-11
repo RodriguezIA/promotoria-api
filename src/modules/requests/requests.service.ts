@@ -491,4 +491,48 @@ export class Request {
             return { id_request, deleted: true }
         })
     }
+
+    /**
+     * Cuando el master cambia el costo por producto / minimo / maximo en
+     * Configurar App, recalcula el precio de TODAS las solicitudes ya
+     * guardadas (usando la cantidad de productos que tenga cada una hoy)
+     * para que queden al dia con la nueva configuracion. Esto NO toca los
+     * pedidos que ya estan en curso -- ahi el precio ya quedo congelado en
+     * order_items.f_value al momento de crear el pedido, es un dato aparte.
+     */
+    async recalculateAllPrices(pricing: { price_per_product: number; min_products: number; max_products: number }) {
+        const requests = await prisma.requests.findMany({
+            where: { b_active: true },
+            include: {
+                request_products: {
+                    where: { b_active: true },
+                    include: {
+                        request_product_questions: {
+                            where: { b_active: true },
+                            include: { question: { select: { f_cost: true } } },
+                        },
+                    },
+                },
+            },
+        })
+
+        let updated = 0
+        for (const req of requests) {
+            const numProductos = req.request_products.length
+            const productosFacturables = Math.min(Math.max(numProductos, pricing.min_products), pricing.max_products)
+            const costoBase = productosFacturables * pricing.price_per_product
+            let costoPreguntas = 0
+            for (const rp of req.request_products) {
+                for (const rpq of rp.request_product_questions) {
+                    costoPreguntas += Number(rpq.question.f_cost)
+                }
+            }
+            const newValue = costoBase + costoPreguntas
+            if (Number(req.f_value) !== newValue) {
+                await prisma.requests.update({ where: { id_request: req.id_request }, data: { f_value: newValue } })
+                updated++
+            }
+        }
+        return { total: requests.length, updated }
+    }
 }

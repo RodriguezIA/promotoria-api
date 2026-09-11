@@ -1,7 +1,9 @@
 import { Request, Response } from 'express'
+import { Request as RequestService } from '../requests/requests.service'
 import { AppConfigService } from './app-config.service'
 
 const appConfigService = new AppConfigService()
+const requestsService = new RequestService()
 
 export const getLoginVideo = async (req: Request, res: Response) => {
     try {
@@ -133,12 +135,21 @@ export const setRequestPricingSettings = async (req: Request, res: Response) => 
             res.status(400).json({ ok: false, error: 1, data: null, message: 'El mínimo debe ser al menos 1 y el máximo no puede ser menor al mínimo' })
             return
         }
+        const pricing = {
+            price_per_product: Number(price_per_product),
+            min_products: Number(min_products),
+            max_products: Number(max_products),
+        }
         await Promise.all([
             appConfigService.setSetting('request_price_per_product', String(price_per_product)),
             appConfigService.setSetting('request_min_products', String(min_products)),
             appConfigService.setSetting('request_max_products', String(max_products)),
         ])
-        res.status(200).json({ ok: true, error: 0, data: null, message: 'Configuración actualizada exitosamente' })
+        // Actualiza el precio de las solicitudes YA guardadas para que
+        // queden al dia con la nueva configuracion. Los pedidos que ya
+        // estan en curso no se tocan (su precio ya quedo congelado aparte).
+        const { total, updated } = await requestsService.recalculateAllPrices(pricing)
+        res.status(200).json({ ok: true, error: 0, data: { total, updated }, message: `Configuración actualizada exitosamente. Se actualizó el precio de ${updated} de ${total} solicitud(es) guardada(s)` })
     } catch (error) {
         res.status(500).json({ ok: false, error: 1, data: null, message: 'Error al actualizar la configuración' })
     }
