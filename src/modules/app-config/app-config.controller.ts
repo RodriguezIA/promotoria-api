@@ -70,6 +70,31 @@ export const setTaskInstructions = async (req: Request, res: Response) => {
 const WHATSAPP_SOPORTE_CLIENTES_DEFAULT = ''
 const WHATSAPP_SOPORTE_PROMOTORES_DEFAULT = '5218117105018'
 
+const REFERRAL_SHARE_MESSAGE_DEFAULT = 'Te invito a ganar dinero extra como promotor con Promotoria Digital 💰\n\nDescarga la app y regístrate desde este link, tu código de invitación ya viene incluido:\n{link}'
+
+export const getReferralShareMessage = async (req: Request, res: Response) => {
+    try {
+        const data = await appConfigService.getSetting('referral_share_message', REFERRAL_SHARE_MESSAGE_DEFAULT)
+        res.status(200).json({ ok: true, error: 0, data, message: 'Configuración obtenida exitosamente' })
+    } catch (error) {
+        res.status(500).json({ ok: false, error: 1, data: null, message: 'Error al obtener la configuración' })
+    }
+}
+
+export const setReferralShareMessage = async (req: Request, res: Response) => {
+    try {
+        const value = String(req.body.value || '').trim()
+        if (!value) {
+            res.status(400).json({ ok: false, error: 1, data: null, message: 'El texto es requerido' })
+            return
+        }
+        const data = await appConfigService.setSetting('referral_share_message', value)
+        res.status(200).json({ ok: true, error: 0, data, message: 'Texto actualizado exitosamente' })
+    } catch (error) {
+        res.status(500).json({ ok: false, error: 1, data: null, message: 'Error al actualizar el texto' })
+    }
+}
+
 export const getWhatsappSoporteClientes = async (req: Request, res: Response) => {
     try {
         const data = await appConfigService.getSetting('whatsapp_soporte_clientes', WHATSAPP_SOPORTE_CLIENTES_DEFAULT)
