@@ -1078,18 +1078,6 @@ model route_templates {
   id_route_template Int      @id @default(autoincrement()) @db.UnsignedInt
   id_client         Int      @db.UnsignedInt
   name              String   @db.VarChar(150)
-  /// 'SEMANAL' (un dia de la semana que se repite cada N semanas, ver
-  /// day_of_week/interval_weeks) o 'FECHAS' (fechas especificas sueltas,
-  /// ver specific_dates).
-  recurrence_type   String   @db.VarChar(10)
-  /// Solo aplica cuando recurrence_type = 'SEMANAL'. 1=lunes ... 7=domingo.
-  day_of_week       Int?     @db.TinyInt
-  /// Solo aplica cuando recurrence_type = 'SEMANAL'. Cada cuantas semanas se
-  /// repite: 1=cada semana, 2=cada 2 semanas, 3=cada 3, 4=cada 4 (~mensual).
-  interval_weeks    Int?     @db.TinyInt
-  /// Solo aplica cuando recurrence_type = 'FECHAS'. Fechas sueltas en
-  /// formato YYYY-MM-DD separadas por coma.
-  specific_dates    String?  @db.VarChar(500)
   dt_register       DateTime @default(now()) @db.Timestamp(0)
   dt_updated        DateTime @default(now()) @updatedAt @db.Timestamp(0)
   stores            route_template_stores[]

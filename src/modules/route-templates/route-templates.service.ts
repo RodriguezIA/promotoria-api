@@ -1,24 +1,11 @@
 import { prisma } from '../../core/prisma'
 
-interface RouteTemplateData {
-    name: string
-    recurrence_type: string
-    day_of_week?: number | null
-    interval_weeks?: number | null
-    specific_dates?: string | null
-    storeIds: number[]
-}
-
 export class RouteTemplateService {
-    async create(data: RouteTemplateData & { id_client: number }) {
+    async create(data: { id_client: number; name: string; storeIds: number[] }) {
         return await prisma.route_templates.create({
             data: {
                 id_client: data.id_client,
                 name: data.name,
-                recurrence_type: data.recurrence_type,
-                day_of_week: data.day_of_week ?? null,
-                interval_weeks: data.interval_weeks ?? null,
-                specific_dates: data.specific_dates ?? null,
                 stores: {
                     create: data.storeIds.map((id_store) => ({ id_store })),
                 },
@@ -27,17 +14,11 @@ export class RouteTemplateService {
         })
     }
 
-    async update(id_route_template: number, data: RouteTemplateData) {
+    async update(id_route_template: number, data: { name: string; storeIds: number[] }) {
         return await prisma.$transaction(async (tx) => {
             await tx.route_templates.update({
                 where: { id_route_template },
-                data: {
-                    name: data.name,
-                    recurrence_type: data.recurrence_type,
-                    day_of_week: data.day_of_week ?? null,
-                    interval_weeks: data.interval_weeks ?? null,
-                    specific_dates: data.specific_dates ?? null,
-                },
+                data: { name: data.name },
             })
             // Mas simple y seguro reemplazar todas las tiendas que intentar
             // calcular un diff -- una ruta no suele tener cientos de tiendas.
@@ -74,11 +55,10 @@ export class RouteTemplateService {
     /**
      * Estima cuanto le podria generar de venta una ruta, comparando el
      * minimo configurado de cada producto en cada tienda contra la ultima
-     * existencia que conto un promotor. Si a una tienda nunca le han
-     * configurado minimos (nunca ha ido un promotor a hacer el conteo
-     * inicial), o si la ultima actualizacion tiene mas de 15 dias, se
-     * marca para que el panel muestre el mensaje correspondiente en vez
-     * de un numero que ya no es confiable.
+     * existencia que conto un promotor. Es todo o nada: si UNA sola tienda
+     * de la ruta nunca tuvo minimos configurados, o su ultima actualizacion
+     * tiene mas de 15 dias, no se calcula ningun aproximado (el numero no
+     * seria confiable), y en vez de eso se avisa cuantas tiendas faltan.
      */
     async estimateSales(storeIds: number[]) {
         const STALE_DAYS = 15
@@ -114,26 +94,32 @@ export class RouteTemplateService {
             const isStale = lastUpdate ? lastUpdate < cutoff : true
 
             let estimatedValue = 0
-            if (hasMinimums && !isStale) {
-                for (const m of storeMinimums) {
-                    const reading = readingByStoreProduct.get(`${id_store}_${m.id_product}`)
-                    const quantity = reading?.i_quantity ?? 0
-                    const shortfall = Math.max(0, m.i_minimum - quantity)
-                    const price = Number(m.product.f_store_price ?? 0)
-                    estimatedValue += shortfall * price
-                }
+            for (const m of storeMinimums) {
+                const reading = readingByStoreProduct.get(`${id_store}_${m.id_product}`)
+                const quantity = reading?.i_quantity ?? 0
+                const shortfall = Math.max(0, m.i_minimum - quantity)
+                const price = Number(m.product.f_store_price ?? 0)
+                estimatedValue += shortfall * price
             }
 
             return {
                 id_store,
-                estimated_value: hasMinimums && !isStale ? estimatedValue : 0,
+                estimated_value: estimatedValue,
                 has_minimums: hasMinimums,
                 is_stale: hasMinimums && isStale,
                 last_update: lastUpdate,
             }
         })
 
-        const total = perStore.reduce((sum, s) => sum + s.estimated_value, 0)
-        return { stores: perStore, total }
+        const missingInfo = perStore.filter((s) => !s.has_minimums || s.is_stale)
+        const canEstimate = missingInfo.length === 0
+        const total = canEstimate ? perStore.reduce((sum, s) => sum + s.estimated_value, 0) : null
+
+        return {
+            stores: perStore,
+            total,
+            can_estimate: canEstimate,
+            missing_count: missingInfo.length,
+        }
     }
 }
