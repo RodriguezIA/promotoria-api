@@ -95,6 +95,55 @@ export const setReferralShareMessage = async (req: Request, res: Response) => {
     }
 }
 
+// Precio por producto y minimo/maximo de productos que se usan para
+// calcular el costo base de una solicitud nueva. Default: $15 por
+// producto, minimo 3 productos ($45), maximo 6 productos ($90).
+const REQUEST_PRICE_PER_PRODUCT_DEFAULT = '15'
+const REQUEST_MIN_PRODUCTS_DEFAULT = '3'
+const REQUEST_MAX_PRODUCTS_DEFAULT = '6'
+
+export const getRequestPricingSettings = async (req: Request, res: Response) => {
+    try {
+        const [price_per_product, min_products, max_products] = await Promise.all([
+            appConfigService.getSetting('request_price_per_product', REQUEST_PRICE_PER_PRODUCT_DEFAULT),
+            appConfigService.getSetting('request_min_products', REQUEST_MIN_PRODUCTS_DEFAULT),
+            appConfigService.getSetting('request_max_products', REQUEST_MAX_PRODUCTS_DEFAULT),
+        ])
+        res.status(200).json({
+            ok: true, error: 0, message: 'Configuración obtenida exitosamente',
+            data: {
+                price_per_product: Number(price_per_product.value),
+                min_products: Number(min_products.value),
+                max_products: Number(max_products.value),
+            },
+        })
+    } catch (error) {
+        res.status(500).json({ ok: false, error: 1, data: null, message: 'Error al obtener la configuración' })
+    }
+}
+
+export const setRequestPricingSettings = async (req: Request, res: Response) => {
+    try {
+        const { price_per_product, min_products, max_products } = req.body
+        if (price_per_product == null || min_products == null || max_products == null) {
+            res.status(400).json({ ok: false, error: 1, data: null, message: 'Faltan datos' })
+            return
+        }
+        if (Number(min_products) < 1 || Number(max_products) < Number(min_products)) {
+            res.status(400).json({ ok: false, error: 1, data: null, message: 'El mínimo debe ser al menos 1 y el máximo no puede ser menor al mínimo' })
+            return
+        }
+        await Promise.all([
+            appConfigService.setSetting('request_price_per_product', String(price_per_product)),
+            appConfigService.setSetting('request_min_products', String(min_products)),
+            appConfigService.setSetting('request_max_products', String(max_products)),
+        ])
+        res.status(200).json({ ok: true, error: 0, data: null, message: 'Configuración actualizada exitosamente' })
+    } catch (error) {
+        res.status(500).json({ ok: false, error: 1, data: null, message: 'Error al actualizar la configuración' })
+    }
+}
+
 export const getWhatsappSoporteClientes = async (req: Request, res: Response) => {
     try {
         const data = await appConfigService.getSetting('whatsapp_soporte_clientes', WHATSAPP_SOPORTE_CLIENTES_DEFAULT)

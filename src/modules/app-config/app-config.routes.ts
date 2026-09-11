@@ -1,7 +1,7 @@
 import { Router } from 'express'
 import { authMiddleware, requireRole, uploadVideo } from '../../core/middleware'
 import { ROLES } from '../../core/constants/status.constants'
-import { getLoginVideo, uploadLoginVideo, removeLoginVideo, getTaskInstructions, setTaskInstructions, getWhatsappSoporteClientes, setWhatsappSoporteClientes, getWhatsappSoportePromotores, setWhatsappSoportePromotores, getReferralShareMessage, setReferralShareMessage } from './app-config.controller'
+import { getLoginVideo, uploadLoginVideo, removeLoginVideo, getTaskInstructions, setTaskInstructions, getWhatsappSoporteClientes, setWhatsappSoporteClientes, getWhatsappSoportePromotores, setWhatsappSoportePromotores, getReferralShareMessage, setReferralShareMessage, getRequestPricingSettings, setRequestPricingSettings } from './app-config.controller'
 
 const appConfigRouter = Router()
 
@@ -29,5 +29,11 @@ appConfigRouter.put('/whatsapp-soporte-promotores', authMiddleware, requireRole(
 // promotor. Usa {link} como marcador de posicion.
 appConfigRouter.get('/referral-share-message', getReferralShareMessage)
 appConfigRouter.put('/referral-share-message', authMiddleware, requireRole(ROLES.SUPER), setReferralShareMessage)
+
+// Precio por producto y minimo/maximo de productos para el costo base de
+// una solicitud nueva. Publico en GET porque el panel del cliente
+// (Nueva Solicitud) tambien lo necesita para calcular el costo en vivo.
+appConfigRouter.get('/request-pricing', getRequestPricingSettings)
+appConfigRouter.put('/request-pricing', authMiddleware, requireRole(ROLES.SUPER), setRequestPricingSettings)
 
 export default appConfigRouter
