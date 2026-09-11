@@ -17,7 +17,7 @@ export class Drivers {
     }
 
     async listByClient(id_client: number) {
-        return await prisma.drivers.findMany({
+        const drivers = await prisma.drivers.findMany({
             where: { id_client, i_status: { in: [1, 2] } },
             select: {
                 id_driver: true, name: true, phone: true, email: true, vc_photo: true,
@@ -25,6 +25,20 @@ export class Drivers {
             },
             orderBy: { name: 'asc' },
         })
+
+        // Cuantas rutas activas tiene cada chofer HOY, para mostrarlo al
+        // elegir a quien asignarle una ruta nueva (ej. "Juan - 3 rutas
+        // activas hoy").
+        const today = new Date()
+        const todayDateOnly = new Date(today.getFullYear(), today.getMonth(), today.getDate())
+        const counts = await prisma.delivery_routes.groupBy({
+            by: ['id_driver'],
+            where: { id_client, route_date: todayDateOnly, is_active: true },
+            _count: { id_route: true },
+        })
+        const countByDriver = new Map(counts.map(c => [c.id_driver, c._count.id_route]))
+
+        return drivers.map(d => ({ ...d, i_active_routes_today: countByDriver.get(d.id_driver) ?? 0 }))
     }
 
     async deactivate(id_driver: number, id_client: number) {

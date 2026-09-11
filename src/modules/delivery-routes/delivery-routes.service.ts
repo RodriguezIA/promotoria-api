@@ -109,7 +109,7 @@ export class DeliveryRoutes {
     }
 
     async getRoutesByClient(id_client: number) {
-        return await prisma.delivery_routes.findMany({
+        const routes = await prisma.delivery_routes.findMany({
             where: { id_client },
             include: {
                 driver: { select: { id_driver: true, name: true, phone: true } },
@@ -126,6 +126,11 @@ export class DeliveryRoutes {
             },
             orderBy: { route_date: 'desc' },
         })
+
+        return routes.map(route => ({
+            ...route,
+            is_finished: route.stops.length > 0 && route.stops.every(s => s.i_status === 1),
+        }))
     }
 
     async setRouteActive(id_route: number, id_client: number, is_active: boolean) {
@@ -138,6 +143,7 @@ export class DeliveryRoutes {
         const routes = await prisma.delivery_routes.findMany({
             where: { id_driver },
             include: {
+                route_template: { select: { id_route_template: true, name: true } },
                 stops: {
                     include: {
                         store: { select: { id_store: true, name: true } },
@@ -159,6 +165,9 @@ export class DeliveryRoutes {
 
         return routes.map(route => ({
             ...route,
+            // Terminada = ya se paso por todas las paradas (visitadas o
+            // marcadas sin entrega), no queda ninguna pendiente.
+            is_finished: route.stops.length > 0 && route.stops.every(s => s.i_status === 1),
             stops: route.stops.map(stop => ({
                 ...stop,
                 store: { ...stop.store, address: addressByStore.get(stop.id_store) ?? null },
