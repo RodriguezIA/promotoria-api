@@ -1,6 +1,6 @@
 import { Router } from 'express'
 import { authMiddleware } from '../../core/middleware'
-import { getPendingPreorders, createRoute, getRoutesByClient, setRouteActive, getMyRoutes, updateStop, getStoreDeliveryHistory, getDriverSales, getDriverRoutesInRange } from './delivery-routes.controller'
+import { getPendingPreorders, createRoute, getRoutesByClient, setRouteActive, updateRoute, deleteRoute, getMyRoutes, updateStop, getStoreDeliveryHistory, getDriverSales, getDriverRoutesInRange } from './delivery-routes.controller'
 
 const deliveryRoutesRouter = Router()
 
@@ -12,6 +12,8 @@ deliveryRoutesRouter.get('/drivers/:id_driver/routes', authMiddleware, getDriver
 deliveryRoutesRouter.post('/', authMiddleware, createRoute)
 deliveryRoutesRouter.get('/', authMiddleware, getRoutesByClient)
 deliveryRoutesRouter.patch('/:id_route/active', authMiddleware, setRouteActive)
+deliveryRoutesRouter.put('/:id_route', authMiddleware, updateRoute)
+deliveryRoutesRouter.delete('/:id_route', authMiddleware, deleteRoute)
 
 // El chofer: sus propias rutas y actualizar el estatus de cada parada.
 deliveryRoutesRouter.get('/mine', authMiddleware, getMyRoutes)

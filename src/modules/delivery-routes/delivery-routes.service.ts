@@ -48,6 +48,7 @@ export class DeliveryRoutes {
         id_client: number
         id_driver: number
         route_date: Date
+        id_schedule?: number | null
         stops: { id_store: number; id_preorder?: number | null }[]
     }) {
         const driver = await prisma.drivers.findUnique({ where: { id_driver: input.id_driver } })
@@ -56,7 +57,7 @@ export class DeliveryRoutes {
 
         return await prisma.$transaction(async (tx) => {
             const route = await tx.delivery_routes.create({
-                data: { id_client: input.id_client, id_driver: input.id_driver, route_date: input.route_date },
+                data: { id_client: input.id_client, id_driver: input.id_driver, route_date: input.route_date, id_schedule: input.id_schedule ?? null },
             })
             await tx.delivery_route_stops.createMany({
                 data: input.stops.map((stop, index) => ({
@@ -70,11 +71,48 @@ export class DeliveryRoutes {
         })
     }
 
+    async updateRoute(id_route: number, id_client: number, input: {
+        id_driver: number
+        route_date: Date
+        stops: { id_store: number; id_preorder?: number | null }[]
+    }) {
+        const existing = await prisma.delivery_routes.findUnique({ where: { id_route } })
+        if (!existing || existing.id_client !== id_client) throw new Error('Ruta no encontrada')
+        const driver = await prisma.drivers.findUnique({ where: { id_driver: input.id_driver } })
+        if (!driver || driver.id_client !== id_client) throw new Error('Chofer no encontrado')
+        if (input.stops.length === 0) throw new Error('La ruta debe tener al menos una parada')
+
+        return await prisma.$transaction(async (tx) => {
+            await tx.delivery_routes.update({
+                where: { id_route },
+                data: { id_driver: input.id_driver, route_date: input.route_date },
+            })
+            await tx.delivery_route_stops.deleteMany({ where: { id_route } })
+            await tx.delivery_route_stops.createMany({
+                data: input.stops.map((stop, index) => ({
+                    id_route,
+                    id_store: stop.id_store,
+                    id_preorder: stop.id_preorder ?? null,
+                    i_order: index + 1,
+                })),
+            })
+            return await tx.delivery_routes.findUnique({ where: { id_route } })
+        })
+    }
+
+    async deleteRoute(id_route: number, id_client: number) {
+        const existing = await prisma.delivery_routes.findUnique({ where: { id_route } })
+        if (!existing || existing.id_client !== id_client) throw new Error('Ruta no encontrada')
+        await prisma.delivery_route_stops.deleteMany({ where: { id_route } })
+        await prisma.delivery_routes.delete({ where: { id_route } })
+    }
+
     async getRoutesByClient(id_client: number) {
         return await prisma.delivery_routes.findMany({
             where: { id_client },
             include: {
                 driver: { select: { id_driver: true, name: true, phone: true } },
+                schedule: { select: { id_schedule: true, day_of_week: true, interval_weeks: true } },
                 stops: {
                     include: {
                         store: { select: { id_store: true, name: true } },

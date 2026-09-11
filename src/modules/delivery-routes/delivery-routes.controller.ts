@@ -19,7 +19,7 @@ export const getPendingPreorders = async (req: Request, res: Response) => {
 export const createRoute = async (req: Request, res: Response) => {
     try {
         const id_client = req.user!.id_client
-        const { id_driver, route_date, stops } = req.body
+        const { id_driver, route_date, stops, id_schedule } = req.body
         if (!id_driver || !route_date || !Array.isArray(stops) || stops.length === 0) {
             res.status(400).json({ ok: false, error: 1, data: null, message: 'id_driver, route_date y stops son requeridos' })
             return
@@ -28,6 +28,7 @@ export const createRoute = async (req: Request, res: Response) => {
             id_client,
             id_driver: Number(id_driver),
             route_date: new Date(route_date),
+            id_schedule: id_schedule ? Number(id_schedule) : null,
             stops,
         })
         res.status(201).json({ ok: true, error: 0, data: route, message: 'Ruta creada exitosamente' })
@@ -56,6 +57,37 @@ export const setRouteActive = async (req: Request, res: Response) => {
         res.status(200).json({ ok: true, error: 0, data: route, message: 'Ruta actualizada exitosamente' })
     } catch (error) {
         res.status(500).json({ ok: false, error: 1, data: null, message: (error as any).message || 'Error al actualizar la ruta' })
+    }
+}
+
+export const updateRoute = async (req: Request, res: Response) => {
+    try {
+        const id_client = req.user!.id_client
+        const id_route = Number(req.params.id_route)
+        const { id_driver, route_date, stops } = req.body
+        if (!id_driver || !route_date || !Array.isArray(stops)) {
+            res.status(400).json({ ok: false, error: 1, data: null, message: 'Faltan datos para actualizar la ruta' })
+            return
+        }
+        const route = await routesService.updateRoute(id_route, id_client, {
+            id_driver: Number(id_driver),
+            route_date: new Date(route_date),
+            stops,
+        })
+        res.status(200).json({ ok: true, error: 0, data: route, message: 'Ruta actualizada exitosamente' })
+    } catch (error) {
+        res.status(500).json({ ok: false, error: 1, data: null, message: (error as any).message || 'Error al actualizar la ruta' })
+    }
+}
+
+export const deleteRoute = async (req: Request, res: Response) => {
+    try {
+        const id_client = req.user!.id_client
+        const id_route = Number(req.params.id_route)
+        await routesService.deleteRoute(id_route, id_client)
+        res.status(200).json({ ok: true, error: 0, data: null, message: 'Ruta eliminada exitosamente' })
+    } catch (error) {
+        res.status(500).json({ ok: false, error: 1, data: null, message: (error as any).message || 'Error al eliminar la ruta' })
     }
 }
 

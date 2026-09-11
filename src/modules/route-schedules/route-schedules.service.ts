@@ -47,6 +47,15 @@ export class RouteScheduleService {
         const jsDay = today.getDay()
         const todayDayOfWeek = jsDay === 0 ? 7 : jsDay
 
+        // Cualquier ruta que venga de una asignacion automatica y sea de un
+        // dia anterior a hoy se desactiva sola -- ya paso su fecha. Si el
+        // cliente la reactivo a mano, se vuelve a apagar el dia siguiente,
+        // a menos que ya le toque generarse de nuevo hoy mismo (ver abajo).
+        await prisma.delivery_routes.updateMany({
+            where: { id_schedule: { not: null }, route_date: { lt: todayDateOnly }, is_active: true },
+            data: { is_active: false },
+        })
+
         const schedules = await prisma.route_driver_schedules.findMany({
             where: { is_active: true, day_of_week: todayDayOfWeek },
             include: {
@@ -74,7 +83,7 @@ export class RouteScheduleService {
 
             await prisma.$transaction(async (tx) => {
                 const route = await tx.delivery_routes.create({
-                    data: { id_client: schedule.id_client, id_driver: schedule.id_driver, route_date: todayDateOnly },
+                    data: { id_client: schedule.id_client, id_driver: schedule.id_driver, route_date: todayDateOnly, id_schedule: schedule.id_schedule, is_active: true },
                 })
                 await tx.delivery_route_stops.createMany({
                     data: storeIds.map((id_store, index) => ({

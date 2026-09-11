@@ -1001,14 +1001,22 @@ model delivery_routes {
   route_date  DateTime               @db.Date
   /// El cliente puede desactivar una ruta ya organizada (por ejemplo, si ya
   /// no se va a usar) sin borrar su historial -- asi sabe la ultima vez
-  /// que se uso con solo ver route_date.
+  /// que se uso con solo ver route_date. Si viene de una asignacion
+  /// automatica (id_schedule), el propio sistema la activa/desactiva sola.
   is_active   Boolean                @default(true)
+  /// Si esta ruta se genero (o se organizo con "repetir automatico") desde
+  /// una asignacion recurrente, aqui queda la referencia -- sirve para
+  /// mostrar la frecuencia en "Rutas Creadas" y para la activacion/
+  /// desactivacion automatica.
+  id_schedule Int?                   @db.UnsignedInt
   dt_register DateTime               @default(now()) @db.Timestamp(0)
   driver      drivers                @relation(fields: [id_driver], references: [id_driver])
+  schedule    route_driver_schedules? @relation(fields: [id_schedule], references: [id_schedule])
   stops       delivery_route_stops[]
 
   @@index([id_client], map: "idx_delivery_routes_client")
   @@index([id_driver], map: "idx_delivery_routes_driver")
+  @@index([id_schedule], map: "idx_delivery_routes_schedule")
 }
 
 model delivery_route_stops {
@@ -1121,6 +1129,7 @@ model route_driver_schedules {
   dt_register       DateTime         @default(now()) @db.Timestamp(0)
   route_template    route_templates  @relation(fields: [id_route_template], references: [id_route_template], onDelete: Cascade)
   driver            drivers          @relation(fields: [id_driver], references: [id_driver])
+  routes            delivery_routes[]
 
   @@index([id_client], map: "idx_route_schedules_client")
   @@index([id_route_template], map: "idx_route_schedules_template")
