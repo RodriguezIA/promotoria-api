@@ -1,5 +1,5 @@
 import { Router } from 'express'
-import { createProduct, getProductsByClientId, getProductsPaginated, getProductById, updateProduct, updateProductImage, deleteProduct } from './controller'
+import { createProduct, getProductsByClientId, getProductsPaginated, getProductById, updateProduct, updateProductImage, updateProductBarcodeImage, deleteProduct } from './controller'
 import { authMiddleware, validateBody } from "../../core/middleware"
 import { uploadAny } from "../../core/middleware/upload.middleware"
 import { updateProductSchema } from './product.schema'
@@ -169,6 +169,39 @@ productRouter.get('/:id_client', authMiddleware, getProductsByClientId);
  *       500: { $ref: '#/components/responses/ServerError' }
  */
 productRouter.post('/upload-image/:id_client/:id_product', authMiddleware, uploadAny.single('file'), updateProductImage);
+
+/**
+ * @openapi
+ * /products/upload-barcode-image/{id_client}/{id_product}:
+ *   post:
+ *     tags: [Products]
+ *     summary: Subir/actualizar la foto del código de barras/QR de un producto
+ *     description: Solo es una referencia visual para el cliente en el panel. No se usa para comparar cuando el promotor escanea (eso compara contra vc_sku).
+ *     parameters:
+ *       - in: path
+ *         name: id_client
+ *         required: true
+ *         schema: { type: integer }
+ *       - in: path
+ *         name: id_product
+ *         required: true
+ *         schema: { type: integer }
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         multipart/form-data:
+ *           schema:
+ *             type: object
+ *             required: [file]
+ *             properties:
+ *               file: { type: string, format: binary }
+ *     responses:
+ *       200: { description: "Código de barras actualizado." }
+ *       400: { description: "No se recibió archivo." }
+ *       401: { $ref: '#/components/responses/Unauthorized' }
+ *       500: { $ref: '#/components/responses/ServerError' }
+ */
+productRouter.post('/upload-barcode-image/:id_client/:id_product', authMiddleware, uploadAny.single('file'), updateProductBarcodeImage);
 
 /**
  * @openapi

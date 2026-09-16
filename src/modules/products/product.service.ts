@@ -17,6 +17,7 @@ export class Product {
                     name: newProductPayload.name,
                     description: newProductPayload.description || '',
                     vc_image: newProductPayload.vc_image || '',
+                    vc_sku: newProductPayload.vc_sku || null,
                     i_stock: newProductPayload.i_stock ?? null,
                     b_allow_backorder: newProductPayload.b_allow_backorder ?? false,
                     i_backorder_days: newProductPayload.i_backorder_days ?? null,
@@ -104,12 +105,22 @@ export class Product {
         })
     }
 
+    async updateProductBarcodeImage(id_product: number, image_url: string) {
+        return await prisma.products.update({
+            data: {
+                vc_barcode_image: image_url
+            },
+            where: { id_product }
+        })
+    }
+
     async updateProduct(id_product: number, id_client: number, newProductPayload: createProductPayload){
         return await prisma.$transaction(async (prisma) => {
             const product = await prisma.products.update({
                 data: {
                     name: newProductPayload.name,
                     description: newProductPayload.description || '',
+                    vc_sku: newProductPayload.vc_sku ?? null,
                     i_stock: newProductPayload.i_stock ?? null,
                     b_allow_backorder: newProductPayload.b_allow_backorder ?? false,
                     i_backorder_days: newProductPayload.i_backorder_days ?? null,

@@ -6,6 +6,7 @@ export const createProductSchema = z.object({
   name: z.string().min(1, 'name es requerido'),
   description: z.string().optional(),
   vc_image: z.string().optional(),
+  vc_sku: z.string().max(100).nullable().optional(),
   i_stock: z.number().int().min(0).nullable().optional(),
   b_allow_backorder: z.boolean().optional(),
   i_backorder_days: z.number().int().positive().nullable().optional(),

@@ -38,6 +38,7 @@ export const createProduct = async (req: Request, res: Response) => {
             id_client,
             name,
             description: body.description,
+            vc_sku: typeof body.vc_sku === 'string' ? body.vc_sku.trim() || null : null,
             i_stock: body.i_stock !== undefined && body.i_stock !== '' ? parseNumber(body.i_stock) ?? null : null,
             b_allow_backorder: body.b_allow_backorder === 'true' || body.b_allow_backorder === true,
             i_backorder_days: body.i_backorder_days !== undefined && body.i_backorder_days !== '' ? parseNumber(body.i_backorder_days) ?? null : null,
@@ -213,6 +214,43 @@ export const updateProductImage = async (req: Request, res: Response) => {
             error: 1,
             data: null,
             message: 'Error al actualizar la imagen del producto'
+        });
+    }
+}
+
+export const updateProductBarcodeImage = async (req: Request, res: Response) => {
+    const { id_product, id_client } = req.params;
+
+    if (!req.file) {
+        res.status(400).json({ ok: false, error: 1, data: null, message: 'No se recibió archivo' });
+        return;
+    }
+
+    try {
+        const { url } = await StorageService.uploadAsset({
+            entity: 'product_barcode',
+            entity_id: Number(id_product),
+            buffer: req.file.buffer,
+            mime: req.file.mimetype,
+            id_client: Number(id_client),
+            optimize: { maxW: 800, maxH: 800, quality: 80 },
+        });
+
+        const product = await productService.updateProductBarcodeImage(Number(id_product), url);
+
+        res.json({
+            ok: true,
+            error: 0,
+            data: product,
+            message: 'Código de barras del producto actualizado exitosamente'
+        });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({
+            ok: false,
+            error: 1,
+            data: null,
+            message: 'Error al actualizar el código de barras del producto'
         });
     }
 }

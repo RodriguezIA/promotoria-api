@@ -31,6 +31,7 @@ const bucket = storage.bucket(process.env.GCP_BUCKET_NAME!);
 
 export type AssetEntity =
   | "product"
+  | "product_barcode"
   | "request"
   | "sale_channel"
   | "task_answer"
@@ -47,6 +48,7 @@ export type AssetEntity =
 
 const ENTITY_SEGMENT: Record<AssetEntity, string> = {
   product: "products",
+  product_barcode: "product_barcodes",
   request: "requests",
   sale_channel: "sale_channels",
   task_answer: "task_answers",

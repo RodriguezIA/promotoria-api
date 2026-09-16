@@ -4,6 +4,7 @@ export interface createProductPayload {
     name: string
     description?: string
     vc_image?: string
+    vc_sku?: string | null
     i_stock?: number | null
     b_allow_backorder?: boolean
     i_backorder_days?: number | null
