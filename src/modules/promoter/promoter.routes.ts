@@ -13,6 +13,7 @@ import {
   updatePromoterImage, checkPhone, updatePromoterProfile, updatePromoterPassword,
   getPromoterReferrals, deletePromoterAccount, requestAccountDeletionByPhone,
   forgotPromoterPassword, resetPromoterPasswordWithCode, adminResetPromoterPassword,
+  refreshPromoterLocations,
 } from './promoter.controller'
 
 import {
@@ -26,6 +27,7 @@ import {
 const promoterRouter = Router()
 
 promoterRouter.get('/', authMiddleware, getPromoters)
+promoterRouter.post('/refresh-locations', authMiddleware, refreshPromoterLocations)
 promoterRouter.post('/', validateBody(createPromoterSchema), createPromoter)
 promoterRouter.get('/check-phone/:phone', checkPhone)
 promoterRouter.post('/login', loginPromoter)

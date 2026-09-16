@@ -3,6 +3,7 @@ import { Request, Response } from 'express'
 import { Utils } from '../../core/utils'
 import { Promoter } from './promoter.service'
 import { StorageService } from '../../services/storage.service'
+import { NotificationService } from '../../services/notification.service'
 import {
     CreatePromoterDTO, LoginPromoterDTO, TokenPromoterPayload, CreatePromoterBankAccountDTO,
     UpdatePromoterBankAccountDTO, UpdatePromoterProfileDTO, UpdatePromoterPasswordDTO,
@@ -495,5 +496,41 @@ export const updatePromoterImage = async (req: Request, res: Response) => {
             data: null,
             message: 'Error al subir la imagen de perfil',
         })
+    }
+}
+
+/**
+ * El cliente, antes de armar un pedido, pide que se les avise a todos los
+ * promotores activos que actualicen su ubicacion -- asi cuando se cree el
+ * pedido, el sistema de asignacion ya tiene datos frescos de todos y no
+ * depende de que cada quien haya abierto la app recientemente por su cuenta.
+ */
+export const refreshPromoterLocations = async (req: Request, res: Response) => {
+    try {
+        const promoters = await promoterService.getActiveWithToken()
+
+        let sent = 0
+        await Promise.all(promoters.map(async (p) => {
+            try {
+                await NotificationService.sendPushNotification(p.fcm_token!, {
+                    title: 'Actualiza tu ubicación',
+                    body: 'Abre la app un momento para que te lleguen bien las tareas cercanas a ti.',
+                    data: { type: 'refresh_location' },
+                })
+                sent++
+            } catch (error) {
+                console.error(`refreshPromoterLocations: error avisando a promotor ${p.id}`, error)
+            }
+        }))
+
+        res.status(200).json({
+            ok: true,
+            error: 0,
+            data: { total: promoters.length, sent },
+            message: `Se avisó a ${sent} de ${promoters.length} promotor(es) activo(s)`,
+        })
+    } catch (error) {
+        console.error('refreshPromoterLocations: ', error)
+        res.status(500).json({ ok: false, error: 1, data: null, message: 'Error al avisar a los promotores' })
     }
 }

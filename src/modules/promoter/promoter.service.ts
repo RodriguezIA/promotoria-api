@@ -583,4 +583,17 @@ export class Promoter {
     //         }
     //     })
     // }
+
+    /**
+     * Todos los promotores activos con token de notificaciones, para
+     * pedirles que actualicen su ubicacion antes de armar un pedido nuevo
+     * (los promotores son globales, no de un cliente en particular -- el
+     * sistema de asignacion de tareas ya busca entre todos igual).
+     */
+    async getActiveWithToken() {
+        return await prisma.promoters.findMany({
+            where: { isActive: true, fcm_token: { not: null } },
+            select: { id: true, fcm_token: true },
+        })
+    }
 }
