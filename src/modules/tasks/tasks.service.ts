@@ -492,7 +492,7 @@ export class Task {
                                 id_request_product: true,
                                 b_active: true,
                                 product: {
-                                    select: { id_product: true, name: true, description: true, vc_image: true }
+                                    select: { id_product: true, name: true, description: true, vc_image: true, vc_sku: true }
                                 },
                                 request_product_questions: {
                                     select: {
