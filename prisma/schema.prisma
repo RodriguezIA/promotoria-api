@@ -241,13 +241,6 @@ model products {
   /// del negocio sepa cuanto va a pagar por su pedido). Distinto del costo
   /// de las preguntas del checklist.
   f_store_price     Decimal?           @db.Decimal(10, 2)
-  /// SKU o codigo de barras del producto, como texto (el numero que trae
-  /// impreso el codigo). Se usa para comparar contra lo que el promotor
-  /// escanea con la camara y confirmar que es el producto correcto.
-  vc_sku            String?            @db.VarChar(100)
-  /// Foto del codigo de barras/QR, solo de referencia visual para el
-  /// promotor -- la validacion real del escaneo usa vc_sku, no esta imagen.
-  vc_barcode_image  String?            @db.VarChar(500)
   dt_created        DateTime?          @default(now()) @db.Timestamp(0)
   dt_updated        DateTime?          @default(now()) @updatedAt @db.Timestamp(0)
   client            clients            @relation(fields: [id_client], references: [id_client])
