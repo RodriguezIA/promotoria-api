@@ -129,37 +129,22 @@ export class Order {
             countsByOrder.get(c.id_order)!.set(c.id_status, c._count.id_task)
         }
 
-        // Tareas que el cliente rechazo en revision (no que simplemente
-        // nadie las tomo o se cancelo el pedido) -- vc_cancel_type='cliente'
-        // es lo que distingue un rechazo real de una cancelacion cualquiera.
-        const rejectedTasks = orderIds.length
-            ? await prisma.tasks.findMany({
-                where: { id_order: { in: orderIds }, id_status: 0, vc_cancel_type: 'cliente' },
-                select: { id_order: true },
-            })
-            : []
-        const ordersWithRejection = new Set(rejectedTasks.map(t => t.id_order))
-
         // Un pedido puede tener tareas en varios estatus a la vez (unas ya
-        // finalizadas, otras apenas pendientes). Se muestra un solo estatus
-        // resumen, priorizando lo que mas necesita la atencion del cliente.
+        // finalizadas, otras apenas pendientes). De cara al cliente el
+        // pedido global solo tiene dos estados posibles: Activo (todavia
+        // hay algo por hacer o por revisar) o Finalizado (ya no queda
+        // ninguna tarea abierta -- el detalle de cada tarea sigue mostrando
+        // su estatus real y especifico, esto es solo el resumen del pedido).
         const deriveOrderStatus = (counts: Map<number, number> | undefined) => {
-            if (!counts || counts.size === 0) return 'Pendientes'
+            if (!counts || counts.size === 0) return 'Activo'
             const get = (s: number) => counts.get(s) ?? 0
-            const total = [...counts.values()].reduce((a, b) => a + b, 0)
-            if (get(6) > 0) return 'Completadas'
-            if (get(2) + get(3) + get(4) + get(5) > 0) return 'En progreso'
-            if (get(7) === total) return 'Finalizadas'
-            return 'Pendientes'
+            const openCount = [1, 2, 3, 4, 5, 6].reduce((sum, s) => sum + get(s), 0)
+            return openCount === 0 ? 'Finalizado' : 'Activo'
         }
 
         const ordersWithPendingAuth = orders.map(o => {
             const counts = countsByOrder.get(o.id_order)
-            const status = o.id_status === 0
-                ? 'Cancelado'
-                : ordersWithRejection.has(o.id_order)
-                    ? 'Rechazado'
-                    : deriveOrderStatus(counts)
+            const status = o.id_status === 0 ? 'Finalizado' : deriveOrderStatus(counts)
             return {
                 ...o,
                 i_pending_authorization: counts?.get(6) ?? 0,

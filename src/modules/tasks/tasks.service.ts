@@ -438,6 +438,59 @@ export class Task {
         })
     }
 
+    /**
+     * El promotor cancela una tarea que YA habia aceptado (status 2-5, "en
+     * curso"). A diferencia de rejectTask (que es rechazar una OFERTA antes
+     * de aceptarla, cuando id_promoter todavia es null), aqui la tarea ya
+     * tiene dueño -- por eso no basta con dejarla como esta: hay que
+     * soltarla de vuelta a la bolsa (id_promoter null, status 1, ciclo de
+     * ranking reiniciado) para que el sistema le busque OTRO promotor,
+     * excluyendo al que la cancelo. Antes esto se hacia con un PUT generico
+     * a status=8 ("Terminada con incidencia"), que la dejaba en un estado
+     * muerto: parecia terminada, seguia mostrando al mismo promotor como
+     * dueño, y nunca se le volvia a ofrecer a nadie.
+     */
+    async promoterCancelTask(id_task: number, id_promoter: number) {
+        const task = await prisma.tasks.findUnique({ where: { id_task } })
+        if (!task) throw new Error('Tarea no encontrada')
+        if (task.id_promoter !== id_promoter) throw new Error('Esta tarea no es tuya')
+        if (task.id_status < 2 || task.id_status > 5) {
+            throw new Error('Solo se puede cancelar una tarea que este en curso')
+        }
+
+        const updated = await prisma.$transaction(async (tx) => {
+            const updatedTask = await tx.tasks.update({
+                where: { id_task },
+                data: {
+                    id_promoter: null,
+                    id_status: 1,
+                    i_current_cycle: 0,
+                    dt_update: new Date(),
+                },
+            })
+            await tx.task_rejections.upsert({
+                where: { id_task_id_promoter: { id_task, id_promoter } },
+                update: {},
+                create: { id_task, id_promoter, reason: 'rejected' },
+            })
+            return updatedTask
+        })
+
+        try {
+            await taskRankingQueue.add('rank_promoters', {
+                id_task: updated.id_task,
+                id_store: updated.id_store,
+                cycle: 0,
+            }, {
+                jobId: `rank_task_${updated.id_task}_cycle_0_recancel_${Date.now()}`,
+            })
+        } catch (error) {
+            console.error(`[Task] Error al re-encolar ranking tras cancelacion del promotor para la tarea ${id_task}:`, error)
+        }
+
+        return updated
+    }
+
     async getPromoterTaskHistory(id_promoter: number, reason?: 'rejected' | 'timeout') {
         // Sin @relation en el schema hacia tasks (ver nota en schema.prisma:
         // task_rejections.id_task/id_promoter no pueden tener FK real por un

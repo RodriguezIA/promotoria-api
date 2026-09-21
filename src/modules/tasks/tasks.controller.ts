@@ -193,6 +193,19 @@ export const rejectTask = async (req: Request, res: Response) => {
     }
 }
 
+export const promoterCancelTask = async (req: Request, res: Response) => {
+    const { id_task } = req.params
+    const id_promoter = req.user!.id
+    try {
+        const task = await taskService.promoterCancelTask(Number(id_task), id_promoter)
+        res.status(200).json({ ok: true, error: 0, data: task, message: 'Tarea cancelada; se le buscará otro promotor' })
+    } catch (error) {
+        const msg = (error as any).message
+        const status = msg.includes('no encontrada') || msg.includes('no es tuya') || msg.includes('Solo se puede') ? 400 : 500
+        res.status(status).json({ ok: false, error: 1, data: null, message: msg, error_backend: msg })
+    }
+}
+
 export const approveTask = async (req: Request, res: Response) => {
     const { id_task } = req.params
     try {

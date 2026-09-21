@@ -2,7 +2,7 @@ import { Router } from 'express'
 
 import { authMiddleware, debugBasicAuthMiddleware, validateBody } from '../../core/middleware'
 import { uploadAny } from '../../core/middleware/upload.middleware'
-import { createTask,getMyTasks, getMyTaskHistory, getTaskById, getTasks, getTasksStatusSummary, updateTask, deleteTask, acceptTask, rejectTask, getTaskChecklist, answerTaskQuestions, completeTask, assignPromoterToTask, getNearbyTasks, forceNotifyTask, approveTask, cancelTask } from './tasks.controller'
+import { createTask,getMyTasks, getMyTaskHistory, getTaskById, getTasks, getTasksStatusSummary, updateTask, deleteTask, acceptTask, rejectTask, promoterCancelTask, getTaskChecklist, answerTaskQuestions, completeTask, assignPromoterToTask, getNearbyTasks, forceNotifyTask, approveTask, cancelTask } from './tasks.controller'
 import { forceNotifyTaskSchema, cancelTaskSchema } from './tasks.schema'
 
 const taskRouter = Router()
@@ -216,6 +216,7 @@ taskRouter.delete('/:id_task', authMiddleware, deleteTask)
 // Mobile/Promotor: acciones sobre tarea
 taskRouter.post('/:id_task/accept', authMiddleware, acceptTask)
 taskRouter.post('/:id_task/reject', authMiddleware, rejectTask)
+taskRouter.post('/:id_task/promoter-cancel', authMiddleware, promoterCancelTask)
 taskRouter.get('/:id_task/checklist', authMiddleware, getTaskChecklist)
 
 /**
