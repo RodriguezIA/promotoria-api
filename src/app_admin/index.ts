@@ -12,6 +12,8 @@ import { RequestAdmin } from './requestAdmin';
 import { OrderAdmin } from './orderAdmin';
 import { PromoterAdmin } from './promoterAdmin';
 
+import { prisma } from '../core/prisma';
+
 import { upload, uploadExcel } from '../core/middleware/upload.middleware';
 import { authMiddleware } from '../core/middleware/auth.middleware';
 
@@ -640,10 +642,14 @@ adminRouter.post("/store", async(req: Request, res: Response): Promise<void> => 
 
 adminRouter.get("/stores/:id_client", async (req: Request, res: Response): Promise<void> => {
     try {
-        const { id_client } = req.params;
-
-        const storeModel = getAdminStore();
-        const result = await storeModel.getStoresForClient(Number(id_client));
+        // Nota: las tiendas ya no estan ligadas a un cliente en particular
+        // (no existe tabla stores_clients en el esquema actual) -- son un
+        // directorio compartido, igual que en el modulo moderno de
+        // Establecimientos. Se listan todas las activas.
+        const result = await prisma.stores.findMany({
+            where: { i_status: 1 },
+            orderBy: { name: 'asc' },
+        });
 
         res.status(200).json({
             ok: true,
@@ -1802,7 +1808,6 @@ adminRouter.post('/orders', async (req: Request, res: Response): Promise<void> =
 
 
 adminRouter.get('/orders/client/:id_client', async (req: Request, res: Response): Promise<void> => {
-  let orderModel: OrderAdmin | null = null;
   try {
     const id_client = parseInt(String(req.params.id_client));
 
@@ -1811,8 +1816,10 @@ adminRouter.get('/orders/client/:id_client', async (req: Request, res: Response)
       return;
     }
 
-    orderModel = getOrderAdmin();
-    const result = await orderModel.getOrdersByClient(id_client);
+    const result = await prisma.orders.findMany({
+      where: { id_client, id_status: { not: 0 } },
+      orderBy: { dt_register: 'desc' },
+    });
 
     res.status(200).json({
       ok: true,
@@ -1821,8 +1828,6 @@ adminRouter.get('/orders/client/:id_client', async (req: Request, res: Response)
   } catch (error) {
     console.error(error);
     res.status(500).json({ ok: false, error: "Error obteniendo los pedidos del cliente", details: error });
-  } finally {
-    orderModel = null;
   }
 });
 
@@ -1917,17 +1922,31 @@ adminRouter.post('/promoters', async (req: Request, res: Response): Promise<void
 
 // 2. OBTENER TODOS LOS PROMOTORES
 adminRouter.get('/promoters', async (req: Request, res: Response): Promise<void> => {
-    let promoterModel: PromoterAdmin | null = null;
     try {
-        promoterModel = getPromoterAdmin();
-        const result = await promoterModel.getAllPromoters();
+        const promoters = await prisma.promoters.findMany({
+            where: { isActive: true },
+            select: { id: true, name: true, lastname: true, email: true, phone: true, dt_register: true, isActive: true, latitude: true, longitude: true },
+            orderBy: { name: 'asc' },
+        });
+        // Se mapea a los nombres viejos (id_promoter, vc_name, b_active,
+        // f_latitude, f_longitude) porque asi los consume el Dashboard en
+        // el panel -- el modelo de promotores actual ya no usa ese
+        // vocabulario (ahora es id/name/isActive/latitude/longitude).
+        const result = promoters.map(p => ({
+            id_promoter: p.id,
+            vc_name: `${p.name}${p.lastname ? ' ' + p.lastname : ''}`,
+            vc_email: p.email,
+            vc_phone: p.phone,
+            dt_register: p.dt_register,
+            b_active: p.isActive,
+            f_latitude: p.latitude,
+            f_longitude: p.longitude,
+        }))
 
         res.status(200).json({ ok: true, data: result });
     } catch (error) {
         console.error(error);
         res.status(500).json({ ok: false, error: "Error obteniendo promotores" });
-    } finally {
-        promoterModel = null;
     }
 });
 
