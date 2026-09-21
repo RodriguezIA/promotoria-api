@@ -68,10 +68,22 @@ export class Store {
         })
     }
 
-    async getStores() {
+    async getStores(id_client?: number) {
         return await prisma.$transaction(async () => {
+            let storeIdFilter: number[] | undefined
+            if (id_client !== undefined) {
+                const owned = await prisma.client_stores.findMany({
+                    where: { id_client },
+                    select: { id_store: true },
+                })
+                storeIdFilter = owned.map(o => o.id_store)
+            }
+
             const stores = await prisma.stores.findMany({
-                where: { i_status: 1 },
+                where: {
+                    i_status: 1,
+                    ...(storeIdFilter ? { id_store: { in: storeIdFilter } } : {}),
+                },
                 include: {
                     sales_channel: {
                         select: {

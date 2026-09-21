@@ -110,6 +110,7 @@ model clients {
   tasks                   tasks[]
   folios                  folios[]
   client_charges          client_charges[]
+  client_stores           client_stores[]
 
   @@index([i_status], map: "idx_clients_status")
   @@index([id_user], map: "idx_clients_user")
@@ -558,9 +559,26 @@ model stores {
   stock_minimums  product_stock_minimums[]
   stock_readings  store_product_stock[]
   delivery_stops  delivery_route_stops[]
+  client_stores   client_stores[]
 
   @@index([id_user], map: "fk_store_user")
   @@index([id_channel_sale], map: "fk_store_channel")
+}
+
+/// Una tienda se vuelve "tuya" (del cliente) la primera vez que la incluyes
+/// en un pedido. Antes de eso es solo parte del directorio compartido
+/// ("Tiendas de la app"). Se va formando solo, no se asigna a mano.
+model client_stores {
+  id_client_store Int      @id @default(autoincrement()) @db.UnsignedInt
+  id_client       Int      @db.UnsignedInt
+  id_store        Int      @db.UnsignedInt
+  dt_first_order  DateTime @default(now()) @db.Timestamp(0)
+  client          clients  @relation(fields: [id_client], references: [id_client])
+  store           stores   @relation(fields: [id_store], references: [id_store])
+
+  @@unique([id_client, id_store], map: "uq_client_store")
+  @@index([id_client], map: "fk_client_stores_client")
+  @@index([id_store], map: "fk_client_stores_store")
 }
 
 model task_answers {

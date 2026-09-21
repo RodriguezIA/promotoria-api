@@ -52,7 +52,13 @@ export const getStore = async (req: Request, res: Response) => {
 
 export const getStores = async (req: Request, res: Response) => {
     try {
-        const stores = await storeService.getStores()
+        // ?mine=1 filtra a solo las tiendas que ya son del cliente que hace
+        // la peticion (las que ya aparecieron en algun pedido suyo). Sin
+        // ese parametro, se sigue comportando igual que siempre: el
+        // directorio completo compartido.
+        const mine = req.query.mine === '1' || req.query.mine === 'true'
+        const id_client = mine ? req.user?.id_client : undefined
+        const stores = await storeService.getStores(id_client)
         res.status(200).json({
             ok: true,
             error: 0,

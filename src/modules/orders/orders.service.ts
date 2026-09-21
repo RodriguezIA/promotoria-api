@@ -74,6 +74,17 @@ export class Order {
                 }
             })
 
+            // Una tienda se vuelve "tuya" (del cliente) la primera vez que
+            // aparece en un pedido suyo -- asi se va formando sola la lista
+            // de "Tiendas [nombre del cliente]" sin que nadie la asigne a mano.
+            for (const id_store of storeIds) {
+                await tx.client_stores.upsert({
+                    where: { uq_client_store: { id_client: data.id_client, id_store } },
+                    update: {},
+                    create: { id_client: data.id_client, id_store },
+                })
+            }
+
             return order
         })
     }
