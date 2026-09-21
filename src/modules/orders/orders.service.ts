@@ -79,7 +79,7 @@ export class Order {
             // de "Tiendas [nombre del cliente]" sin que nadie la asigne a mano.
             for (const id_store of storeIds) {
                 await tx.client_stores.upsert({
-                    where: { uq_client_store: { id_client: data.id_client, id_store } },
+                    where: { id_client_id_store: { id_client: data.id_client, id_store } },
                     update: {},
                     create: { id_client: data.id_client, id_store },
                 })
