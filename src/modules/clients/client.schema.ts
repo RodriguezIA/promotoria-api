@@ -4,7 +4,7 @@ export const createClientSchema = z.object({
   id_user: z.number().int().positive('id_user es requerido'),
   name: z.string().min(1, 'name es requerido'),
   rfc: z.string().optional(),
-  email: z.string().email('email debe ser válido').optional().or(z.literal('')),
+  email: z.string().email('email debe ser válido').nullable().optional().or(z.literal('')),
   phone: z.string().optional(),
   id_pais: z.number().int().positive().optional(),
   id_estado: z.number().int().positive().optional(),

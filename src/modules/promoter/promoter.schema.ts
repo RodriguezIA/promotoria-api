@@ -2,14 +2,14 @@ import { z } from 'zod';
 
 export const createPromoterSchema = z.object({
   name: z.string().min(1, 'name es requerido'),
-  lastname: z.string().optional(),
-  email: z.string().email('email debe ser válido').optional().or(z.literal('')),
+  lastname: z.string().nullable().optional(),
+  email: z.string().email('email debe ser válido').nullable().optional().or(z.literal('')),
   password: z.string().min(6, 'password debe tener al menos 6 caracteres'),
   phone: z.string().min(1, 'phone es requerido'),
-  fcm_token: z.string().optional(),
-  latitude: z.number().optional(),
-  longitude: z.number().optional(),
-  referral_code: z.string().optional(),
+  fcm_token: z.string().nullable().optional(),
+  latitude: z.number().nullable().optional(),
+  longitude: z.number().nullable().optional(),
+  referral_code: z.string().nullable().optional(),
   accepted_terms: z.boolean().refine((val) => val === true, {
     message: 'Debes aceptar los Términos y el Aviso de Privacidad para registrarte',
   }),
