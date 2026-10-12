@@ -1,6 +1,7 @@
 import { Router } from 'express'
 
-import { authMiddleware, debugBasicAuthMiddleware, validateBody } from '../../core/middleware'
+import { authMiddleware, debugBasicAuthMiddleware, requireRole, validateBody } from '../../core/middleware'
+import { ROLES } from '../../core/constants/status.constants'
 import { uploadAny } from '../../core/middleware/upload.middleware'
 import { createTask,getMyTasks, getMyTaskHistory, getTaskById, getTasks, getTasksStatusSummary, updateTask, deleteTask, acceptTask, rejectTask, promoterCancelTask, getTaskChecklist, answerTaskQuestions, completeTask, assignPromoterToTask, getNearbyTasks, forceNotifyTask, approveTask, cancelTask } from './tasks.controller'
 import { forceNotifyTaskSchema, cancelTaskSchema } from './tasks.schema'
@@ -324,8 +325,8 @@ taskRouter.get('/:id_task/checklist', authMiddleware, getTaskChecklist)
  *       401: { $ref: '#/components/responses/Unauthorized' }
  */
 // Admin/superadmin: revisión de tarea (aprobar / cancelar con comentario)
-taskRouter.patch('/:id_task/approve', authMiddleware, approveTask)
-taskRouter.patch('/:id_task/cancel', authMiddleware, validateBody(cancelTaskSchema), cancelTask)
+taskRouter.patch('/:id_task/approve', authMiddleware, requireRole(ROLES.ADMIN), approveTask)
+taskRouter.patch('/:id_task/cancel', authMiddleware, requireRole(ROLES.ADMIN), validateBody(cancelTaskSchema), cancelTask)
 
 // Batch: enviar todas las respuestas del checklist con imagenes opcionales
 taskRouter.post('/:id_task/answers', authMiddleware, uploadAny.any(), answerTaskQuestions)
