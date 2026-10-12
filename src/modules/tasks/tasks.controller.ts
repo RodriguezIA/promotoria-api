@@ -223,7 +223,7 @@ export const cancelTask = async (req: Request, res: Response) => {
     const { comment } = req.body
     try {
         const task = await taskService.reviewCancel(Number(id_task), comment)
-        res.status(200).json({ ok: true, error: 0, data: task, message: 'Tarea cancelada exitosamente' })
+        res.status(200).json({ ok: true, error: 0, data: task, message: 'Rechazo enviado; el master lo revisará' })
     } catch (error) {
         const msg = (error as any).message
         const status = msg.includes('Solo se puede') || msg.includes('no encontrada') ? 400 : 500
@@ -335,5 +335,38 @@ export const getNearbyTasks = async (req: Request, res: Response) => {
         res.status(200).json({ ok: true, error: 0, data: tasks, message: `${tasks.length} tarea(s) disponibles cerca de ti` })
     } catch (error) {
         res.status(500).json({ ok: false, error: 1, data: null, message: 'Error al buscar tareas cercanas', error_backend: (error as any).message })
+    }
+}
+
+
+export const listDisputes = async (_req: Request, res: Response) => {
+    try {
+        const data = await taskService.listDisputes()
+        res.status(200).json({ ok: true, error: 0, data, message: 'OK' })
+    } catch (error) {
+        const msg = (error as any).message
+        res.status(500).json({ ok: false, error: 1, data: null, message: msg, error_backend: msg })
+    }
+}
+
+export const confirmDispute = async (req: Request, res: Response) => {
+    const { id_task } = req.params
+    try {
+        const task = await taskService.confirmDispute(Number(id_task), req.user!.id, (req.body as any)?.note)
+        res.status(200).json({ ok: true, error: 0, data: task, message: 'Rechazo confirmado; el dinero regresó al cliente' })
+    } catch (error) {
+        const msg = (error as any).message
+        res.status(400).json({ ok: false, error: 1, data: null, message: msg, error_backend: msg })
+    }
+}
+
+export const upholdDispute = async (req: Request, res: Response) => {
+    const { id_task } = req.params
+    try {
+        const task = await taskService.upholdDispute(Number(id_task), req.user!.id, (req.body as any)?.note)
+        res.status(200).json({ ok: true, error: 0, data: task, message: 'Visita mantenida como aceptada; se le acreditó al promotor' })
+    } catch (error) {
+        const msg = (error as any).message
+        res.status(400).json({ ok: false, error: 1, data: null, message: msg, error_backend: msg })
     }
 }

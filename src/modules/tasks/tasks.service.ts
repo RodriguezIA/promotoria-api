@@ -392,6 +392,9 @@ export class Task {
      * "cliente". Notifica por push al promotor asignado.
      */
     async reviewCancel(id_task: number, comment: string) {
+        // El cliente rechaza una visita ya entregada: NO se cancela. Pasa a estado 9
+        // ("en revision del master"); el master decide si confirma (devuelve el dinero)
+        // o la mantiene aceptada (se le paga al promotor).
         const task = await prisma.tasks.findUnique({
             where: { id_task },
             select: {
@@ -401,34 +404,166 @@ export class Task {
             }
         })
         if (!task) throw new Error('Tarea no encontrada')
-        if (task.id_status !== 6) throw new Error('Solo se puede cancelar una tarea en revisión')
+        if (task.id_status !== 6) throw new Error('Solo se puede rechazar una tarea en revisión')
 
-        const updated = await prisma.tasks.update({
-            where: { id_task },
+        const claim = await prisma.tasks.updateMany({
+            where: { id_task, id_status: 6 },
             data: {
-                id_status: 0,
+                id_status: 9,
                 vc_cancel_type: 'cliente',
                 vc_cancel_reason: comment,
                 dt_update: new Date(),
             },
         })
+        if (claim.count !== 1) throw new Error('Solo se puede rechazar una tarea en revisión')
+        const updated = await prisma.tasks.findUnique({ where: { id_task } })
 
         if (task.promoter?.fcm_token) {
             try {
                 await NotificationService.sendPushNotification(task.promoter.fcm_token, {
-                    title: 'Tarea cancelada',
-                    body: `Tu tarea en ${task.store?.name ?? 'la tienda'} fue cancelada: ${comment}`,
-                    // Sin id_task en data a propósito: el listener de la app navega a
-                    // /task-offer/:id en cuanto ve id_task en el payload (pensado para
-                    // ofertas nuevas), y esta tarea ya no es una oferta válida.
-                    data: { type: 'task_cancelled' },
+                    title: 'Visita rechazada por el cliente',
+                    body: `El cliente rechazó tu visita en ${task.store?.name ?? 'la tienda'}: ${comment}. El master la está revisando.`,
+                    data: { type: 'task_in_dispute' },
                 })
             } catch (error) {
-                console.error(`[Task] Error al notificar cancelación de la tarea ${id_task}:`, error)
+                console.error(`[Task] Error al notificar rechazo de la tarea ${id_task}:`, error)
             }
         }
 
         return updated
+    }
+
+    /** Master: visitas que el cliente rechazo y esperan su decision (estado 9). */
+    async listDisputes() {
+        const tasks = await prisma.tasks.findMany({
+            where: { id_status: 9 },
+            orderBy: { dt_update: 'desc' },
+            take: 200,
+            select: {
+                id_task: true,
+                id_order: true,
+                id_client: true,
+                vc_folio: true,
+                vc_cancel_reason: true,
+                dt_update: true,
+                store: { select: { name: true } },
+                promoter: { select: { name: true, lastname: true } },
+            },
+        })
+        const clientIds = Array.from(new Set(tasks.map(t => t.id_client)))
+        const orderIds = Array.from(new Set(tasks.map(t => t.id_order)))
+        const [clients, orders] = await Promise.all([
+            clientIds.length ? prisma.clients.findMany({ where: { id_client: { in: clientIds } }, select: { id_client: true, name: true } }) : Promise.resolve([]),
+            orderIds.length ? prisma.orders.findMany({ where: { id_order: { in: orderIds } }, select: { id_order: true, vc_folio: true } }) : Promise.resolve([]),
+        ])
+        const clientName = new Map<number, string | null>()
+        for (const c of clients) clientName.set(c.id_client, c.name)
+        const orderFolio = new Map<number, string | null>()
+        for (const o of orders) orderFolio.set(o.id_order, o.vc_folio)
+        return tasks.map(t => ({
+            id_task: t.id_task,
+            id_order: t.id_order,
+            order_folio: orderFolio.get(t.id_order) ?? null,
+            id_client: t.id_client,
+            client_name: clientName.get(t.id_client) ?? null,
+            store_name: t.store?.name ?? null,
+            promoter_name: t.promoter ? `${t.promoter.name} ${t.promoter.lastname}`.trim() : null,
+            reason: t.vc_cancel_reason,
+            dt_rejected: t.dt_update,
+        }))
+    }
+
+    /** Master confirma el rechazo del cliente: la visita queda cerrada como rechazada y se devuelve el dinero. */
+    async confirmDispute(id_task: number, id_user: number, note?: string) {
+        const info = await prisma.tasks.findUnique({
+            where: { id_task },
+            select: {
+                id_status: true,
+                id_order: true,
+                id_request: true,
+                id_store: true,
+                vc_cancel_reason: true,
+                promoter: { select: { fcm_token: true } },
+                store: { select: { name: true } },
+            },
+        })
+        if (!info) throw new Error('Tarea no encontrada')
+        if (info.id_status !== 9) throw new Error('Esta visita ya no está en revisión del master')
+
+        await prisma.$transaction(async (tx) => {
+            const claim = await tx.tasks.updateMany({
+                where: { id_task, id_status: 9 },
+                data: {
+                    id_status: 0,
+                    vc_cancel_type: 'master',
+                    vc_master_note: note?.trim() || null,
+                    id_user_resolver: id_user,
+                    dt_dispute_resolved: new Date(),
+                    dt_update: new Date(),
+                },
+            })
+            if (claim.count !== 1) throw new Error('Esta visita ya no está en revisión del master')
+            await balanceService.refundTasks(
+                tx,
+                info.id_order,
+                [{ id_task, id_request: info.id_request, id_store: info.id_store }],
+                id_user,
+                'Rechazo confirmado por el master'
+            )
+        })
+
+        if (info.promoter?.fcm_token) {
+            try {
+                await NotificationService.sendPushNotification(info.promoter.fcm_token, {
+                    title: 'Visita rechazada',
+                    body: `Tu visita en ${info.store?.name ?? 'la tienda'} fue rechazada: ${info.vc_cancel_reason ?? 'sin motivo'}`,
+                    data: { type: 'task_cancelled' },
+                })
+            } catch (error) {
+                console.error(`[Task] Error al notificar rechazo confirmado de la tarea ${id_task}:`, error)
+            }
+        }
+        return await prisma.tasks.findUnique({ where: { id_task } })
+    }
+
+    /** Master NO da la razon al cliente: la visita se acepta, se le paga al promotor y el cliente la paga definitivamente. */
+    async upholdDispute(id_task: number, id_user: number, note: string) {
+        if (!note || !note.trim()) throw new Error('Escribe el motivo por el que se mantiene aceptada')
+        const info = await prisma.tasks.findUnique({
+            where: { id_task },
+            select: {
+                id_status: true,
+                promoter: { select: { fcm_token: true } },
+                store: { select: { name: true } },
+            },
+        })
+        if (!info) throw new Error('Tarea no encontrada')
+        if (info.id_status !== 9) throw new Error('Esta visita ya no está en revisión del master')
+
+        const claim = await prisma.tasks.updateMany({
+            where: { id_task, id_status: 9 },
+            data: {
+                id_status: 7,
+                vc_master_note: note.trim(),
+                id_user_resolver: id_user,
+                dt_dispute_resolved: new Date(),
+                dt_update: new Date(),
+            },
+        })
+        if (claim.count !== 1) throw new Error('Esta visita ya no está en revisión del master')
+
+        if (info.promoter?.fcm_token) {
+            try {
+                await NotificationService.sendPushNotification(info.promoter.fcm_token, {
+                    title: '¡Tarea aprobada!',
+                    body: `Tu tarea en ${info.store?.name ?? 'la tienda'} fue aprobada y tu comisión ya se aplicó.`,
+                    data: { type: 'task_approved' },
+                })
+            } catch (error) {
+                console.error(`[Task] Error al notificar aprobación de la tarea ${id_task}:`, error)
+            }
+        }
+        return await prisma.tasks.findUnique({ where: { id_task } })
     }
 
     async findByIdOrFolio(id_task?: number, folio?: string) {

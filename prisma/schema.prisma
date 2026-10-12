@@ -696,6 +696,10 @@ model tasks {
   /// 'cliente' = cancelada por un admin al revisar la tarea; 'negocio' =
   /// cancelada en cascada por cierre de pedido. Ver tasks.service.ts.
   vc_cancel_type       String?    @db.VarChar(20)
+  /// Nota del master al resolver un rechazo del cliente (tarea en estado 9).
+  vc_master_note       String?    @db.Text
+  id_user_resolver     Int?       @db.UnsignedInt
+  dt_dispute_resolved  DateTime?  @db.DateTime(0)
   i_notification_count Int        @default(0)
   id_request           Int?       @db.UnsignedInt
   id_client            Int        @db.UnsignedInt

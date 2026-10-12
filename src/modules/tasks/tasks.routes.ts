@@ -3,10 +3,15 @@ import { Router } from 'express'
 import { authMiddleware, debugBasicAuthMiddleware, requireRole, validateBody } from '../../core/middleware'
 import { ROLES } from '../../core/constants/status.constants'
 import { uploadAny } from '../../core/middleware/upload.middleware'
-import { createTask,getMyTasks, getMyTaskHistory, getTaskById, getTasks, getTasksStatusSummary, updateTask, deleteTask, acceptTask, rejectTask, promoterCancelTask, getTaskChecklist, answerTaskQuestions, completeTask, assignPromoterToTask, getNearbyTasks, forceNotifyTask, approveTask, cancelTask } from './tasks.controller'
+import { createTask,getMyTasks, getMyTaskHistory, getTaskById, getTasks, getTasksStatusSummary, updateTask, deleteTask, acceptTask, rejectTask, promoterCancelTask, getTaskChecklist, answerTaskQuestions, completeTask, assignPromoterToTask, getNearbyTasks, forceNotifyTask, approveTask, cancelTask, listDisputes, confirmDispute, upholdDispute } from './tasks.controller'
 import { forceNotifyTaskSchema, cancelTaskSchema } from './tasks.schema'
 
 const taskRouter = Router()
+
+// Master: cola de rechazos del cliente por revisar (van antes de las rutas con :id_task)
+taskRouter.get('/disputes', authMiddleware, requireRole(ROLES.SUPER), listDisputes)
+taskRouter.patch('/:id_task/dispute/confirm', authMiddleware, requireRole(ROLES.SUPER), confirmDispute)
+taskRouter.patch('/:id_task/dispute/uphold', authMiddleware, requireRole(ROLES.SUPER), upholdDispute)
 
 /**
  * @openapi
