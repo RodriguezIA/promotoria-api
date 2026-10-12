@@ -31,9 +31,26 @@ export const getSummary = async (req: Request, res: Response) => {
 
 export const getMovements = async (req: Request, res: Response) => {
     try {
-        const id_client = clientIdOf(req)
-        if (!id_client) return fail(res, new Error('Falta el cliente'))
-        ok(res, await balanceService.getMovements(id_client, num(req.query.page) ?? 1, num(req.query.limit) ?? 30))
+        const u = userOf(req)
+        const q: any = req.query
+        const forClient = u.i_rol !== ROLES.SUPER
+        const id_client = (forClient ? clientIdOf(req) : num(q.id_client)) || undefined
+        if (!id_client && forClient) return fail(res, new Error('Falta el cliente'))
+        ok(res, await balanceService.getMovements(id_client, num(q.page) ?? 1, num(q.limit) ?? 30, {
+            from: typeof q.from === 'string' ? q.from : undefined,
+            to: typeof q.to === 'string' ? q.to : undefined,
+            id_user: num(q.id_user),
+        }, forClient))
+    } catch (e) { fail(res, e) }
+}
+
+export const getMovementFilters = async (req: Request, res: Response) => {
+    try {
+        const u = userOf(req)
+        const forClient = u.i_rol !== ROLES.SUPER
+        const id_client = (forClient ? clientIdOf(req) : undefined) || undefined
+        if (forClient && !id_client) return fail(res, new Error('Falta el cliente'))
+        ok(res, await balanceService.getMovementFilters(id_client, forClient))
     } catch (e) { fail(res, e) }
 }
 

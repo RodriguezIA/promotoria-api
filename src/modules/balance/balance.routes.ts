@@ -2,7 +2,7 @@ import { Router } from 'express'
 import { authMiddleware, requireRole, upload } from '../../core/middleware'
 import { ROLES } from '../../core/constants/status.constants'
 import {
-    getSummary, getMovements, getBankInfo, setBankInfo, createTopup, listTopups,
+    getSummary, getMovements, getMovementFilters, getBankInfo, setBankInfo, createTopup, listTopups,
     approveTopup, rejectTopup, adjustBalance, setPaymentMode,
 } from './balance.controller'
 
@@ -11,6 +11,7 @@ const balanceRouter = Router()
 // Cliente (ADMIN) ve lo suyo; el master puede consultar cualquier cliente con ?id_client=
 balanceRouter.get('/summary', authMiddleware, getSummary)
 balanceRouter.get('/movements', authMiddleware, getMovements)
+balanceRouter.get('/movement-filters', authMiddleware, getMovementFilters)
 
 // Datos bancarios para recargar: los ve cualquier usuario del panel, solo el master los edita
 balanceRouter.get('/bank-info', authMiddleware, getBankInfo)

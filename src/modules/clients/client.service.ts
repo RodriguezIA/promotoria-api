@@ -19,6 +19,7 @@ export class Client {
                         email: clientData.email,
                         phone: clientData.phone,
                         adiccional_notes: clientData.addiccional_notes,
+                        vc_payment_mode: clientData.vc_payment_mode === 'PREPAGO' ? 'PREPAGO' : 'CREDITO',
                     }
                 });
 

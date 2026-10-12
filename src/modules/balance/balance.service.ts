@@ -147,19 +147,133 @@ export class BalanceService {
         }
     }
 
-    async getMovements(id_client: number, page = 1, limit = 30) {
+    private async userNames(ids: Array<number | null | undefined>): Promise<Map<number, string>> {
+        const list = Array.from(new Set(ids.filter((x): x is number => typeof x === 'number' && x > 0)))
+        const map = new Map<number, string>()
+        if (!list.length) return map
+        const users = await prisma.users.findMany({
+            where: { id_user: { in: list } },
+            select: { id_user: true, name: true, lastname: true },
+        })
+        for (const u of users) map.set(u.id_user, `${u.name} ${u.lastname}`.trim())
+        return map
+    }
+
+    async getMovements(
+        id_client: number | undefined,
+        page = 1,
+        limit = 30,
+        f: { from?: string; to?: string; id_user?: number } = {},
+        forClient = false,
+    ) {
         const pg = Math.max(1, page)
         const lim = Math.min(100, Math.max(1, limit))
-        const [data, total] = await Promise.all([
+        const where: any = id_client ? { id_client } : {}
+        if (f.id_user) {
+            if (forClient && id_client) {
+                const tops = await prisma.client_topups.findMany({
+                    where: { id_client, id_user_requester: f.id_user },
+                    select: { id_topup: true },
+                })
+                where.OR = [
+                    { id_user: f.id_user, vc_type: { notIn: ['RECARGA', 'AJUSTE'] } },
+                    { vc_type: 'RECARGA', id_topup: { in: tops.map(t => t.id_topup) } },
+                ]
+            } else {
+                where.id_user = f.id_user
+            }
+        }
+        const range: any = {}
+        const reFecha = /^\d{4}-\d{2}-\d{2}$/
+        if (f.from && reFecha.test(f.from)) {
+            const d = new Date(`${f.from}T00:00:00-06:00`)
+            if (!isNaN(d.getTime())) range.gte = d
+        }
+        if (f.to && reFecha.test(f.to)) {
+            const d = new Date(`${f.to}T23:59:59.999-06:00`)
+            if (!isNaN(d.getTime())) range.lte = d
+        }
+        if (range.gte || range.lte) where.dt_register = range
+        const [rows, total] = await Promise.all([
             prisma.client_balance_movements.findMany({
-                where: { id_client },
+                where,
                 orderBy: { id_movement: 'desc' },
                 skip: (pg - 1) * lim,
                 take: lim,
+                include: { client: { select: { name: true } } },
             }),
-            prisma.client_balance_movements.count({ where: { id_client } }),
+            prisma.client_balance_movements.count({ where }),
         ])
+        // Para el cliente, en una recarga el "quien" es quien la pidio (su trabajador), no el master que la acredito.
+        const reqByTopup = new Map<number, number | null>()
+        if (forClient) {
+            const topIds = rows
+                .filter(r => r.vc_type === 'RECARGA' && r.id_topup)
+                .map(r => r.id_topup as number)
+            if (topIds.length) {
+                const tops = await prisma.client_topups.findMany({
+                    where: { id_topup: { in: topIds } },
+                    select: { id_topup: true, id_user_requester: true },
+                })
+                for (const t of tops) reqByTopup.set(t.id_topup, t.id_user_requester)
+            }
+        }
+        const actorOf = (r: { vc_type: string; id_topup: number | null; id_user: number | null }): number | null => {
+            if (forClient && r.vc_type === 'AJUSTE') return null
+            if (forClient && r.vc_type === 'RECARGA') return r.id_topup ? reqByTopup.get(r.id_topup) ?? null : null
+            return r.id_user
+        }
+        const names = await this.userNames(rows.map(r => actorOf(r)))
+        const data = rows.map(({ client, ...r }) => {
+            const actor = actorOf(r)
+            return {
+                ...r,
+                client_name: client?.name ?? null,
+                user_name: actor ? names.get(actor) ?? null : null,
+            }
+        })
         return { data, meta: { total, page: pg, limit: lim, totalPages: Math.ceil(total / lim) } }
+    }
+
+    async getMovementFilters(id_client?: number, forClient = false) {
+        const where: any = id_client ? { id_client } : {}
+        if (forClient) {
+            // Solo los usuarios del propio cliente: quienes pidieron recargas y quienes crearon/cancelaron ordenes.
+            const [movs, reqs] = await Promise.all([
+                prisma.client_balance_movements.groupBy({
+                    by: ['id_user'],
+                    where: { ...where, vc_type: { notIn: ['RECARGA', 'AJUSTE'] } },
+                }),
+                prisma.client_topups.groupBy({
+                    by: ['id_user_requester'],
+                    where: { ...where, id_status: 2 },
+                }),
+            ])
+            const ids = Array.from(new Set([
+                ...movs.map(m => m.id_user),
+                ...reqs.map(q => q.id_user_requester),
+            ].filter((x): x is number => !!x)))
+            const names = await this.userNames(ids)
+            const users = ids
+                .map(id => ({ id_user: id, name: names.get(id) ?? `Usuario ${id}` }))
+                .sort((a, b) => a.name.localeCompare(b.name))
+            return { clients: [] as { id_client: number; name: string | null }[], users }
+        }
+        const pairs = await prisma.client_balance_movements.groupBy({ by: ['id_client', 'id_user'], where })
+        const clientIds = Array.from(new Set(pairs.map(p => p.id_client)))
+        const userIds = Array.from(new Set(pairs.map(p => p.id_user).filter((x): x is number => !!x)))
+        const clients: { id_client: number; name: string | null }[] = clientIds.length
+            ? await prisma.clients.findMany({
+                where: { id_client: { in: clientIds } },
+                select: { id_client: true, name: true },
+                orderBy: { name: 'asc' },
+            })
+            : []
+        const names = await this.userNames(userIds)
+        const users = userIds
+            .map(id => ({ id_user: id, name: names.get(id) ?? `Usuario ${id}` }))
+            .sort((a, b) => a.name.localeCompare(b.name))
+        return { clients, users }
     }
 
     async getBankInfo(): Promise<BankInfo> {
@@ -254,7 +368,13 @@ export class BalanceService {
         } catch (error) {
             console.error('[Balance] No se pudieron resolver los comprobantes:', (error as any)?.message)
         }
-        const data = rows.map(r => ({ ...r, vc_receipt_url: urls.get(r.id_topup) ?? r.vc_receipt_url }))
+        const names = await this.userNames(rows.flatMap(r => [r.id_user_requester, r.id_user_validator]))
+        const data = rows.map(r => ({
+            ...r,
+            vc_receipt_url: urls.get(r.id_topup) ?? r.vc_receipt_url,
+            requester_name: r.id_user_requester ? names.get(r.id_user_requester) ?? null : null,
+            validator_name: r.id_user_validator ? names.get(r.id_user_validator) ?? null : null,
+        }))
         return { data, meta: { total, page, limit, totalPages: Math.ceil(total / limit) } }
     }
 

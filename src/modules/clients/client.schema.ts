@@ -15,6 +15,7 @@ export const createClientSchema = z.object({
   neighborhood: z.string().optional(),
   zip: z.string().optional(),
   addiccional_notes: z.string().optional(),
+  vc_payment_mode: z.enum(['CREDITO', 'PREPAGO']).optional(),
   owner_name: z.string().optional(),
   owner_lastname: z.string().optional(),
   owner_phone: z.string().regex(/^\d{10}$/, 'El celular del dueño debe tener 10 dígitos').optional().or(z.literal('')),

@@ -13,4 +13,5 @@ export interface createClientData {
   neighborhood?: string;
   zip?: string;
   addiccional_notes?: string;
+  vc_payment_mode?: 'CREDITO' | 'PREPAGO';
 }
