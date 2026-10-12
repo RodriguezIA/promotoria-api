@@ -6,6 +6,7 @@ import { haversineMeters } from '../../queues/helpers/haversine'
 import { StorageService } from '../../services/storage.service'
 import { taskRankingQueue } from '../../core/bullmq/queues'
 import { NotificationService } from '../../services/notification.service'
+import { balanceService } from '../balance/balance.service'
 
 export class Task {
 
@@ -274,9 +275,26 @@ export class Task {
     }
 
     async delete(id_task: number) {
-        return await prisma.tasks.update({
-            where: { id_task },
-            data: { id_status: 0 }
+        return await prisma.$transaction(async (tx) => {
+            const cur = await tx.tasks.findUnique({
+                where: { id_task },
+                select: { id_order: true, id_request: true, id_store: true, id_status: true }
+            })
+            const updated = await tx.tasks.update({
+                where: { id_task },
+                data: { id_status: 0 }
+            })
+            // Visita cancelada antes de realizarse: se devuelve al saldo prepago.
+            if (cur && cur.id_status > 0 && cur.id_status < 6) {
+                await balanceService.refundTasks(
+                    tx,
+                    cur.id_order,
+                    [{ id_task, id_request: cur.id_request, id_store: cur.id_store }],
+                    null,
+                    'Tarea cancelada antes de realizarse'
+                )
+            }
+            return updated
         })
     }
 

@@ -100,6 +100,8 @@ model clients {
   adiccional_notes        String?            @db.Text
   phone                   String             @default("") @db.VarChar(20)
   vc_url_situacion_fiscal String?            @db.VarChar(500)
+  vc_payment_mode         String             @default("CREDITO") @db.VarChar(10)
+  f_balance               Decimal            @default(0.00) @db.Decimal(12, 2)
   client_logs             client_logs[]
   drivers                 drivers[]
   users                   users              @relation(fields: [id_user], references: [id_user], map: "fk_clients_user")
@@ -111,6 +113,8 @@ model clients {
   folios                  folios[]
   client_charges          client_charges[]
   client_stores           client_stores[]
+  balance_movements       client_balance_movements[]
+  topups                  client_topups[]
 
   @@index([i_status], map: "idx_clients_status")
   @@index([id_user], map: "idx_clients_user")
@@ -1308,4 +1312,49 @@ model faq_cliente_phrases {
   question                faq_cliente_questions @relation(fields: [id_faq_cliente_question], references: [id_faq_cliente_question], onDelete: Cascade)
 
   @@index([id_faq_cliente_question], map: "idx_faq_cliente_phrases_question")
+}
+
+/// Libreta del saldo de clientes PREPAGO. f_amount con signo: positivo suma
+/// (RECARGA, DEVOLUCION, AJUSTE+), negativo resta (CARGO_PEDIDO, AJUSTE-).
+/// Los unique evitan devolver dos veces la misma tarea o acreditar dos veces
+/// la misma recarga.
+model client_balance_movements {
+  id_movement     Int      @id @default(autoincrement()) @db.UnsignedInt
+  id_client       Int      @db.UnsignedInt
+  vc_type         String   @db.VarChar(20)
+  f_amount        Decimal  @db.Decimal(12, 2)
+  f_balance_after Decimal  @db.Decimal(12, 2)
+  id_order        Int?     @db.UnsignedInt
+  id_task         Int?     @db.UnsignedInt
+  id_topup        Int?     @db.UnsignedInt
+  vc_note         String?  @db.VarChar(255)
+  id_user         Int?     @db.UnsignedInt
+  dt_register     DateTime @default(now()) @db.Timestamp(0)
+
+  client clients @relation(fields: [id_client], references: [id_client])
+
+  @@unique([id_task, vc_type], map: "uq_cbm_task_type")
+  @@unique([id_topup, vc_type], map: "uq_cbm_topup_type")
+  @@index([id_client, dt_register], map: "idx_cbm_client")
+  @@index([id_order], map: "idx_cbm_order")
+}
+
+/// Recargas que pide el cliente prepago (1=pendiente, 2=aprobada, 3=rechazada).
+model client_topups {
+  id_topup            Int       @id @default(autoincrement()) @db.UnsignedInt
+  id_client           Int       @db.UnsignedInt
+  f_amount            Decimal   @db.Decimal(12, 2)
+  vc_receipt_url      String?   @db.VarChar(500)
+  vc_reference        String?   @db.VarChar(100)
+  id_status           Int       @default(1) @db.TinyInt
+  vc_rejection_reason String?   @db.VarChar(255)
+  id_user_requester   Int?      @db.UnsignedInt
+  id_user_validator   Int?      @db.UnsignedInt
+  dt_register         DateTime  @default(now()) @db.Timestamp(0)
+  dt_resolved         DateTime? @db.DateTime(0)
+
+  client clients @relation(fields: [id_client], references: [id_client])
+
+  @@index([id_client], map: "idx_topups_client")
+  @@index([id_status], map: "idx_topups_status")
 }

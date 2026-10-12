@@ -14,7 +14,7 @@ import staffRouter from "./modules/staff/staff.routes"
 import faqClienteRouter from "./modules/faq-cliente/faq-cliente.routes";
 import { vigilarEquipo } from "./modules/staff/permisos.guard";
 import mobileRouter from "./app_mobile/index"
-import { clientRouter, productRouter, userAdminRouter, storeRouter, channelsSalesRouter, promoterRouter, questionRouter, requestRouter, orderRouter, taskRouter, financesRouter, taskSettingsRouter, appConfigRouter, stockRouter, preorderRouter, driversRouter, deliveryRoutesRouter, routeTemplatesRouter, routeSchedulesRouter, introVideosRouter, faqRouter } from './modules'
+import { clientRouter, productRouter, userAdminRouter, storeRouter, channelsSalesRouter, promoterRouter, questionRouter, requestRouter, orderRouter, taskRouter, financesRouter, taskSettingsRouter, appConfigRouter, stockRouter, preorderRouter, driversRouter, deliveryRoutesRouter, routeTemplatesRouter, routeSchedulesRouter, introVideosRouter, faqRouter, balanceRouter } from './modules'
 import promoterSelfPaymentsRouter from './modules/promoter-payments-self/promoter-self-payments.routes'
 import { errorHandler } from "./core/middleware"
 import { setupSwagger } from "./config/swagger"
@@ -98,7 +98,7 @@ app.use("/retailink-api", forzarMiCliente);
 app.use("/retailink-api", vigilarPromotores);
 app.use("/retailink-api", vigilarSoloSuper);
 app.use("/retailink-api", vigilarEquipo);
-[superadminRouter, adminRouter, mobileRouter, userAdminRouter, productRouter, clientRouter, storeRouter, channelsSalesRouter, promoterRouter, questionRouter, requestRouter, orderRouter, taskRouter, financesRouter, taskSettingsRouter, appConfigRouter, promoterSelfPaymentsRouter, stockRouter, preorderRouter, routeTemplatesRouter, routeSchedulesRouter, driversRouter, deliveryRoutesRouter, introVideosRouter, faqRouter].forEach((r) => { aplicarTenant(r); aplicarTenantRecursos(r); })
+[superadminRouter, adminRouter, mobileRouter, userAdminRouter, productRouter, clientRouter, storeRouter, channelsSalesRouter, promoterRouter, questionRouter, requestRouter, orderRouter, taskRouter, financesRouter, taskSettingsRouter, appConfigRouter, promoterSelfPaymentsRouter, stockRouter, preorderRouter, routeTemplatesRouter, routeSchedulesRouter, driversRouter, deliveryRoutesRouter, introVideosRouter, faqRouter, balanceRouter].forEach((r) => { aplicarTenant(r); aplicarTenantRecursos(r); })
 
 app.use("/retailink-api/superadmin/staff", guardia("superadmin"), staffRouter);
 app.use("/retailink-api/superadmin", guardia("superadmin"), superadminRouter)
@@ -114,6 +114,7 @@ app.use("/retailink-api/promoters", promoterRouter)
 app.use("/retailink-api/questions", questionRouter)
 app.use("/retailink-api/requests", requestRouter)
 app.use("/retailink-api/orders", orderRouter)
+app.use("/retailink-api/balance", balanceRouter)
 app.use("/retailink-api/tasks", taskRouter)
 app.use("/retailink-api/finances", financesRouter)
 app.use("/retailink-api/task-settings", taskSettingsRouter)

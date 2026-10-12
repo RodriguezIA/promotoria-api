@@ -27,6 +27,10 @@ export const createOrder = async (req: Request, res: Response) => {
             error: 1,
             data: null,
             message: (error as any).message || 'Error al crear el pedido',
+            code: (error as any).code,
+            detail: (error as any).code === 'SALDO_INSUFICIENTE'
+                ? { saldo: (error as any).saldo, requerido: (error as any).requerido, faltante: (error as any).faltante }
+                : undefined,
             error_backend: error
         })
         return

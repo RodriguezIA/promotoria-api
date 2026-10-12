@@ -3,6 +3,7 @@ import { CreateOrderDTO, UpdateOrderDTO, OrderFiltersDTO } from './orders.dtos'
 import { generateFolio } from '../../services/folio.service'
 import { ORDER_STATUS } from '../../core/constants/status.constants'
 import { NotificationService } from '../../services/notification.service'
+import { balanceService } from '../balance/balance.service'
 
 export class Order {
 
@@ -62,6 +63,16 @@ export class Order {
                     })
                 }
             }
+
+            // Cliente PREPAGO: se descuenta el saldo aqui mismo. Si no alcanza, se lanza
+            // SaldoInsuficienteError y se revierte TODO (pedido, renglones y folio).
+            await balanceService.chargeOrder(tx, {
+                id_client: data.id_client,
+                id_order: order.id_order,
+                amount: total,
+                folio: vc_folio,
+                id_user: data.id_user,
+            })
 
             await tx.order_logs.create({
                 data: {
@@ -213,6 +224,13 @@ export class Order {
                 data: { id_status: 0, dt_update: new Date() }
             })
 
+            // Visitas que aun no se hacian (1 a 5): se devuelve su valor al saldo prepago.
+            const toRefund = await tx.tasks.findMany({
+                where: { id_order, id_status: { lt: 6, not: 0 } },
+                select: { id_task: true, id_request: true, id_store: true },
+            })
+            await balanceService.refundTasks(tx, id_order, toRefund, id_user, 'Pedido eliminado')
+
             await tx.tasks.updateMany({
                 where: { id_order },
                 data: { id_status: 0, dt_update: new Date() }
@@ -254,6 +272,8 @@ export class Order {
                 where: { id_order, id_status: { lt: 6, not: 0 } },
                 select: {
                     id_task: true,
+                    id_request: true,
+                    id_store: true,
                     promoter: { select: { fcm_token: true } },
                     store: { select: { name: true } },
                 }
@@ -269,6 +289,13 @@ export class Order {
                         dt_update: new Date(),
                     }
                 })
+                await balanceService.refundTasks(
+                    tx,
+                    id_order,
+                    unansweredTasks.map(t => ({ id_task: t.id_task, id_request: t.id_request, id_store: t.id_store })),
+                    id_user,
+                    'Visita no realizada: cierre de pedido'
+                )
             }
 
             // Tareas que ya están en revisión (6) se aprueban automáticamente al
