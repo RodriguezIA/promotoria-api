@@ -392,7 +392,7 @@ export class Task {
      * "cliente". Notifica por push al promotor asignado.
      */
     async reviewCancel(id_task: number, comment: string) {
-        // El cliente rechaza una visita ya entregada: NO se cancela. Pasa a estado 9
+        // El cliente rechaza una visita ya entregada: NO se cancela. Pasa a estado 10
         // ("en revision del master"); el master decide si confirma (devuelve el dinero)
         // o la mantiene aceptada (se le paga al promotor).
         const task = await prisma.tasks.findUnique({
@@ -409,7 +409,7 @@ export class Task {
         const claim = await prisma.tasks.updateMany({
             where: { id_task, id_status: 6 },
             data: {
-                id_status: 9,
+                id_status: 10,
                 vc_cancel_type: 'cliente',
                 vc_cancel_reason: comment,
                 dt_update: new Date(),
@@ -418,25 +418,16 @@ export class Task {
         if (claim.count !== 1) throw new Error('Solo se puede rechazar una tarea en revisión')
         const updated = await prisma.tasks.findUnique({ where: { id_task } })
 
-        if (task.promoter?.fcm_token) {
-            try {
-                await NotificationService.sendPushNotification(task.promoter.fcm_token, {
-                    title: 'Visita rechazada por el cliente',
-                    body: `El cliente rechazó tu visita en ${task.store?.name ?? 'la tienda'}: ${comment}. El master la está revisando.`,
-                    data: { type: 'task_in_dispute' },
-                })
-            } catch (error) {
-                console.error(`[Task] Error al notificar rechazo de la tarea ${id_task}:`, error)
-            }
-        }
+        // El promotor NO se entera del rechazo mientras el master revisa; solo se
+        // le avisa cuando el master decide (confirmDispute / upholdDispute).
 
         return updated
     }
 
-    /** Master: visitas que el cliente rechazo y esperan su decision (estado 9). */
+    /** Master: visitas que el cliente rechazo y esperan su decision (estado 10). */
     async listDisputes() {
         const tasks = await prisma.tasks.findMany({
-            where: { id_status: 9 },
+            where: { id_status: 10 },
             orderBy: { dt_update: 'desc' },
             take: 200,
             select: {
@@ -488,11 +479,11 @@ export class Task {
             },
         })
         if (!info) throw new Error('Tarea no encontrada')
-        if (info.id_status !== 9) throw new Error('Esta visita ya no está en revisión del master')
+        if (info.id_status !== 10) throw new Error('Esta visita ya no está en revisión del master')
 
         await prisma.$transaction(async (tx) => {
             const claim = await tx.tasks.updateMany({
-                where: { id_task, id_status: 9 },
+                where: { id_task, id_status: 10 },
                 data: {
                     id_status: 0,
                     vc_cancel_type: 'master',
@@ -538,10 +529,10 @@ export class Task {
             },
         })
         if (!info) throw new Error('Tarea no encontrada')
-        if (info.id_status !== 9) throw new Error('Esta visita ya no está en revisión del master')
+        if (info.id_status !== 10) throw new Error('Esta visita ya no está en revisión del master')
 
         const claim = await prisma.tasks.updateMany({
-            where: { id_task, id_status: 9 },
+            where: { id_task, id_status: 10 },
             data: {
                 id_status: 7,
                 vc_master_note: note.trim(),
