@@ -1,4 +1,6 @@
 import { Request, Response } from 'express'
+import { prisma } from '../../core/prisma'
+import { ROLES } from '../../core/constants/status.constants'
 
 
 import { Order } from './orders.service'
@@ -151,6 +153,16 @@ export const closeOrder = async (req: Request, res: Response) => {
     try {
         const { id_order } = req.params
         const id_user = req.user?.id || 0
+        // Un cliente no puede cerrar si hay promotores en camino, en la tienda o
+        // trabajando: perderian su trabajo. El master si puede cerrar siempre.
+        if ((req.user as any)?.i_rol === ROLES.ADMIN) {
+            const trabajando = await prisma.tasks.count({
+                where: { id_order: Number(id_order), id_status: { in: [3, 4, 5] } }
+            })
+            if (trabajando > 0) {
+                throw new Error(`Hay ${trabajando} visita(s) con un promotor en camino o trabajando. Espera a que terminen para cerrar la orden.`)
+            }
+        }
         const order = await orderService.closeOrder(Number(id_order), id_user)
 
         res.status(200).json({
