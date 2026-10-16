@@ -25,12 +25,22 @@ export class Promoter {
         return await prisma.$transaction(async (tx) => {
             // Si capturó un código de referido, buscamos quién lo activó.
             let id_activator: number | null = null
+            let id_driver_activator: number | null = null
             if (data.referral_code) {
+                const code = data.referral_code.trim().toUpperCase()
                 const activator = await tx.promoters.findUnique({
-                    where: { vc_referral_code: data.referral_code }
+                    where: { vc_referral_code: code }
                 })
-                if (!activator) throw new Error('El código de referido no es válido')
-                id_activator = activator.id
+                if (activator) {
+                    id_activator = activator.id
+                } else {
+                    // Si no es de un promotor, puede ser de un chofer (CH + numero).
+                    const driver = await tx.drivers.findUnique({
+                        where: { vc_referral_code: code }
+                    })
+                    if (!driver) throw new Error('El código de referido no es válido')
+                    id_driver_activator = driver.id_driver
+                }
             }
 
             const promoter = await tx.promoters.create({
@@ -44,6 +54,7 @@ export class Promoter {
                     latitude: data.latitude,
                     longitude: data.longitude,
                     id_activator,
+                    id_driver_activator,
                     // El schema de validacion exige accepted_terms === true para
                     // llegar hasta aqui; guardamos la fecha real como evidencia
                     // de consentimiento (requisito de privacidad/Google Play).
@@ -64,7 +75,9 @@ export class Promoter {
                     id_promotor: promoter.id,
                     vc_log: id_activator
                         ? `Promotor ${promoter.name} registrado (activado por el promotor #${id_activator})`
-                        : `Promotor ${promoter.name} registrado`,
+                        : id_driver_activator
+                            ? `Promotor ${promoter.name} registrado (activado por el chofer #${id_driver_activator})`
+                            : `Promotor ${promoter.name} registrado`,
                 }
             })
 

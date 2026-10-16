@@ -305,6 +305,7 @@ model promoters {
   longitude     Decimal?  @db.Decimal(11, 8)
   vc_referral_code String? @unique(map: "uq_promoters_referral_code") @db.VarChar(20)
   id_activator     Int?    @db.UnsignedInt
+  id_driver_activator Int? @db.UnsignedInt
   /// Switch global de "INFO" que ve el promotor arriba en todas las
   /// pantallas (junto a su foto de perfil). Prende/apaga a la vez los 5
   /// videos de introduccion (ver intro_video_clips); no es por seccion.
@@ -321,6 +322,7 @@ model promoters {
   activator_payments   activator_payments[]
 
   @@index([id_activator], map: "idx_promoters_activator")
+  @@index([id_driver_activator], map: "idx_promoters_driver_activator")
 }
 
 /// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
@@ -708,6 +710,7 @@ model tasks {
   id_invoice            Int?       @db.UnsignedInt
   id_promoter_payment   Int?       @db.UnsignedInt
   id_activator_payment  Int?       @db.UnsignedInt
+  id_driver_activator_payment Int? @db.UnsignedInt
   client               clients    @relation(fields: [id_client], references: [id_client])
   order                orders     @relation(fields: [id_order], references: [id_order])
   promoter             promoters? @relation(fields: [id_promoter], references: [id])
@@ -726,6 +729,7 @@ model tasks {
   @@index([id_invoice], map: "idx_tasks_invoice")
   @@index([id_promoter_payment], map: "idx_tasks_promoter_payment")
   @@index([id_activator_payment], map: "idx_tasks_activator_payment")
+  @@index([id_driver_activator_payment], map: "idx_tasks_driver_activator_payment")
 }
 
 /// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
@@ -1038,6 +1042,7 @@ model drivers {
   client         clients          @relation(fields: [id_client], references: [id_client])
   routes         delivery_routes[]
   route_schedules route_driver_schedules[]
+  vc_referral_code String? @unique(map: "uq_drivers_referral_code") @db.VarChar(20)
 
   @@index([id_client], map: "idx_drivers_client")
 }
@@ -1361,4 +1366,47 @@ model client_topups {
 
   @@index([id_client], map: "idx_topups_client")
   @@index([id_status], map: "idx_topups_status")
+}
+
+// ==================== FINANZAS: PAGOS A CHOFERES POR INVITAR PROMOTORES ====================
+model driver_activator_payments {
+  id_payment      Int       @id @default(autoincrement()) @db.UnsignedInt
+  id_driver       Int       @db.UnsignedInt
+  vc_folio        String?   @unique(map: "uq_driver_activator_payments_folio") @db.VarChar(50)
+  dt_start        DateTime  @db.DateTime(0)
+  dt_end          DateTime  @db.DateTime(0)
+  f_total         Decimal   @db.Decimal(10, 2)
+  id_status       Int       @default(1)
+  dt_payment      DateTime? @db.DateTime(0)
+  vc_notes        String?   @db.VarChar(500)
+  id_user_creator Int       @db.UnsignedInt
+  id_user_payer   Int?      @db.UnsignedInt
+  dt_register     DateTime  @default(now()) @db.Timestamp(0)
+  dt_updated      DateTime  @default(now()) @updatedAt @db.Timestamp(0)
+  payment_tasks   driver_activator_payment_tasks[]
+
+  @@index([id_driver, id_status], map: "idx_driver_act_payments_driver_status")
+}
+
+model driver_activator_payment_tasks {
+  id          Int      @id @default(autoincrement()) @db.UnsignedInt
+  id_payment  Int      @db.UnsignedInt
+  id_task     Int      @db.UnsignedInt
+  id_promoter Int      @db.UnsignedInt
+  f_amount    Decimal  @db.Decimal(10, 2)
+  dt_register DateTime @default(now()) @db.Timestamp(0)
+  payment     driver_activator_payments @relation(fields: [id_payment], references: [id_payment])
+
+  @@unique([id_payment, id_task], map: "uq_driver_act_payment_task")
+  @@index([id_task], map: "idx_driver_act_payment_tasks_task")
+}
+
+model driver_activator_payment_logs {
+  id_payment_log Int      @id @default(autoincrement()) @db.UnsignedInt
+  id_payment     Int      @db.UnsignedInt
+  id_user        Int      @db.UnsignedInt
+  vc_log         String   @db.VarChar(1000)
+  dt_register    DateTime @default(now()) @db.Timestamp(0)
+
+  @@index([id_payment], map: "idx_driver_act_payment_logs_payment")
 }

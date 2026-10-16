@@ -5,6 +5,8 @@ import {
     driverLogin, checkDriverPhone, createStoreByDriver, getDriverProfile, updateDriverPassword, updateDriverLocation,
 } from './drivers.controller'
 
+import { getMyAffiliation, getMyReferrals } from '../driver-referrals/driver-referrals.controller'
+
 const driversRouter = Router()
 
 // Login del chofer — publico, es como obtiene su token.
@@ -27,5 +29,8 @@ driversRouter.get('/me/profile', authMiddleware, getDriverProfile)
 driversRouter.patch('/me/password', authMiddleware, updateDriverPassword)
 driversRouter.patch('/me/location', authMiddleware, updateDriverLocation)
 driversRouter.post('/me/stores', authMiddleware, createStoreByDriver)
+// Invitar promotores: su codigo, ganancias y lista de invitados.
+driversRouter.get('/me/affiliation', authMiddleware, getMyAffiliation)
+driversRouter.get('/me/referrals', authMiddleware, getMyReferrals)
 
 export default driversRouter
