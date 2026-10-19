@@ -1,4 +1,5 @@
 import { prisma } from '../../../core/prisma'
+import { effectiveStart } from '../finance-dates'
 import { generateFolio } from '../../../services/folio.service'
 import { PROMOTER_PAYMENT_STATUS } from '../finances.constants'
 import { GeneratePaymentsDTO, PaymentFiltersDTO, UpdatePaymentPaymentDTO } from './promoter-payments.dto'
@@ -105,7 +106,7 @@ export class PromoterPayments {
                     data: {
                         id_promoter,
                         vc_folio,
-                        dt_start: input.dt_start,
+                        dt_start: await effectiveStart(tx, promoterTasks.map(t => t.id_task), input.dt_start),
                         dt_end: input.dt_end,
                         f_total,
                         id_status: PROMOTER_PAYMENT_STATUS.POR_PAGAR,

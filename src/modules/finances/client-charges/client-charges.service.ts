@@ -1,4 +1,5 @@
 import { prisma } from '../../../core/prisma'
+import { effectiveStart } from '../finance-dates'
 import { generateFolio } from '../../../services/folio.service'
 import { ORDER_STATUS } from '../../../core/constants/status.constants'
 import { CLIENT_CHARGE_STATUS } from '../finances.constants'
@@ -31,6 +32,9 @@ export class ClientCharges {
                 id_request: { not: null },
                 dt_update: { gte: dt_start, lte: dt_end },
                 order: { id_status: ORDER_STATUS.CERRADO },
+                // Los clientes de PREPAGO ya pagaron al crear la orden (se les descuenta del saldo):
+                // facturarles otra vez seria cobrarles dos veces.
+                client: { vc_payment_mode: { not: 'PREPAGO' } },
                 ...(id_client !== undefined ? { id_client } : {}),
             },
             select: { id_task: true, id_order: true, id_client: true, id_request: true, id_store: true }
@@ -94,6 +98,38 @@ export class ClientCharges {
         return { clients }
     }
 
+    /** Lo que ya se puede cobrar a cada cliente (pedidos cerrados con tareas terminadas) y todavia no entra en ningun corte. */
+    async pending() {
+        const tasks = await this.findEligibleTasks(new Date('2000-01-01T00:00:00Z'), new Date('2100-01-01T00:00:00Z'))
+        const byClient = this.groupByClientAndOrder(tasks)
+
+        const ids = [...byClient.keys()]
+        const clients = ids.length
+            ? await prisma.clients.findMany({ where: { id_client: { in: ids } }, select: { id_client: true, name: true, vc_initialism: true } })
+            : []
+        const info = new Map(clients.map(c => [c.id_client, c]))
+
+        const rows = ids.map(id => {
+            const byOrder = byClient.get(id)!
+            let total = 0
+            let taskCount = 0
+            for (const orderTasks of byOrder.values()) {
+                taskCount += orderTasks.length
+                total += orderTasks.reduce((sum, t) => sum + t.f_amount, 0)
+            }
+            const c = info.get(id)
+            return {
+                id_client: id,
+                name: c?.name || c?.vc_initialism || `Cliente #${id}`,
+                orders: byOrder.size,
+                tasks: taskCount,
+                f_total: Math.round(total * 100) / 100,
+            }
+        })
+        const total = Math.round(rows.reduce((sum, r) => sum + r.f_total, 0) * 100) / 100
+        return { total, clients: rows }
+    }
+
     async generate(input: GenerateChargesDTO) {
         const tasks = await this.findEligibleTasks(input.dt_start, input.dt_end, input.id_client)
         const byClient = this.groupByClientAndOrder(tasks)
@@ -111,7 +147,7 @@ export class ClientCharges {
                     data: {
                         id_client,
                         vc_folio,
-                        dt_start: input.dt_start,
+                        dt_start: await effectiveStart(tx, allTasksForClient.map(t => t.id_task), input.dt_start),
                         dt_end: input.dt_end,
                         f_total,
                         id_user_creator: input.id_user_creator,
@@ -290,6 +326,7 @@ export class ClientCharges {
                 id_request: { not: null },
                 id_client,
                 order: { id_status: ORDER_STATUS.CERRADO },
+                client: { vc_payment_mode: { not: 'PREPAGO' } },
             },
             include: { order: true }
         })

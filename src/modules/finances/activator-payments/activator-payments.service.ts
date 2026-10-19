@@ -1,4 +1,5 @@
 import { prisma } from '../../../core/prisma'
+import { effectiveStart } from '../finance-dates'
 import { generateFolio } from '../../../services/folio.service'
 import { ACTIVATOR_PAYMENT_STATUS } from '../finances.constants'
 import { EncryptionService } from '../../../services/encryption.service'
@@ -139,7 +140,7 @@ export class ActivatorPayments {
                     data: {
                         id_activator,
                         vc_folio,
-                        dt_start: input.dt_start,
+                        dt_start: await effectiveStart(tx, activatorTasks.map(t => t.id_task), input.dt_start),
                         dt_end: input.dt_end,
                         f_total,
                         id_status: ACTIVATOR_PAYMENT_STATUS.POR_PAGAR,
@@ -182,6 +183,42 @@ export class ActivatorPayments {
         return createdPayments
     }
 
+    /** Lo que se le debe hoy a cada activador y todavia no entra en ningun corte. */
+    async pending() {
+        const settings = await this.getSettings()
+        const promoterPct = Number(settings.f_promoter_commission_percentage)
+        const activatorPct = Number(settings.f_activator_commission_percentage)
+        if (activatorPct <= 0) return { total: 0, activators: [] }
+
+        const tasks = await this.findEligibleTasks(new Date('2000-01-01T00:00:00Z'), new Date('2100-01-01T00:00:00Z'), promoterPct, activatorPct)
+        const byActivator = this.groupByActivator(tasks)
+
+        const ids = [...byActivator.keys()]
+        const people = ids.length
+            ? await prisma.promoters.findMany({ where: { id: { in: ids } }, select: { id: true, name: true, lastname: true, phone: true } })
+            : []
+        const accounts = ids.length
+            ? await prisma.promoter_bank_accounts.findMany({ where: { id_promoter: { in: ids }, dt_deleted: null }, select: { id_promoter: true } })
+            : []
+        const withAccount = new Set(accounts.map(a => a.id_promoter))
+        const info = new Map(people.map(pr => [pr.id, pr]))
+
+        const rows = ids.map(id => {
+            const list = byActivator.get(id)!
+            const pr = info.get(id)
+            return {
+                id_activator: id,
+                name: pr ? `${pr.name}${pr.lastname ? ' ' + pr.lastname : ''}` : `Activador #${id}`,
+                phone: pr?.phone ?? null,
+                tasks: list.length,
+                f_total: Math.round(list.reduce((sum, t) => sum + t.f_amount, 0) * 100) / 100,
+                has_account: withAccount.has(id),
+            }
+        })
+        const total = Math.round(rows.reduce((sum, r) => sum + r.f_total, 0) * 100) / 100
+        return { total, activators: rows }
+    }
+
     async list(filters: ActivatorPaymentFiltersDTO) {
         const page = filters.page ?? 1
         const limit = filters.limit ?? 20
@@ -202,7 +239,14 @@ export class ActivatorPayments {
             prisma.activator_payments.count({ where })
         ])
 
-        return { data, meta: { total, page, limit, totalPages: Math.ceil(total / limit) } }
+        const ids = [...new Set(data.map(d => d.id_activator))]
+        const people = ids.length
+            ? await prisma.promoters.findMany({ where: { id: { in: ids } }, select: { id: true, name: true, lastname: true } })
+            : []
+        const names = new Map(people.map(pr => [pr.id, `${pr.name}${pr.lastname ? ' ' + pr.lastname : ''}`]))
+        const withNames = data.map(d => ({ ...d, activator_name: names.get(d.id_activator) ?? null }))
+
+        return { data: withNames, meta: { total, page, limit, totalPages: Math.ceil(total / limit) } }
     }
 
     async getRaw(id_payment: number) {
@@ -238,7 +282,7 @@ export class ActivatorPayments {
         }
 
         const [evidences, logs] = await Promise.all([
-            prisma.assets.findMany({ where: { entity_type: 'promoter_payment', entity_id: id_payment, is_active: true } }),
+            prisma.assets.findMany({ where: { entity_type: 'activator_payment', entity_id: id_payment, is_active: true } }),
             prisma.activator_payment_logs.findMany({ where: { id_payment }, orderBy: { dt_register: 'desc' } })
         ])
 

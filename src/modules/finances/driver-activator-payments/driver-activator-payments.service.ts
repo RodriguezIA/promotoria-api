@@ -1,4 +1,5 @@
 import { prisma } from '../../../core/prisma'
+import { effectiveStart } from '../finance-dates'
 import { EncryptionService } from '../../../services/encryption.service'
 import { generateFolio } from '../../../services/folio.service'
 import { ACTIVATOR_PAYMENT_STATUS } from '../finances.constants'
@@ -80,7 +81,7 @@ export class DriverActivatorPayments {
                     data: {
                         id_driver,
                         vc_folio,
-                        dt_start: input.dt_start,
+                        dt_start: await effectiveStart(tx, driverTasks.map(t => t.id_task), input.dt_start),
                         dt_end: input.dt_end,
                         f_total,
                         id_status: ACTIVATOR_PAYMENT_STATUS.POR_PAGAR,

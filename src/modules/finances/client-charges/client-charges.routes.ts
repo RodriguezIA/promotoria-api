@@ -7,6 +7,7 @@ import {
     getAllClientCharges,
     getClientChargeById,
     getPendingOrders,
+    getPendingClientCharges,
     getAllInvoices,
     getInvoiceById,
     submitInvoicePayment,
@@ -22,6 +23,7 @@ const clientChargesRouter = Router()
 clientChargesRouter.post('/preview', authMiddleware, requireRole(ROLES.SUPER), validateBody(generateChargesSchema), previewClientCharges)
 clientChargesRouter.post('/', authMiddleware, requireRole(ROLES.SUPER), validateBody(generateChargesSchema), generateClientCharges)
 clientChargesRouter.get('/', authMiddleware, requireRole(ROLES.SUPER, ROLES.ADMIN), getAllClientCharges)
+clientChargesRouter.get('/pending', authMiddleware, requireRole(ROLES.SUPER), getPendingClientCharges)
 clientChargesRouter.get('/pending-orders', authMiddleware, requireRole(ROLES.SUPER, ROLES.ADMIN), getPendingOrders)
 clientChargesRouter.get('/:id_charge', authMiddleware, requireRole(ROLES.SUPER, ROLES.ADMIN), getClientChargeById)
 

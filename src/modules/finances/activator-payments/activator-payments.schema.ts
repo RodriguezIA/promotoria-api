@@ -11,7 +11,7 @@ export const generateActivatorPaymentsSchema = z.object({
 
 export const updateActivatorPaymentPaymentSchema = z.object({
   dt_payment: z.coerce.date(),
-  id_bank_account: z.number().int().positive().optional(),
+  id_bank_account: z.coerce.number().int().positive().optional(),
   vc_notes: z.string().max(500).optional(),
 })
 

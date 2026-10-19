@@ -6,6 +6,17 @@ import { GenerateChargesDTO, ChargeFiltersDTO, InvoiceFiltersDTO, UpdateInvoiceP
 
 const clientChargesService = new ClientCharges()
 
+// Las fechas del panel llegan como AAAA-MM-DD. Se toman completas en hora de
+// Mexico (UTC-6, sin horario de verano): desde las 00:00 hasta las 23:59:59.
+function startMx(v: any): Date {
+    const s = String(v)
+    return /^\d{4}-\d{2}-\d{2}$/.test(s) ? new Date(`${s}T00:00:00-06:00`) : new Date(s)
+}
+function endMx(v: any): Date {
+    const s = String(v)
+    return /^\d{4}-\d{2}-\d{2}$/.test(s) ? new Date(`${s}T23:59:59.999-06:00`) : new Date(s)
+}
+
 function parseNumber(value: any): number | undefined {
     if (value === undefined || value === null || value === '') return undefined
     const num = Number(value)
@@ -15,9 +26,9 @@ function parseNumber(value: any): number | undefined {
 export const previewClientCharges = async (req: Request, res: Response) => {
     try {
         const input: GenerateChargesDTO = {
-            dt_start: new Date(req.body.dt_start),
-            dt_end: new Date(req.body.dt_end),
-            dt_due: new Date(req.body.dt_due),
+            dt_start: startMx(req.body.dt_start),
+            dt_end: endMx(req.body.dt_end),
+            dt_due: endMx(req.body.dt_due),
             id_client: req.body.id_client,
             id_user_creator: req.user!.id,
         }
@@ -32,9 +43,9 @@ export const previewClientCharges = async (req: Request, res: Response) => {
 export const generateClientCharges = async (req: Request, res: Response) => {
     try {
         const input: GenerateChargesDTO = {
-            dt_start: new Date(req.body.dt_start),
-            dt_end: new Date(req.body.dt_end),
-            dt_due: new Date(req.body.dt_due),
+            dt_start: startMx(req.body.dt_start),
+            dt_end: endMx(req.body.dt_end),
+            dt_due: endMx(req.body.dt_due),
             id_client: req.body.id_client,
             id_user_creator: req.user!.id,
         }
@@ -184,7 +195,7 @@ export const submitInvoicePayment = async (req: Request, res: Response) => {
 export const updateInvoiceDueDate = async (req: Request, res: Response) => {
     try {
         const id = Number(req.params.id_invoice)
-        const payload: UpdateInvoiceDueDateDTO = { dt_due: new Date(req.body.dt_due) }
+        const payload: UpdateInvoiceDueDateDTO = { dt_due: endMx(req.body.dt_due) }
         const updated = await clientChargesService.updateInvoiceDueDate(id, payload.dt_due, req.user!.id)
         res.status(200).json({ ok: true, error: 0, data: updated, message: 'Fecha de vencimiento actualizada exitosamente' })
     } catch (error) {
@@ -205,5 +216,15 @@ export const updateInvoiceStatus = async (req: Request, res: Response) => {
     } catch (error) {
         console.error('UPDATE INVOICE STATUS ERROR:', (error as any).message)
         res.status(409).json({ ok: false, error: 1, data: null, message: (error as any).message || 'Error al actualizar el estatus', error_backend: error })
+    }
+}
+
+export const getPendingClientCharges = async (_req: Request, res: Response) => {
+    try {
+        const data = await clientChargesService.pending()
+        res.status(200).json({ ok: true, error: 0, data, message: 'Pendientes por facturar obtenidos exitosamente' })
+    } catch (error) {
+        console.error('GET PENDING CLIENT CHARGES ERROR:', (error as any).message)
+        res.status(500).json({ ok: false, error: 1, data: null, message: 'Error al obtener lo pendiente por facturar' })
     }
 }
