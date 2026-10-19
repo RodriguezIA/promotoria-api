@@ -1,5 +1,6 @@
 import { prisma } from '../../../core/prisma'
 import { effectiveStart } from '../finance-dates'
+import { addIva } from '../tax'
 import { generateFolio } from '../../../services/folio.service'
 import { ORDER_STATUS } from '../../../core/constants/status.constants'
 import { CLIENT_CHARGE_STATUS } from '../finances.constants'
@@ -85,7 +86,7 @@ export class ClientCharges {
             const orders = [] as typeof clients[number]['orders']
             let clientTotal = 0
             for (const [id_order, orderTasks] of byOrder) {
-                const orderTotal = orderTasks.reduce((sum, t) => sum + t.f_amount, 0)
+                const orderTotal = addIva(orderTasks.reduce((sum, t) => sum + t.f_amount, 0)).total
                 clientTotal += orderTotal
                 orders.push({
                     id_order,
@@ -115,7 +116,7 @@ export class ClientCharges {
             let taskCount = 0
             for (const orderTasks of byOrder.values()) {
                 taskCount += orderTasks.length
-                total += orderTasks.reduce((sum, t) => sum + t.f_amount, 0)
+                total += addIva(orderTasks.reduce((sum, t) => sum + t.f_amount, 0)).total
             }
             const c = info.get(id)
             return {
@@ -139,7 +140,9 @@ export class ClientCharges {
             const charge = await prisma.$transaction(async (tx) => {
                 const allTasksForClient: EligibleTask[] = []
                 for (const orderTasks of byOrder.values()) allTasksForClient.push(...orderTasks)
-                const f_total = allTasksForClient.reduce((sum, t) => sum + t.f_amount, 0)
+                let f_total = 0
+                for (const orderTasks of byOrder.values()) f_total += addIva(orderTasks.reduce((sum, t) => sum + t.f_amount, 0)).total
+                f_total = Math.round(f_total * 100) / 100
 
                 const vc_folio = await generateFolio(tx, id_client, 'client_charge')
 
@@ -155,7 +158,7 @@ export class ClientCharges {
                 })
 
                 for (const [id_order, orderTasks] of byOrder) {
-                    const orderTotal = orderTasks.reduce((sum, t) => sum + t.f_amount, 0)
+                    const orderIva = addIva(orderTasks.reduce((sum, t) => sum + t.f_amount, 0))
                     const vc_invoice_folio = await generateFolio(tx, id_client, 'invoices')
 
                     await tx.client_charge_orders.create({
@@ -163,7 +166,9 @@ export class ClientCharges {
                             id_charge: charge.id_charge,
                             id_order,
                             vc_folio: vc_invoice_folio,
-                            f_amount: orderTotal,
+                            f_amount: orderIva.total,
+                            f_subtotal: orderIva.subtotal,
+                            f_tax: orderIva.tax,
                             id_status: CLIENT_CHARGE_STATUS.PENDIENTE_PAGO,
                             dt_due: input.dt_due,
                         }
@@ -359,12 +364,17 @@ export class ClientCharges {
             entry.task_count += 1
         }
 
-        return [...byOrder.entries()].map(([id_order, data]) => ({
-            id_order,
-            f_amount: data.f_amount,
-            task_count: data.task_count,
-            order: data.order,
-        }))
+        return [...byOrder.entries()].map(([id_order, data]) => {
+            const iva = addIva(data.f_amount)
+            return {
+                id_order,
+                f_amount: iva.total,
+                f_subtotal: iva.subtotal,
+                f_tax: iva.tax,
+                task_count: data.task_count,
+                order: data.order,
+            }
+        })
     }
 
     async updateInvoiceDueDate(id: number, dt_due: Date, id_user: number) {

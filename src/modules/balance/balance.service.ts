@@ -22,6 +22,8 @@ export interface BankInfo {
 const EMPTY_BANK: BankInfo = { bank: '', holder: '', clabe: '', account: '', instructions: '' }
 
 /** Se lanza cuando el pedido cuesta mas de lo que hay en el saldo prepago. */
+import { addIva } from '../finances/tax'
+
 export class SaldoInsuficienteError extends Error {
     code = 'SALDO_INSUFICIENTE'
     saldo: number
@@ -75,14 +77,15 @@ export class BalanceService {
     async chargeOrder(tx: Tx, p: { id_client: number; id_order: number; amount: number; folio?: string | null; id_user?: number | null }) {
         const { mode, balance } = await lockClient(tx, p.id_client)
         if (mode !== PAYMENT_MODE.PREPAGO) return { charged: false as const }
-        const amount = round2(p.amount)
-        if (amount <= 0) return { charged: false as const }
+        const subtotal = round2(p.amount)
+        if (subtotal <= 0) return { charged: false as const }
+        const amount = addIva(subtotal).total
         if (balance + 0.0001 < amount) throw new SaldoInsuficienteError(balance, amount)
         const after = await applyMovement(tx, p.id_client, balance, -amount, {
             type: 'CARGO_PEDIDO',
             id_order: p.id_order,
             id_user: p.id_user,
-            note: `Pedido ${p.folio ?? p.id_order}`,
+            note: `Pedido ${p.folio ?? p.id_order} (incluye IVA 16%)`,
         })
         return { charged: true as const, amount, balance: after }
     }
@@ -94,10 +97,14 @@ export class BalanceService {
      */
     async refundTasks(tx: Tx, id_order: number, tasks: Array<{ id_task: number; id_request: number | null; id_store: number }>, id_user?: number | null, reason?: string) {
         if (tasks.length === 0) return { refunded: 0, count: 0 }
-        const order = await tx.orders.findUnique({ where: { id_order }, select: { id_client: true, vc_folio: true } })
+        const order = await tx.orders.findUnique({ where: { id_order }, select: { id_client: true, vc_folio: true, f_total: true } })
         if (!order) return { refunded: 0, count: 0 }
         const { mode, balance } = await lockClient(tx, order.id_client)
         if (mode !== PAYMENT_MODE.PREPAGO) return { refunded: 0, count: 0 }
+
+        // Pedidos viejos se cobraron sin IVA: solo se devuelve con IVA si el cargo original lo llevaba.
+        const cargo = await tx.client_balance_movements.findFirst({ where: { id_order, vc_type: 'CARGO_PEDIDO' }, select: { f_amount: true } })
+        const conIva = !!cargo && Math.abs(Math.abs(Number(cargo.f_amount)) - addIva(Number(order.f_total)).total) < 0.02
 
         const items = await tx.order_items.findMany({
             where: { id_order },
@@ -118,14 +125,15 @@ export class BalanceService {
                 select: { id_movement: true }
             })
             if (already) continue
-            current = await applyMovement(tx, order.id_client, current, value, {
+            const refundValue = conIva ? addIva(value).total : value
+            current = await applyMovement(tx, order.id_client, current, refundValue, {
                 type: 'DEVOLUCION',
                 id_order,
                 id_task: t.id_task,
                 id_user,
                 note: `${reason ?? 'Visita no realizada'} (pedido ${order.vc_folio ?? id_order})`,
             })
-            total = round2(total + value)
+            total = round2(total + refundValue)
             count++
         }
         return { refunded: total, count }

@@ -2,6 +2,7 @@ import { Router } from 'express'
 import { authMiddleware, requireRole, uploadVideo } from '../../core/middleware'
 import { ROLES } from '../../core/constants/status.constants'
 import { getLoginVideo, uploadLoginVideo, removeLoginVideo, getTaskInstructions, setTaskInstructions, getWhatsappSoporteClientes, setWhatsappSoporteClientes, getWhatsappSoportePromotores, setWhatsappSoportePromotores, getReferralShareMessage, setReferralShareMessage, getRequestPricingSettings, setRequestPricingSettings } from './app-config.controller'
+import { getDefaultPaymentAccount, setDefaultPaymentAccount, getClientPaymentAccount, setClientPaymentAccount, resetClientPaymentAccount } from './app-config.controller'
 
 const appConfigRouter = Router()
 
@@ -35,5 +36,13 @@ appConfigRouter.put('/referral-share-message', authMiddleware, requireRole(ROLES
 // (Nueva Solicitud) tambien lo necesita para calcular el costo en vivo.
 appConfigRouter.get('/request-pricing', getRequestPricingSettings)
 appConfigRouter.put('/request-pricing', authMiddleware, requireRole(ROLES.SUPER), setRequestPricingSettings)
+
+// Cuenta donde los clientes depositan sus pagos: una general (la pone el master)
+// y, si hace falta, una propia por cliente. El cliente solo puede ver la suya.
+appConfigRouter.get('/payment-account', authMiddleware, requireRole(ROLES.SUPER), getDefaultPaymentAccount)
+appConfigRouter.put('/payment-account', authMiddleware, requireRole(ROLES.SUPER), setDefaultPaymentAccount)
+appConfigRouter.get('/client-payment-account/:id_client', authMiddleware, getClientPaymentAccount)
+appConfigRouter.put('/client-payment-account/:id_client', authMiddleware, requireRole(ROLES.SUPER), setClientPaymentAccount)
+appConfigRouter.delete('/client-payment-account/:id_client', authMiddleware, requireRole(ROLES.SUPER), resetClientPaymentAccount)
 
 export default appConfigRouter

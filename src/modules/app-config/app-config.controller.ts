@@ -192,3 +192,65 @@ export const setWhatsappSoportePromotores = async (req: Request, res: Response) 
         res.status(500).json({ ok: false, error: 1, data: null, message: 'Error al actualizar el número' })
     }
 }
+
+
+export const getDefaultPaymentAccount = async (_req: Request, res: Response) => {
+    try {
+        const data = await appConfigService.getDefaultPaymentAccount()
+        res.status(200).json({ ok: true, error: 0, data, message: 'Cuenta obtenida exitosamente' })
+    } catch (error) {
+        res.status(500).json({ ok: false, error: 1, data: null, message: 'Error al obtener la cuenta' })
+    }
+}
+
+export const setDefaultPaymentAccount = async (req: Request, res: Response) => {
+    try {
+        const data = await appConfigService.setDefaultPaymentAccount(req.body)
+        res.status(200).json({ ok: true, error: 0, data, message: 'Cuenta guardada exitosamente' })
+    } catch (error) {
+        res.status(500).json({ ok: false, error: 1, data: null, message: 'Error al guardar la cuenta' })
+    }
+}
+
+export const getClientPaymentAccount = async (req: Request, res: Response) => {
+    try {
+        const id_client = Number(req.params.id_client)
+        if (!Number.isInteger(id_client) || id_client <= 0) {
+            return res.status(400).json({ ok: false, error: 1, data: null, message: 'Cliente inválido' })
+        }
+        const u: any = req.user ?? {}
+        if (u.i_rol !== 1 && Number(u.id_client) !== id_client) {
+            return res.status(403).json({ ok: false, error: 1, data: null, message: 'No tienes acceso a esta cuenta' })
+        }
+        const data = await appConfigService.getClientPaymentAccount(id_client)
+        res.status(200).json({ ok: true, error: 0, data, message: 'Cuenta obtenida exitosamente' })
+    } catch (error) {
+        res.status(500).json({ ok: false, error: 1, data: null, message: 'Error al obtener la cuenta' })
+    }
+}
+
+export const setClientPaymentAccount = async (req: Request, res: Response) => {
+    try {
+        const id_client = Number(req.params.id_client)
+        if (!Number.isInteger(id_client) || id_client <= 0) {
+            return res.status(400).json({ ok: false, error: 1, data: null, message: 'Cliente inválido' })
+        }
+        const data = await appConfigService.setClientPaymentAccount(id_client, req.body)
+        res.status(200).json({ ok: true, error: 0, data, message: 'Cuenta del cliente guardada' })
+    } catch (error) {
+        res.status(500).json({ ok: false, error: 1, data: null, message: 'Error al guardar la cuenta del cliente' })
+    }
+}
+
+export const resetClientPaymentAccount = async (req: Request, res: Response) => {
+    try {
+        const id_client = Number(req.params.id_client)
+        if (!Number.isInteger(id_client) || id_client <= 0) {
+            return res.status(400).json({ ok: false, error: 1, data: null, message: 'Cliente inválido' })
+        }
+        const data = await appConfigService.resetClientPaymentAccount(id_client)
+        res.status(200).json({ ok: true, error: 0, data, message: 'El cliente vuelve a usar la cuenta general' })
+    } catch (error) {
+        res.status(500).json({ ok: false, error: 1, data: null, message: 'Error al restablecer la cuenta' })
+    }
+}

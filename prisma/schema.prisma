@@ -101,6 +101,7 @@ model clients {
   phone                   String             @default("") @db.VarChar(20)
   vc_url_situacion_fiscal String?            @db.VarChar(500)
   vc_payment_mode         String             @default("CREDITO") @db.VarChar(10)
+  vc_payment_account      String?            @db.Text
   f_balance               Decimal            @default(0.00) @db.Decimal(12, 2)
   client_logs             client_logs[]
   drivers                 drivers[]
@@ -819,6 +820,8 @@ model client_charge_orders {
   id_order             Int            @db.UnsignedInt
   vc_folio             String?        @unique(map: "uq_charge_orders_folio") @db.VarChar(50)
   f_amount             Decimal        @db.Decimal(10, 2)
+  f_subtotal           Decimal?       @db.Decimal(10, 2)
+  f_tax                Decimal?       @db.Decimal(10, 2)
   id_status            Int            @default(1)
   dt_due               DateTime?      @db.DateTime(0)
   dt_payment           DateTime?      @db.DateTime(0)
