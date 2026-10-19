@@ -1,5 +1,7 @@
 import { Request, Response } from 'express'
 import { DriverActivatorPayments } from './driver-activator-payments.service'
+import { DriverFinance } from '../../driver-finance/driver-finance.service'
+import { prisma } from '../../../core/prisma'
 
 const service = new DriverActivatorPayments()
 
@@ -90,5 +92,31 @@ export const updateDriverActivatorPaymentStatus = async (req: Request, res: Resp
     } catch (error) {
         console.error('CANCEL DRIVER ACTIVATOR PAYMENT ERROR:', (error as any).message)
         res.status(409).json({ ok: false, error: 1, data: null, message: (error as any).message || 'Error al cancelar el pago' })
+    }
+}
+
+/**
+ * Numero completo de la cuenta del chofer, solo para hacer el deposito.
+ * Solo master (ver rutas) y queda registrado en la bitacora de usuarios.
+ */
+export const revealDriverBankAccount = async (req: Request, res: Response) => {
+    try {
+        const id_account = Number(req.params.id_account)
+        const revealed = await new DriverFinance().revealBankAccount(id_account)
+        if (!revealed) {
+            res.status(404).json({ ok: false, error: 1, data: null, message: 'Cuenta bancaria no encontrada' })
+            return
+        }
+        const last4 = (revealed.clabe || revealed.card_number || '').slice(-4)
+        await prisma.user_logs.create({
+            data: {
+                id_user: req.user!.id,
+                log: `Consultó el número completo de la cuenta bancaria #${id_account} del chofer #${revealed.id_driver} (terminación ${last4}), para realizar un depósito manual.`,
+            },
+        })
+        res.status(200).json({ ok: true, error: 0, data: revealed, message: 'Cuenta obtenida exitosamente' })
+    } catch (error) {
+        console.error('REVEAL DRIVER BANK ACCOUNT ERROR:', (error as any).message)
+        res.status(500).json({ ok: false, error: 1, data: null, message: 'Error al obtener la cuenta bancaria' })
     }
 }

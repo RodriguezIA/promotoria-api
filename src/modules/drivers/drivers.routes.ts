@@ -6,6 +6,7 @@ import {
 } from './drivers.controller'
 
 import { getMyAffiliation, getMyReferrals } from '../driver-referrals/driver-referrals.controller'
+import { getMyPayments, getMyBankAccount, saveMyBankAccount } from '../driver-finance/driver-finance.controller'
 
 const driversRouter = Router()
 
@@ -32,5 +33,8 @@ driversRouter.post('/me/stores', authMiddleware, createStoreByDriver)
 // Invitar promotores: su codigo, ganancias y lista de invitados.
 driversRouter.get('/me/affiliation', authMiddleware, getMyAffiliation)
 driversRouter.get('/me/referrals', authMiddleware, getMyReferrals)
+driversRouter.get('/me/payments', authMiddleware, getMyPayments)
+driversRouter.get('/me/bank-account', authMiddleware, getMyBankAccount)
+driversRouter.post('/me/bank-account', authMiddleware, saveMyBankAccount)
 
 export default driversRouter

@@ -1410,3 +1410,20 @@ model driver_activator_payment_logs {
 
   @@index([id_payment], map: "idx_driver_act_payment_logs_payment")
 }
+
+// Cuenta (CLABE o tarjeta) del chofer para que master le deposite sus comisiones.
+// El numero se guarda cifrado (AES-256-GCM), igual que en promoter_bank_accounts.
+model driver_bank_accounts {
+  id                  Int                   @id @default(autoincrement()) @db.UnsignedInt
+  id_driver           Int                   @db.UnsignedInt
+  account_holder_name String                @db.VarChar(255)
+  account_type        promoter_account_type
+  clabe               String?               @db.Text
+  card_number         String?               @db.Text
+  bank_name           String                @db.VarChar(255)
+  dt_register         DateTime              @default(now()) @db.Timestamp(0)
+  dt_updated          DateTime              @default(now()) @updatedAt @db.Timestamp(0)
+  dt_deleted          DateTime?             @db.Timestamp(0)
+
+  @@index([id_driver], map: "idx_driver_bank_accounts_driver")
+}

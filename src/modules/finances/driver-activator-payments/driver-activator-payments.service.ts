@@ -1,4 +1,5 @@
 import { prisma } from '../../../core/prisma'
+import { EncryptionService } from '../../../services/encryption.service'
 import { generateFolio } from '../../../services/folio.service'
 import { ACTIVATOR_PAYMENT_STATUS } from '../finances.constants'
 import { findEligibleDriverTasks, getFinanceSettings, DriverEligibleTask } from './driver-commission'
@@ -164,7 +165,20 @@ export class DriverActivatorPayments {
         const promoterMap = new Map(promoters.map(p => [p.id, `${p.name}${p.lastname ? ' ' + p.lastname : ''}`]))
         const payment_tasks = payment.payment_tasks.map(t => ({ ...t, promoter_name: promoterMap.get(t.id_promoter) ?? null }))
 
-        return { ...payment, payment_tasks, driver, evidences, logs }
+        const acc = await prisma.driver_bank_accounts.findFirst({
+            where: { id_driver: payment.id_driver, dt_deleted: null },
+            orderBy: { dt_register: 'desc' },
+        })
+        const bank_account = acc ? {
+            id: acc.id,
+            account_holder_name: acc.account_holder_name,
+            account_type: acc.account_type,
+            bank_name: acc.bank_name,
+            clabe: acc.clabe ? EncryptionService.decryptToMasked(acc.clabe) : null,
+            card_number: acc.card_number ? EncryptionService.decryptToMasked(acc.card_number) : null,
+        } : null
+
+        return { ...payment, payment_tasks, driver, bank_account, evidences, logs }
     }
 
     async submitPayment(id_payment: number, data: { dt_payment: Date, vc_notes?: string }, id_user: number) {
