@@ -1,6 +1,7 @@
 import { prisma } from '../../core/prisma'
 import { ACTIVATOR_PAYMENT_STATUS } from '../finances/finances.constants'
 import { findEligibleDriverTasks, getFinanceSettings } from '../finances/driver-activator-payments/driver-commission'
+import { promoterRule, activatorRule } from '../finances/commission'
 
 export class DriverReferrals {
 
@@ -18,8 +19,8 @@ export class DriverReferrals {
         const settings = await getFinanceSettings()
         const eligible = await findEligibleDriverTasks(
             { id_driver },
-            Number(settings.f_promoter_commission_percentage),
-            Number(settings.f_activator_commission_percentage)
+            promoterRule(settings),
+            activatorRule(settings)
         )
         const map = new Map<number, number>()
         for (const t of eligible) map.set(t.id_promoter, (map.get(t.id_promoter) ?? 0) + t.f_amount)

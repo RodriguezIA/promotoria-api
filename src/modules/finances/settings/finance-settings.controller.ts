@@ -12,6 +12,8 @@ export const getFinanceSettings = async (req: Request, res: Response) => {
             data: {
                 f_promoter_commission_percentage: Number(settings.f_promoter_commission_percentage),
                 f_activator_commission_percentage: Number(settings.f_activator_commission_percentage),
+                vc_promoter_commission_type: settings.vc_promoter_commission_type,
+                vc_activator_commission_type: settings.vc_activator_commission_type,
             },
             message: 'Configuración de finanzas obtenida exitosamente'
         })
@@ -29,10 +31,10 @@ export const getFinanceSettings = async (req: Request, res: Response) => {
 
 export const updateFinanceSettings = async (req: Request, res: Response) => {
     try {
-        const { f_promoter_commission_percentage, f_activator_commission_percentage } = req.body
+        const { f_promoter_commission_percentage, f_activator_commission_percentage, vc_promoter_commission_type, vc_activator_commission_type } = req.body
         const id_user_updater = req.user!.id
         const settings = await financeSettingsService.update(
-            { f_promoter_commission_percentage, f_activator_commission_percentage },
+            { f_promoter_commission_percentage, f_activator_commission_percentage, vc_promoter_commission_type, vc_activator_commission_type },
             id_user_updater
         )
         res.status(200).json({
@@ -41,6 +43,8 @@ export const updateFinanceSettings = async (req: Request, res: Response) => {
             data: {
                 f_promoter_commission_percentage: Number(settings.f_promoter_commission_percentage),
                 f_activator_commission_percentage: Number(settings.f_activator_commission_percentage),
+                vc_promoter_commission_type: settings.vc_promoter_commission_type,
+                vc_activator_commission_type: settings.vc_activator_commission_type,
             },
             message: 'Configuración de finanzas actualizada exitosamente'
         })

@@ -1,5 +1,6 @@
 import { prisma } from '../../../core/prisma'
 import { effectiveStart } from '../finance-dates'
+import { CommissionRule, promoterRule, activatorRule, activatorAmount } from '../commission'
 import { generateFolio } from '../../../services/folio.service'
 import { ACTIVATOR_PAYMENT_STATUS } from '../finances.constants'
 import { EncryptionService } from '../../../services/encryption.service'
@@ -34,8 +35,8 @@ export class ActivatorPayments {
     private async findEligibleTasks(
         dt_start: Date,
         dt_end: Date,
-        promoterPct: number,
-        activatorPct: number,
+        promoterPct: CommissionRule,
+        activatorPct: CommissionRule,
         id_activator?: number
     ): Promise<EligibleTask[]> {
         const tasks = await prisma.tasks.findMany({
@@ -77,8 +78,7 @@ export class ActivatorPayments {
                 console.warn(`No se encontró order_item para la tarea ${t.id_task} (${key}), se excluye del pago`)
                 continue
             }
-            const promoterEarning = baseValue * (promoterPct / 100)
-            const f_amount = Math.round(promoterEarning * (activatorPct / 100) * 100) / 100
+            const f_amount = activatorAmount(baseValue, promoterPct, activatorPct)
             eligible.push({
                 id_task: t.id_task,
                 id_promoter: t.promoter.id,
@@ -100,9 +100,9 @@ export class ActivatorPayments {
 
     async preview(input: GenerateActivatorPaymentsDTO) {
         const settings = await this.getSettings()
-        const promoterPct = Number(settings.f_promoter_commission_percentage)
-        const activatorPct = Number(settings.f_activator_commission_percentage)
-        if (activatorPct <= 0) {
+        const promoterPct = promoterRule(settings)
+        const activatorPct = activatorRule(settings)
+        if (activatorPct.value <= 0) {
             throw new Error('Configura el porcentaje de comisión del activador en finances/settings antes de generar pagos')
         }
         const tasks = await this.findEligibleTasks(input.dt_start, input.dt_end, promoterPct, activatorPct, input.id_activator)
@@ -122,9 +122,9 @@ export class ActivatorPayments {
 
     async generate(input: GenerateActivatorPaymentsDTO) {
         const settings = await this.getSettings()
-        const promoterPct = Number(settings.f_promoter_commission_percentage)
-        const activatorPct = Number(settings.f_activator_commission_percentage)
-        if (activatorPct <= 0) {
+        const promoterPct = promoterRule(settings)
+        const activatorPct = activatorRule(settings)
+        if (activatorPct.value <= 0) {
             throw new Error('Configura el porcentaje de comisión del activador en finances/settings antes de generar pagos')
         }
         const tasks = await this.findEligibleTasks(input.dt_start, input.dt_end, promoterPct, activatorPct, input.id_activator)
@@ -186,9 +186,9 @@ export class ActivatorPayments {
     /** Lo que se le debe hoy a cada activador y todavia no entra en ningun corte. */
     async pending() {
         const settings = await this.getSettings()
-        const promoterPct = Number(settings.f_promoter_commission_percentage)
-        const activatorPct = Number(settings.f_activator_commission_percentage)
-        if (activatorPct <= 0) return { total: 0, activators: [] }
+        const promoterPct = promoterRule(settings)
+        const activatorPct = activatorRule(settings)
+        if (activatorPct.value <= 0) return { total: 0, activators: [] }
 
         const tasks = await this.findEligibleTasks(new Date('2000-01-01T00:00:00Z'), new Date('2100-01-01T00:00:00Z'), promoterPct, activatorPct)
         const byActivator = this.groupByActivator(tasks)

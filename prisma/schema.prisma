@@ -914,8 +914,10 @@ model promoter_payment_logs {
 
 model finance_settings {
   id_setting                          Int      @id @default(1)
-  f_promoter_commission_percentage    Decimal  @db.Decimal(5, 2) @default(0)
-  f_activator_commission_percentage   Decimal  @db.Decimal(5, 2) @default(10)
+  f_promoter_commission_percentage    Decimal  @db.Decimal(10, 2) @default(0)
+  f_activator_commission_percentage   Decimal  @db.Decimal(10, 2) @default(10)
+  vc_promoter_commission_type         String   @default("PERCENTAGE") @db.VarChar(12)
+  vc_activator_commission_type        String   @default("PERCENTAGE") @db.VarChar(12)
   id_system_client                    Int      @db.UnsignedInt
   id_user_updater                     Int?     @db.UnsignedInt
   dt_updated                          DateTime @default(now()) @updatedAt @db.Timestamp(0)

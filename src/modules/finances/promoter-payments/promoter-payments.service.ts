@@ -1,5 +1,6 @@
 import { prisma } from '../../../core/prisma'
 import { effectiveStart } from '../finance-dates'
+import { CommissionRule, promoterRule, promoterAmount } from '../commission'
 import { generateFolio } from '../../../services/folio.service'
 import { PROMOTER_PAYMENT_STATUS } from '../finances.constants'
 import { GeneratePaymentsDTO, PaymentFiltersDTO, UpdatePaymentPaymentDTO } from './promoter-payments.dto'
@@ -20,7 +21,7 @@ export class PromoterPayments {
         return settings
     }
 
-    private async findEligibleTasks(dt_start: Date, dt_end: Date, commissionPct: number, id_promoter?: number): Promise<EligibleTask[]> {
+    private async findEligibleTasks(dt_start: Date, dt_end: Date, commissionPct: CommissionRule, id_promoter?: number): Promise<EligibleTask[]> {
         const tasks = await prisma.tasks.findMany({
             where: {
                 // OJO: el estatus real "Terminada con éxito" es el 7, no el 6
@@ -55,7 +56,7 @@ export class PromoterPayments {
                 console.warn(`No se encontró order_item para la tarea ${t.id_task} (${key}), se excluye del pago`)
                 continue
             }
-            const f_amount = Math.round(baseValue * (commissionPct / 100) * 100) / 100
+            const f_amount = promoterAmount(baseValue, commissionPct)
             eligible.push({ id_task: t.id_task, id_order: t.id_order, id_promoter: t.id_promoter!, id_store: t.id_store, f_amount })
         }
         return eligible
@@ -72,8 +73,8 @@ export class PromoterPayments {
 
     async preview(input: GeneratePaymentsDTO) {
         const settings = await this.getSettings()
-        const commissionPct = Number(settings.f_promoter_commission_percentage)
-        if (commissionPct <= 0) {
+        const commissionPct = promoterRule(settings)
+        if (commissionPct.value <= 0) {
             throw new Error('Configura el porcentaje de comisión del promotor en finances/settings antes de generar pagos')
         }
         const tasks = await this.findEligibleTasks(input.dt_start, input.dt_end, commissionPct, input.id_promoter)
@@ -89,8 +90,8 @@ export class PromoterPayments {
 
     async generate(input: GeneratePaymentsDTO) {
         const settings = await this.getSettings()
-        const commissionPct = Number(settings.f_promoter_commission_percentage)
-        if (commissionPct <= 0) {
+        const commissionPct = promoterRule(settings)
+        if (commissionPct.value <= 0) {
             throw new Error('Configura el porcentaje de comisión del promotor en finances/settings antes de generar pagos')
         }
         const tasks = await this.findEligibleTasks(input.dt_start, input.dt_end, commissionPct, input.id_promoter)
@@ -147,8 +148,8 @@ export class PromoterPayments {
     /** Lo que se le debe hoy a cada promotor y todavia no entra en ningun corte. */
     async pending() {
         const settings = await this.getSettings()
-        const commissionPct = Number(settings.f_promoter_commission_percentage)
-        if (commissionPct <= 0) return { total: 0, promoters: [] }
+        const commissionPct = promoterRule(settings)
+        if (commissionPct.value <= 0) return { total: 0, promoters: [] }
 
         const tasks = await this.findEligibleTasks(new Date('2000-01-01T00:00:00Z'), new Date('2100-01-01T00:00:00Z'), commissionPct)
         const byPromoter = this.groupByPromoter(tasks)

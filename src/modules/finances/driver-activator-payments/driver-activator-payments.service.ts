@@ -4,6 +4,7 @@ import { EncryptionService } from '../../../services/encryption.service'
 import { generateFolio } from '../../../services/folio.service'
 import { ACTIVATOR_PAYMENT_STATUS } from '../finances.constants'
 import { findEligibleDriverTasks, getFinanceSettings, DriverEligibleTask } from './driver-commission'
+import { promoterRule, activatorRule } from '../commission'
 
 export interface GenerateDriverPaymentsInput {
   dt_start: Date
@@ -24,9 +25,9 @@ export class DriverActivatorPayments {
 
     private async loadPcts() {
         const settings = await getFinanceSettings()
-        const promoterPct = Number(settings.f_promoter_commission_percentage)
-        const activatorPct = Number(settings.f_activator_commission_percentage)
-        if (activatorPct <= 0) {
+        const promoterPct = promoterRule(settings)
+        const activatorPct = activatorRule(settings)
+        if (activatorPct.value <= 0) {
             throw new Error('Configura el porcentaje de comisión del activador en finances/settings antes de generar pagos')
         }
         return { settings, promoterPct, activatorPct }

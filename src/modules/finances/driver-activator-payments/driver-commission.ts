@@ -1,4 +1,5 @@
 import { prisma } from '../../../core/prisma'
+import { CommissionRule, activatorAmount } from '../commission'
 
 export interface DriverEligibleTask {
   id_task: number
@@ -21,8 +22,8 @@ export async function getFinanceSettings() {
  */
 export async function findEligibleDriverTasks(
   opts: { dt_start?: Date; dt_end?: Date; id_driver?: number },
-  promoterPct: number,
-  activatorPct: number
+  promoterPct: CommissionRule,
+  activatorPct: CommissionRule
 ): Promise<DriverEligibleTask[]> {
   const dt_update: { gte?: Date; lte?: Date } = {}
   if (opts.dt_start) dt_update.gte = opts.dt_start
@@ -61,8 +62,7 @@ export async function findEligibleDriverTasks(
     if (!t.promoter?.id_driver_activator) continue
     const baseValue = valueMap.get(`${t.id_order}:${t.id_request}:${t.id_store}`)
     if (baseValue === undefined) continue
-    const promoterEarning = baseValue * (promoterPct / 100)
-    const f_amount = Math.round(promoterEarning * (activatorPct / 100) * 100) / 100
+    const f_amount = activatorAmount(baseValue, promoterPct, activatorPct)
     eligible.push({
       id_task: t.id_task,
       id_promoter: t.promoter.id,

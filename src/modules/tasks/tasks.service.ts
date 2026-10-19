@@ -7,6 +7,7 @@ import { StorageService } from '../../services/storage.service'
 import { taskRankingQueue } from '../../core/bullmq/queues'
 import { NotificationService } from '../../services/notification.service'
 import { balanceService } from '../balance/balance.service'
+import { promoterRule, promoterAmount } from '../finances/commission'
 
 export class Task {
 
@@ -25,8 +26,8 @@ export class Task {
         if (tasks.length === 0) return earningsByTask
 
         const settings = await prisma.finance_settings.findUnique({ where: { id_setting: 1 } })
-        const commissionPct = settings ? Number(settings.f_promoter_commission_percentage) : 0
-        if (commissionPct <= 0) return earningsByTask
+        const rule = promoterRule(settings)
+        if (rule.value <= 0) return earningsByTask
 
         const orderIds = [...new Set(tasks.map(t => t.id_order))]
         const orderItems = await prisma.order_items.findMany({
@@ -42,7 +43,7 @@ export class Task {
             if (t.id_request === null) continue
             const baseValue = valueMap.get(`${t.id_order}:${t.id_request}:${t.id_store}`)
             if (baseValue === undefined) continue
-            earningsByTask.set(t.id_task, Math.round(baseValue * (commissionPct / 100) * 100) / 100)
+            earningsByTask.set(t.id_task, promoterAmount(baseValue, rule))
         }
         return earningsByTask
     }
