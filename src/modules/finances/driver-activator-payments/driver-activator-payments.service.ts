@@ -117,6 +117,37 @@ export class DriverActivatorPayments {
         return created
     }
 
+    /** Lo que se le debe hoy a cada chofer y todavia no entra en ningun corte. */
+    async pending() {
+        const { promoterPct, activatorPct } = await this.loadPcts()
+        const tasks = await findEligibleDriverTasks({}, promoterPct, activatorPct)
+        const byDriver = this.groupByDriver(tasks)
+
+        const ids = [...byDriver.keys()]
+        const drivers = ids.length
+            ? await prisma.drivers.findMany({ where: { id_driver: { in: ids } }, select: { id_driver: true, name: true, phone: true } })
+            : []
+        const accounts = ids.length
+            ? await prisma.driver_bank_accounts.findMany({ where: { id_driver: { in: ids }, dt_deleted: null }, select: { id_driver: true } })
+            : []
+        const withAccount = new Set(accounts.map(a => a.id_driver))
+        const info = new Map(drivers.map(d => [d.id_driver, d]))
+
+        const rows = ids.map(id => {
+            const list = byDriver.get(id)!
+            return {
+                id_driver: id,
+                name: info.get(id)?.name ?? `Chofer #${id}`,
+                phone: info.get(id)?.phone ?? null,
+                tasks: list.length,
+                f_total: Math.round(list.reduce((s, t) => s + t.f_amount, 0) * 100) / 100,
+                has_account: withAccount.has(id),
+            }
+        })
+        const total = Math.round(rows.reduce((s, r) => s + r.f_total, 0) * 100) / 100
+        return { total, drivers: rows }
+    }
+
     async list(filters: DriverPaymentFilters) {
         const page = filters.page ?? 1
         const limit = filters.limit ?? 20

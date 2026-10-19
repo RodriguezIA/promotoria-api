@@ -143,6 +143,41 @@ export class PromoterPayments {
         return createdPayments
     }
 
+    /** Lo que se le debe hoy a cada promotor y todavia no entra en ningun corte. */
+    async pending() {
+        const settings = await this.getSettings()
+        const commissionPct = Number(settings.f_promoter_commission_percentage)
+        if (commissionPct <= 0) return { total: 0, promoters: [] }
+
+        const tasks = await this.findEligibleTasks(new Date('2000-01-01T00:00:00Z'), new Date('2100-01-01T00:00:00Z'), commissionPct)
+        const byPromoter = this.groupByPromoter(tasks)
+
+        const ids = [...byPromoter.keys()]
+        const promoters = ids.length
+            ? await prisma.promoters.findMany({ where: { id: { in: ids } }, select: { id: true, name: true, lastname: true, phone: true } })
+            : []
+        const accounts = ids.length
+            ? await prisma.promoter_bank_accounts.findMany({ where: { id_promoter: { in: ids }, dt_deleted: null }, select: { id_promoter: true } })
+            : []
+        const withAccount = new Set(accounts.map(a => a.id_promoter))
+        const info = new Map(promoters.map(pr => [pr.id, pr]))
+
+        const rows = ids.map(id => {
+            const list = byPromoter.get(id)!
+            const pr = info.get(id)
+            return {
+                id_promoter: id,
+                name: pr ? `${pr.name}${pr.lastname ? ' ' + pr.lastname : ''}` : `Promotor #${id}`,
+                phone: pr?.phone ?? null,
+                tasks: list.length,
+                f_total: Math.round(list.reduce((sum, t) => sum + t.f_amount, 0) * 100) / 100,
+                has_account: withAccount.has(id),
+            }
+        })
+        const total = Math.round(rows.reduce((sum, r) => sum + r.f_total, 0) * 100) / 100
+        return { total, promoters: rows }
+    }
+
     async list(filters: PaymentFiltersDTO) {
         const page = filters.page ?? 1
         const limit = filters.limit ?? 20
@@ -166,7 +201,14 @@ export class PromoterPayments {
             prisma.promoter_payments.count({ where })
         ])
 
-        return { data, meta: { total, page, limit, totalPages: Math.ceil(total / limit) } }
+        const ids = [...new Set(data.map(d => d.id_promoter))]
+        const prs = ids.length
+            ? await prisma.promoters.findMany({ where: { id: { in: ids } }, select: { id: true, name: true, lastname: true } })
+            : []
+        const names = new Map(prs.map(pr => [pr.id, `${pr.name}${pr.lastname ? ' ' + pr.lastname : ''}`]))
+        const withNames = data.map(d => ({ ...d, promoter_name: names.get(d.id_promoter) ?? null }))
+
+        return { data: withNames, meta: { total, page, limit, totalPages: Math.ceil(total / limit) } }
     }
 
     async getRaw(id_payment: number) {

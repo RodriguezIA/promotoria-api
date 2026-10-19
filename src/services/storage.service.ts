@@ -42,6 +42,7 @@ export type AssetEntity =
   | "client_charge"
   | "client_charge_order"
   | "promoter_payment"
+  | "driver_activator_payment"
   | "app_config"
   | "task_preorder_signature"
   | "task_arrangement_after"
@@ -60,6 +61,7 @@ const ENTITY_SEGMENT: Record<AssetEntity, string> = {
   client_charge: "client_charges",
   client_charge_order: "client_charge_orders",
   promoter_payment: "promoter_payments",
+  driver_activator_payment: "driver_activator_payments",
   app_config: "app_config",
   task_preorder_signature: "task_preorder_signatures",
   task_arrangement_after: "task_arrangements_after",

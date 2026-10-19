@@ -8,6 +8,17 @@ import { prisma } from '../../../core/prisma'
 const promoterPaymentsService = new PromoterPayments()
 const promoterService = new Promoter()
 
+// Las fechas del panel llegan como AAAA-MM-DD. Se toman completas en hora de
+// Mexico (UTC-6, sin horario de verano): desde las 00:00 hasta las 23:59:59.
+function startMx(v: any): Date {
+    const s = String(v)
+    return /^\d{4}-\d{2}-\d{2}$/.test(s) ? new Date(`${s}T00:00:00-06:00`) : new Date(s)
+}
+function endMx(v: any): Date {
+    const s = String(v)
+    return /^\d{4}-\d{2}-\d{2}$/.test(s) ? new Date(`${s}T23:59:59.999-06:00`) : new Date(s)
+}
+
 function parseNumber(value: any): number | undefined {
     if (value === undefined || value === null || value === '') return undefined
     const num = Number(value)
@@ -17,8 +28,8 @@ function parseNumber(value: any): number | undefined {
 export const previewPromoterPayments = async (req: Request, res: Response) => {
     try {
         const input: GeneratePaymentsDTO = {
-            dt_start: new Date(req.body.dt_start),
-            dt_end: new Date(req.body.dt_end),
+            dt_start: startMx(req.body.dt_start),
+            dt_end: endMx(req.body.dt_end),
             id_promoter: req.body.id_promoter,
             id_user_creator: req.user!.id,
         }
@@ -35,8 +46,8 @@ export const previewPromoterPayments = async (req: Request, res: Response) => {
 export const generatePromoterPayments = async (req: Request, res: Response) => {
     try {
         const input: GeneratePaymentsDTO = {
-            dt_start: new Date(req.body.dt_start),
-            dt_end: new Date(req.body.dt_end),
+            dt_start: startMx(req.body.dt_start),
+            dt_end: endMx(req.body.dt_end),
             id_promoter: req.body.id_promoter,
             id_user_creator: req.user!.id,
         }
@@ -181,5 +192,15 @@ export const revealBankAccount = async (req: Request, res: Response) => {
     } catch (error) {
         console.error('REVEAL BANK ACCOUNT ERROR:', (error as any).message)
         res.status(500).json({ ok: false, error: 1, data: null, message: 'Error al obtener la cuenta bancaria' })
+    }
+}
+
+export const getPendingPromoterPayments = async (_req: Request, res: Response) => {
+    try {
+        const data = await promoterPaymentsService.pending()
+        res.status(200).json({ ok: true, error: 0, data, message: 'Pendientes obtenidos exitosamente' })
+    } catch (error) {
+        console.error('GET PENDING PROMOTER PAYMENTS ERROR:', (error as any).message)
+        res.status(500).json({ ok: false, error: 1, data: null, message: 'Error al obtener lo pendiente de promotores' })
     }
 }

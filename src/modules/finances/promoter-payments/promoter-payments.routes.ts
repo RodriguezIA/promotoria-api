@@ -10,6 +10,7 @@ import {
     submitPromoterPayment,
     updatePromoterPaymentStatus,
     revealBankAccount,
+    getPendingPromoterPayments,
 } from './promoter-payments.controller'
 import { generatePaymentsSchema, updatePaymentPaymentSchema, updatePaymentStatusSchema } from './promoter-payments.schema'
 
@@ -101,6 +102,7 @@ promoterPaymentsRouter.get('/', authMiddleware, requireRole(ROLES.SUPER), getAll
 // (mismo error que ya tuvimos con /minimums/matching-stores en el modulo de
 // stock).
 promoterPaymentsRouter.get('/bank-accounts/:id_account/reveal', authMiddleware, requireRole(ROLES.SUPER, ROLES.ADMIN), revealBankAccount)
+promoterPaymentsRouter.get('/pending', authMiddleware, requireRole(ROLES.SUPER), getPendingPromoterPayments)
 promoterPaymentsRouter.get('/mine', authMiddleware, getMyPromoterPayments)
 
 /**
