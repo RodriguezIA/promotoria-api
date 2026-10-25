@@ -1,0 +1,124 @@
+import { Request, Response } from 'express'
+import { balanceService } from './balance.service'
+import { ROLES } from '../../core/constants/status.constants'
+
+const num = (v: any): number | undefined => {
+    if (v === undefined || v === null || v === '') return undefined
+    const n = Number(v)
+    return Number.isFinite(n) ? n : undefined
+}
+const userOf = (req: Request): any => (req.user as any) ?? {}
+const idUserOf = (req: Request): number => num(userOf(req).id) ?? 0
+
+/** Cliente dueño de la cuenta: para ADMIN sale SIEMPRE de su sesion; el master lo manda por query/body. */
+function clientIdOf(req: Request): number | undefined {
+    const u = userOf(req)
+    if (u.i_rol === ROLES.ADMIN) return num(u.id_client)
+    return num(req.query.id_client) ?? num((req.body as any)?.id_client)
+}
+
+const ok = (res: Response, data: any, message = 'OK') => res.status(200).json({ ok: true, error: 0, data, message })
+const fail = (res: Response, error: any, status = 400) =>
+    res.status(status).json({ ok: false, error: 1, data: null, message: error?.message || 'Error', code: error?.code })
+
+export const getSummary = async (req: Request, res: Response) => {
+    try {
+        const id_client = clientIdOf(req)
+        if (!id_client) return fail(res, new Error('Falta el cliente'))
+        ok(res, await balanceService.getSummary(id_client))
+    } catch (e) { fail(res, e) }
+}
+
+export const getMovements = async (req: Request, res: Response) => {
+    try {
+        const u = userOf(req)
+        const q: any = req.query
+        const id_client = (u.i_rol === ROLES.SUPER ? num(q.id_client) : clientIdOf(req)) || undefined
+        if (!id_client && u.i_rol !== ROLES.SUPER) return fail(res, new Error('Falta el cliente'))
+        ok(res, await balanceService.getMovements(id_client, num(q.page) ?? 1, num(q.limit) ?? 30, {
+            from: typeof q.from === 'string' ? q.from : undefined,
+            to: typeof q.to === 'string' ? q.to : undefined,
+            id_user: num(q.id_user),
+        }))
+    } catch (e) { fail(res, e) }
+}
+
+export const getMovementFilters = async (req: Request, res: Response) => {
+    try {
+        const u = userOf(req)
+        const id_client = (u.i_rol === ROLES.SUPER ? undefined : clientIdOf(req)) || undefined
+        if (u.i_rol !== ROLES.SUPER && !id_client) return fail(res, new Error('Falta el cliente'))
+        ok(res, await balanceService.getMovementFilters(id_client))
+    } catch (e) { fail(res, e) }
+}
+
+export const getBankInfo = async (_req: Request, res: Response) => {
+    try { ok(res, await balanceService.getBankInfo()) } catch (e) { fail(res, e) }
+}
+
+export const setBankInfo = async (req: Request, res: Response) => {
+    try { ok(res, await balanceService.setBankInfo(req.body ?? {}), 'Datos bancarios guardados') } catch (e) { fail(res, e) }
+}
+
+export const createTopup = async (req: Request, res: Response) => {
+    try {
+        const id_client = clientIdOf(req)
+        if (!id_client) return fail(res, new Error('Falta el cliente'))
+        const body: any = req.body ?? {}
+        const topup = await balanceService.createTopup({
+            id_client,
+            amount: Number(body.amount),
+            id_user: idUserOf(req) || null,
+            reference: body.reference ?? null,
+            file: req.file ? { buffer: req.file.buffer, mimetype: req.file.mimetype, originalname: req.file.originalname } : null,
+        })
+        ok(res, topup, 'Recarga enviada. Se acreditara cuando sea aprobada.')
+    } catch (e) { fail(res, e) }
+}
+
+export const listTopups = async (req: Request, res: Response) => {
+    try {
+        const u = userOf(req)
+        const id_client = u.i_rol === ROLES.ADMIN ? num(u.id_client) : num(req.query.id_client)
+        if (u.i_rol === ROLES.ADMIN && !id_client) return fail(res, new Error('Falta el cliente'))
+        ok(res, await balanceService.listTopups({
+            id_client,
+            id_status: num(req.query.id_status),
+            page: num(req.query.page),
+            limit: num(req.query.limit),
+        }))
+    } catch (e) { fail(res, e) }
+}
+
+export const approveTopup = async (req: Request, res: Response) => {
+    try {
+        const id_topup = num(req.params.id_topup)
+        if (!id_topup) return fail(res, new Error('Recarga invalida'))
+        ok(res, await balanceService.approveTopup(id_topup, idUserOf(req)), 'Recarga aprobada y saldo acreditado')
+    } catch (e) { fail(res, e) }
+}
+
+export const rejectTopup = async (req: Request, res: Response) => {
+    try {
+        const id_topup = num(req.params.id_topup)
+        if (!id_topup) return fail(res, new Error('Recarga invalida'))
+        ok(res, await balanceService.rejectTopup(id_topup, idUserOf(req), (req.body as any)?.reason), 'Recarga rechazada')
+    } catch (e) { fail(res, e) }
+}
+
+export const adjustBalance = async (req: Request, res: Response) => {
+    try {
+        const b: any = req.body ?? {}
+        const id_client = num(b.id_client)
+        if (!id_client) return fail(res, new Error('Falta el cliente'))
+        ok(res, await balanceService.adjustBalance(id_client, Number(b.amount), String(b.note ?? ''), idUserOf(req)), 'Saldo ajustado')
+    } catch (e) { fail(res, e) }
+}
+
+export const setPaymentMode = async (req: Request, res: Response) => {
+    try {
+        const id_client = num(req.params.id_client)
+        if (!id_client) return fail(res, new Error('Cliente invalido'))
+        ok(res, await balanceService.setPaymentMode(id_client, String((req.body as any)?.mode ?? ''), idUserOf(req)), 'Tipo de cuenta actualizado')
+    } catch (e) { fail(res, e) }
+}

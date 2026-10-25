@@ -1,0 +1,1431 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "mysql"
+}
+
+model addresses {
+  id                 Int       @id @default(autoincrement()) @db.UnsignedInt
+  entity_type        String    @db.VarChar(50)
+  entity_id          Int       @db.UnsignedInt
+  id_country         Int       @db.UnsignedInt
+  id_state           Int       @db.UnsignedInt
+  id_city            Int       @db.UnsignedInt
+  street             String    @db.VarChar(150)
+  ext_number         String    @db.VarChar(20)
+  int_number         String?   @db.VarChar(20)
+  neighborhood       String?   @db.VarChar(100)
+  postal_code        String    @db.VarChar(20)
+  address_references String?   @db.Text
+  latitude           Decimal?  @db.Decimal(10, 8)
+  longitude          Decimal?  @db.Decimal(11, 8)
+  is_active          Boolean   @default(true)
+  created_at         DateTime  @default(now()) @db.Timestamp(0)
+  updated_at         DateTime  @default(now()) @db.Timestamp(0)
+  city               cities    @relation(fields: [id_city], references: [id])
+  country            countries @relation(fields: [id_country], references: [id])
+  state              states    @relation(fields: [id_state], references: [id])
+
+  @@index([id_city], map: "addresses_id_city_fkey")
+  @@index([id_country], map: "addresses_id_country_fkey")
+  @@index([id_state], map: "addresses_id_state_fkey")
+}
+
+/// Registro no-destructivo de cada archivo subido al bucket (imágenes/docs).
+/// Una entidad puede tener varias versiones; la vigente es is_active = true.
+/// Nunca se borra: las versiones viejas quedan como is_active = false.
+model assets {
+  id_asset    Int      @id @default(autoincrement()) @db.UnsignedInt
+  id_client   Int?     @db.UnsignedInt
+  entity_type String   @db.VarChar(50)
+  entity_id   Int      @db.UnsignedInt
+  vc_folio    String?  @db.VarChar(50)
+  bucket_path String   @db.VarChar(500)
+  vc_url      String   @db.VarChar(500)
+  vc_mime     String?  @db.VarChar(100)
+  i_size      Int?
+  id_user     Int?     @db.UnsignedInt
+  is_active   Boolean  @default(true)
+  created_at  DateTime @default(now()) @db.Timestamp(0)
+
+  @@index([id_client, entity_type, entity_id, is_active], map: "idx_assets_entity")
+}
+
+model cities {
+  id         Int         @id @default(autoincrement()) @db.UnsignedInt
+  id_country Int         @db.UnsignedInt
+  id_state   Int         @db.UnsignedInt
+  name       String      @db.VarChar(100)
+  is_active  Boolean     @default(true)
+  created_at DateTime    @default(now()) @db.Timestamp(0)
+  updated_at DateTime    @default(now()) @db.Timestamp(0)
+  addresses  addresses[]
+  country    countries   @relation(fields: [id_country], references: [id])
+  state      states      @relation(fields: [id_state], references: [id])
+
+  @@index([id_country], map: "cities_id_country_fkey")
+  @@index([id_state], map: "cities_id_state_fkey")
+}
+
+model client_logs {
+  id_cliente_log Int      @id @default(autoincrement()) @db.UnsignedInt
+  id_client      Int      @db.UnsignedInt
+  id_user        Int      @db.UnsignedInt
+  log            String   @db.VarChar(1000)
+  i_status       Int      @default(1) @db.TinyInt
+  dt_register    DateTime @default(now()) @db.Timestamp(0)
+  dt_updated     DateTime @default(now()) @db.Timestamp(0)
+  clients        clients  @relation(fields: [id_client], references: [id_client], map: "fk_logs_client")
+  users          users    @relation(fields: [id_user], references: [id_user], map: "fk_logs_client_user")
+
+  @@index([id_client], map: "fk_logs_client")
+  @@index([id_user], map: "idx_client_logs_user")
+}
+
+model clients {
+  id_client               Int                @id @default(autoincrement()) @db.UnsignedInt
+  id_user                 Int                @db.UnsignedInt
+  name                    String?            @db.VarChar(100)
+  vc_initialism           String             @db.VarChar(20)
+  i_status                Int                @default(1) @db.TinyInt
+  dt_register             DateTime           @default(now()) @db.Timestamp(0)
+  dt_updated              DateTime           @default(now()) @db.Timestamp(0)
+  rfc                     String             @default("") @db.VarChar(15)
+  email                   String             @default("") @db.VarChar(255)
+  address                 String             @default("") @db.VarChar(255)
+  city                    String             @default("") @db.VarChar(255)
+  adiccional_notes        String?            @db.Text
+  phone                   String             @default("") @db.VarChar(20)
+  vc_url_situacion_fiscal String?            @db.VarChar(500)
+  vc_payment_mode         String             @default("CREDITO") @db.VarChar(10)
+  f_balance               Decimal            @default(0.00) @db.Decimal(12, 2)
+  client_logs             client_logs[]
+  drivers                 drivers[]
+  users                   users              @relation(fields: [id_user], references: [id_user], map: "fk_clients_user")
+  orders                  orders[]
+  products                products[]
+  questions_client        questions_client[]
+  requests                requests[]
+  tasks                   tasks[]
+  folios                  folios[]
+  client_charges          client_charges[]
+  client_stores           client_stores[]
+  balance_movements       client_balance_movements[]
+  topups                  client_topups[]
+
+  @@index([i_status], map: "idx_clients_status")
+  @@index([id_user], map: "idx_clients_user")
+}
+
+model countries {
+  id         Int         @id @default(autoincrement()) @db.UnsignedInt
+  name       String      @db.VarChar(100)
+  phone_code String      @db.VarChar(10)
+  is_active  Boolean     @default(true)
+  created_at DateTime    @default(now()) @db.Timestamp(0)
+  updated_at DateTime    @default(now()) @db.Timestamp(0)
+  addresses  addresses[]
+  cities     cities[]
+  states     states[]
+}
+
+model order_logs {
+  id_order_log Int      @id @default(autoincrement()) @db.UnsignedInt
+  id_order     Int      @default(0) @db.UnsignedInt
+  id_usuario   Int      @default(0) @db.UnsignedInt
+  id_promotor  Int      @default(0) @db.UnsignedInt
+  id_negocio   Int      @default(0) @db.UnsignedInt
+  id_pais      Int      @default(0) @db.UnsignedInt
+  vc_log       String   @db.VarChar(500)
+  i_status     Int      @default(1) @db.TinyInt
+  dt_registro  DateTime @default(now()) @db.Timestamp(0)
+  order        orders   @relation(fields: [id_order], references: [id_order])
+
+  @@index([id_negocio], map: "idx_negocio")
+  @@index([id_order], map: "idx_order")
+  @@index([id_usuario], map: "idx_usuario")
+}
+
+model orders {
+  id_order       Int              @id @default(autoincrement()) @db.UnsignedInt
+  id_user        Int              @db.UnsignedInt
+  id_client      Int              @db.UnsignedInt
+  vc_folio       String?          @unique(map: "uq_orders_folio") @db.VarChar(50)
+  f_total        Decimal          @db.Decimal(10, 2)
+  dt_register    DateTime         @db.DateTime(0)
+  dt_update      DateTime         @db.DateTime(0)
+  id_status      Int              @default(1)
+  order_items    order_items[]
+  order_logs     order_logs[]
+  order_requests order_requests[]
+  client         clients          @relation(fields: [id_client], references: [id_client])
+  user           users            @relation(fields: [id_user], references: [id_user])
+  tasks          tasks[]
+  charge_orders  client_charge_orders[]
+
+  @@index([id_client], map: "orders_id_client_fkey")
+  @@index([id_user], map: "orders_id_user_fkey")
+}
+
+model order_requests {
+  id          Int      @id @default(autoincrement()) @db.UnsignedInt
+  id_order    Int      @db.UnsignedInt
+  id_request  Int      @db.UnsignedInt
+  id_status   Int?
+  dt_register DateTime @default(now()) @db.Timestamp(0)
+  dt_update   DateTime @updatedAt @db.Timestamp(0)
+  order       orders   @relation(fields: [id_order], references: [id_order])
+  request     requests @relation(fields: [id_request], references: [id_request])
+
+  @@unique([id_order, id_request])
+  @@index([id_order])
+  @@index([id_request])
+}
+
+model order_items {
+  id_order_item Int      @id @default(autoincrement()) @db.UnsignedInt
+  id_order      Int      @db.UnsignedInt
+  id_request    Int      @db.UnsignedInt
+  id_store      Int      @db.UnsignedInt
+  f_value       Decimal  @db.Decimal(10, 2)
+  dt_register   DateTime @default(now()) @db.Timestamp(0)
+  dt_update     DateTime @default(now()) @db.Timestamp(0)
+  order         orders   @relation(fields: [id_order], references: [id_order])
+  request       requests @relation(fields: [id_request], references: [id_request])
+  store         stores   @relation(fields: [id_store], references: [id_store])
+
+  @@index([id_order], map: "idx_order_items_order")
+  @@index([id_request], map: "idx_order_items_request")
+  @@index([id_store], map: "idx_order_items_store")
+}
+
+model product_logs {
+  id_product_log Int       @id @default(autoincrement())
+  id_product     Int
+  id_usuario     Int       @default(0) @db.UnsignedInt
+  id_promotor    Int       @default(0) @db.UnsignedInt
+  id_negocio     Int       @default(0) @db.UnsignedInt
+  id_pais        Int       @default(0) @db.UnsignedInt
+  vc_log         String    @default("") @db.VarChar(500)
+  i_status       Boolean?  @default(true)
+  dt_register    DateTime? @default(now()) @db.DateTime(0)
+  dt_updated     DateTime? @updatedAt @db.Timestamp(0)
+}
+
+model products {
+  id_product        Int                @id @default(autoincrement())
+  id_user           Int                @db.UnsignedInt
+  id_client         Int                @db.UnsignedInt
+  vc_folio          String?            @unique(map: "uq_products_folio") @db.VarChar(50)
+  name              String             @db.VarChar(255)
+  description       String?            @db.Text
+  vc_image          String?            @db.VarChar(500)
+  /// Codigo (SKU o numero de codigo de barras) que el cliente escribe para
+  /// este producto. Se usa para que el promotor confirme, escaneando con
+  /// la camara, que tiene enfrente el producto correcto antes de revisarlo.
+  vc_sku            String?            @db.VarChar(100)
+  /// Foto del codigo de barras/QR que subio el cliente. Es solo de
+  /// referencia visual para el cliente en el panel -- el promotor nunca la
+  /// ve ni se usa para comparar, la comparacion real es contra vc_sku.
+  vc_barcode_image  String?            @db.VarChar(500)
+  i_status          Int?               @default(1) @db.TinyInt
+  /// Piezas disponibles ahora mismo. NULL = el cliente no maneja stock para
+  /// este producto (se surte sin restriccion, comportamiento de antes).
+  i_stock           Int?               @db.UnsignedInt
+  /// Si esta prendido, cuando un pedido pide mas piezas de las que hay en
+  /// i_stock, el faltante se puede surtir despues (backorder) en vez de
+  /// simplemente topar al stock disponible.
+  b_allow_backorder Boolean            @default(false)
+  /// Dias que tarda en surtirse el faltante cuando b_allow_backorder esta
+  /// prendido (ej. 20 o 30 dias, lo que el cliente decida).
+  i_backorder_days  Int?               @db.UnsignedSmallInt
+  /// Costo que se le cobra a la tienda por este producto (para que el dueño
+  /// del negocio sepa cuanto va a pagar por su pedido). Distinto del costo
+  /// de las preguntas del checklist.
+  f_store_price     Decimal?           @db.Decimal(10, 2)
+  dt_created        DateTime?          @default(now()) @db.Timestamp(0)
+  dt_updated        DateTime?          @default(now()) @updatedAt @db.Timestamp(0)
+  client            clients            @relation(fields: [id_client], references: [id_client])
+  request_products  request_products[]
+  stock_minimums    product_stock_minimums[]
+  stock_readings    store_product_stock[]
+  preorder_items    task_preorder_items[]
+  delivery_stop_items delivery_stop_items[]
+
+  @@index([id_client], map: "products_id_client_fkey")
+}
+
+model promoter_logs {
+  id_promoter_log Int      @id @default(autoincrement()) @db.UnsignedInt
+  id_promotor     Int      @default(0) @db.UnsignedInt
+  id_usuario      Int      @default(0) @db.UnsignedInt
+  id_negocio      Int      @default(0) @db.UnsignedInt
+  id_pais         Int      @default(0) @db.UnsignedInt
+  vc_log          String   @db.VarChar(500)
+  i_status        Int      @default(1) @db.TinyInt
+  dt_registro     DateTime @default(now()) @db.Timestamp(0)
+
+  @@index([id_negocio], map: "idx_negocio")
+  @@index([id_promotor], map: "idx_promotor")
+  @@index([id_usuario], map: "idx_usuario")
+}
+
+model promoters {
+  id            Int       @id @default(autoincrement()) @db.UnsignedInt
+  name          String    @db.VarChar(255)
+  lastname      String?   @db.VarChar(255)
+  email         String?   @unique(map: "vc_email") @db.VarChar(255)
+  password      String    @db.VarChar(255)
+  phone         String    @unique(map: "vc_phone") @db.VarChar(20)
+  fcm_token     String?   @db.VarChar(255)
+  dt_register   DateTime  @db.DateTime(0)
+  dt_updated    DateTime  @default(now()) @db.Timestamp(0)
+  dt_last_login DateTime? @db.DateTime(0)
+  isActive      Boolean   @default(true)
+  /// Codigo de 6 digitos + expiracion para "olvide mi contraseña" (se manda
+  /// por correo, ya que el login del promotor es por telefono y no siempre
+  /// tiene correo registrado). Si no tiene correo, no puede autoservirse y
+  /// el admin debe restablecerla desde el panel (ver PromoterDetalle).
+  reset_password_code    String?   @db.VarChar(6)
+  reset_password_expires DateTime? @db.Timestamp(0)
+  /// Fecha en que el promotor acepto los Terminos y Condiciones / Aviso de
+  /// Privacidad al registrarse. Sirve como evidencia real de consentimiento
+  /// (no basta con un checkbox visual del lado del cliente que se pueda
+  /// evadir); se exige y valida del lado del servidor en createPromoter.
+  dt_terms_accepted DateTime? @db.Timestamp(0)
+  /// Baja de cuenta solicitada por el promotor (borrado hibrido, requisito
+  /// de Google Play). El telefono NO se borra para conservar el
+  /// identificador historico y la integridad contable de tareas/pagos ya
+  /// realizados; en su lugar, se marca esta fecha y se revocan sus sesiones.
+  dt_deleted    DateTime? @db.Timestamp(0)
+  latitude      Decimal?  @db.Decimal(10, 8)
+  longitude     Decimal?  @db.Decimal(11, 8)
+  vc_referral_code String? @unique(map: "uq_promoters_referral_code") @db.VarChar(20)
+  id_activator     Int?    @db.UnsignedInt
+  id_driver_activator Int? @db.UnsignedInt
+  /// Switch global de "INFO" que ve el promotor arriba en todas las
+  /// pantallas (junto a su foto de perfil). Prende/apaga a la vez los 5
+  /// videos de introduccion (ver intro_video_clips); no es por seccion.
+  b_show_intro_videos Boolean @default(true)
+  /// Genero del promotor, elegido por el mismo desde su perfil en la app.
+  /// Se usa para elegir el avatar del asistente de "Dudas?" (se le muestra
+  /// una mujer si es hombre, un hombre si es mujer). Null hasta que lo capture.
+  vc_gender String? @db.VarChar(1)
+  tasks                  tasks[]
+  promoter_bank_accounts promoter_bank_accounts[]
+  payments               promoter_payments[]
+  activator            promoters?  @relation("PromoterActivator", fields: [id_activator], references: [id])
+  activated_promoters  promoters[] @relation("PromoterActivator")
+  activator_payments   activator_payments[]
+
+  @@index([id_activator], map: "idx_promoters_activator")
+  @@index([id_driver_activator], map: "idx_promoters_driver_activator")
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model question_client_logs {
+  id_question_client_log Int              @id @default(autoincrement()) @db.UnsignedInt
+  id_question_client     Int              @db.UnsignedInt
+  id_user                Int              @db.UnsignedInt
+  log                    String           @db.VarChar(1000)
+  i_status               Int              @default(1) @db.TinyInt
+  dt_register            DateTime         @default(now()) @db.Timestamp(0)
+  dt_updated             DateTime         @default(now()) @updatedAt @db.Timestamp(0)
+  questions_client       questions_client @relation(fields: [id_question_client], references: [id_question_client], map: "fk_question_client_logs_question_client")
+  users                  users            @relation(fields: [id_user], references: [id_user], map: "fk_question_client_logs_user")
+
+  @@index([id_question_client], map: "fk_question_client_logs_question_client")
+  @@index([id_user], map: "fk_question_client_logs_user")
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model question_logs {
+  id_question_log Int       @id @default(autoincrement()) @db.UnsignedInt
+  id_question     Int       @db.UnsignedInt
+  id_user         Int       @db.UnsignedInt
+  log             String    @db.VarChar(1000)
+  i_status        Int       @default(1) @db.TinyInt
+  dt_register     DateTime  @default(now()) @db.Timestamp(0)
+  dt_updated      DateTime  @default(now()) @db.Timestamp(0)
+  questions       questions @relation(fields: [id_question], references: [id_question], map: "fk_logs_question")
+  users           users     @relation(fields: [id_user], references: [id_user], map: "fk_logs_question_user")
+
+  @@index([id_question], map: "fk_logs_question")
+  @@index([id_user], map: "fk_logs_question_user")
+}
+
+model question_options {
+  id_option            Int       @id @default(autoincrement()) @db.UnsignedInt
+  id_question          Int       @db.UnsignedInt
+  option_text          String    @db.VarChar(255)
+  option_value_numeric Decimal?  @db.Decimal(10, 2)
+  option_value_text    String?   @db.VarChar(100)
+  option_order         Int?      @default(0)
+  i_status             Boolean?  @default(true)
+  dt_register          DateTime? @default(now()) @db.DateTime(0)
+  dt_updated           DateTime? @default(now()) @updatedAt @db.DateTime(0)
+  questions            questions @relation("QuestionOptions", fields: [id_question], references: [id_question], map: "fk_option_question")
+
+  @@index([id_question], map: "fk_option_question")
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model questions {
+  id_question               Int                         @id @default(autoincrement()) @db.UnsignedInt
+  id_user                   Int                         @db.UnsignedInt
+  question                  String                      @db.VarChar(1000)
+  f_cost                    Decimal                     @default(0) @db.Decimal(10, 2)
+  i_status                  Int                         @default(1) @db.TinyInt
+  dt_register               DateTime                    @default(now()) @db.Timestamp(0)
+  dt_updated                DateTime                    @default(now()) @updatedAt @db.Timestamp(0)
+  question_type             String?                     @default("open") @db.VarChar(20)
+  min_value                 Decimal?                    @db.Decimal(10, 2)
+  max_value                 Decimal?                    @db.Decimal(10, 2)
+  max_photos                Int?                        @default(1)
+  /// Marca la pregunta unica de sistema "¿Cuantas piezas hay en existencia?"
+  /// que se agrega automaticamente (gratis) a todo producto de toda
+  /// solicitud, para poder alimentar el mapa de inventario del cliente.
+  /// No la crea el cliente; ver requests.service.ts getOrCreateStockQuestion.
+  b_stock_question           Boolean                     @default(false)
+  question_logs             question_logs[]
+  question_options          question_options[]          @relation("QuestionOptions")
+  users                     users                       @relation(fields: [id_user], references: [id_user], map: "fk_question_user")
+  questions_client          questions_client[]
+  request_product_questions request_product_questions[]
+
+  @@index([id_user], map: "fk_question_user")
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model questions_client {
+  id_question_client   Int                    @id @default(autoincrement()) @db.UnsignedInt
+  id_question          Int                    @db.UnsignedInt
+  id_client            Int                    @db.UnsignedInt
+  id_user              Int                    @db.UnsignedInt
+  i_status             Int                    @default(1) @db.TinyInt
+  dt_register          DateTime               @default(now()) @db.Timestamp(0)
+  dt_updated           DateTime               @default(now()) @updatedAt @db.Timestamp(0)
+  question_client_logs question_client_logs[]
+  clients              clients                @relation(fields: [id_client], references: [id_client], map: "fk_question_client_client")
+  questions            questions              @relation(fields: [id_question], references: [id_question], map: "fk_question_client_question")
+  users                users                  @relation(fields: [id_user], references: [id_user], map: "fk_question_client_user")
+
+  @@index([id_client], map: "fk_question_client_client")
+  @@index([id_question], map: "fk_question_client_question")
+  @@index([id_user], map: "fk_question_client_user")
+}
+
+model request_logs {
+  id_request_log Int      @id @default(autoincrement()) @db.UnsignedInt
+  id_request     Int      @default(0) @db.UnsignedInt
+  id_usuario     Int      @default(0) @db.UnsignedInt
+  id_promotor    Int      @default(0) @db.UnsignedInt
+  id_negocio     Int      @default(0) @db.UnsignedInt
+  id_pais        Int      @default(0) @db.UnsignedInt
+  vc_log         String   @db.VarChar(500)
+  i_status       Int      @default(1) @db.TinyInt
+  dt_registro    DateTime @default(now()) @db.Timestamp(0)
+
+  @@index([id_negocio], map: "idx_negocio")
+  @@index([id_request], map: "idx_request")
+  @@index([id_usuario], map: "idx_usuario")
+}
+
+model request_product_questions {
+  id_request_product_question Int              @id @default(autoincrement()) @db.UnsignedInt
+  id_request_product          Int              @db.UnsignedInt
+  id_question                 Int              @db.UnsignedInt
+  dt_register                 DateTime         @default(now()) @db.Timestamp(0)
+  dt_update                   DateTime         @default(now()) @db.Timestamp(0)
+  b_active                    Boolean          @default(true)
+  question                    questions        @relation(fields: [id_question], references: [id_question])
+  request_product             request_products @relation(fields: [id_request_product], references: [id_request_product])
+
+  @@index([id_request_product], map: "idx_request_product_question_rp")
+  @@index([id_question], map: "idx_request_product_question_question")
+}
+
+model request_products {
+  id_request_product        Int                         @id @default(autoincrement()) @db.UnsignedInt
+  id_request                Int                         @db.UnsignedInt
+  id_product                Int
+  dt_register               DateTime                    @default(now()) @db.Timestamp(0)
+  dt_update                 DateTime                    @default(now()) @db.Timestamp(0)
+  b_active                  Boolean                     @default(true)
+  request_product_questions request_product_questions[]
+  product                   products                    @relation(fields: [id_product], references: [id_product])
+  request                   requests                    @relation(fields: [id_request], references: [id_request])
+
+  @@unique([id_request, id_product], map: "uq_request_product")
+  @@index([id_request], map: "idx_request_products_request")
+  @@index([id_product], map: "idx_request_products_product")
+}
+
+model requests {
+  id_request       Int                @id @default(autoincrement()) @db.UnsignedInt
+  id_user          Int                @db.UnsignedInt
+  id_client        Int                @db.UnsignedInt
+  vc_folio         String?            @unique(map: "uq_requests_folio") @db.VarChar(50)
+  vc_name          String             @db.VarChar(255)
+  f_value          Decimal            @db.Decimal(10, 2)
+  dt_register      DateTime           @default(now()) @db.Timestamp(0)
+  dt_update        DateTime           @default(now()) @db.Timestamp(0)
+  id_status        Int                @default(1)
+  b_active         Boolean            @default(true)
+  /// Extra "Prepedido": si esta activo, al terminar su conteo de piezas el
+  /// promotor puede levantar un pedido con el encargado de la tienda por lo
+  /// que le falte contra el minimo configurado, y mandarselo por WhatsApp.
+  b_preorder       Boolean            @default(false)
+  /// Solo aplica si b_preorder es true. 'ABIERTA': el encargado de la tienda
+  /// elige la fecha/turno de entrega. 'CERRADA': se asigna automaticamente
+  /// segun la ruta del cliente.
+  preorder_date_mode String           @default("ABIERTA") @db.VarChar(10)
+  url_rack_image   String?            @db.VarChar(500)
+  order_items      order_items[]
+  order_requests   order_requests[]
+  request_products request_products[]
+  client           clients            @relation(fields: [id_client], references: [id_client])
+  tasks            tasks[]
+
+  @@index([id_client], map: "requests_id_client_fkey")
+}
+
+model states {
+  id         Int         @id @default(autoincrement()) @db.UnsignedInt
+  id_country Int         @db.UnsignedInt
+  name       String      @db.VarChar(100)
+  is_active  Boolean     @default(true)
+  created_at DateTime    @default(now()) @db.Timestamp(0)
+  updated_at DateTime    @default(now()) @db.Timestamp(0)
+  addresses  addresses[]
+  cities     cities[]
+  country    countries   @relation(fields: [id_country], references: [id])
+
+  @@index([id_country], map: "states_id_country_fkey")
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model store_logs {
+  id_store_log Int      @id @default(autoincrement()) @db.UnsignedInt
+  id_store     Int      @db.UnsignedInt
+  id_user      Int      @db.UnsignedInt
+  log          String   @db.VarChar(1000)
+  i_status     Int      @default(1) @db.TinyInt
+  dt_register  DateTime @default(now()) @db.Timestamp(0)
+  dt_updated   DateTime @default(now()) @db.Timestamp(0)
+  stores       stores   @relation(fields: [id_store], references: [id_store], map: "fk_logs_store")
+  users        users    @relation(fields: [id_user], references: [id_user], map: "fk_logs_store_user")
+
+  @@index([id_store], map: "fk_logs_store")
+  @@index([id_user], map: "fk_logs_store_user")
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+/// Minimo de piezas que el cliente exige por producto en una tienda
+/// especifica (cada tienda se comporta distinto, por eso es por tienda y no
+/// un minimo general del producto). Alimenta el semaforo del mapa.
+model product_stock_minimums {
+  id_minimum      Int      @id @default(autoincrement()) @db.UnsignedInt
+  id_product      Int
+  id_store        Int      @db.UnsignedInt
+  i_minimum       Int
+  id_user_updater Int?     @db.UnsignedInt
+  dt_register     DateTime @default(now()) @db.Timestamp(0)
+  dt_updated      DateTime @default(now()) @updatedAt @db.Timestamp(0)
+  product         products @relation(fields: [id_product], references: [id_product])
+  store           stores   @relation(fields: [id_store], references: [id_store])
+
+  @@unique([id_product, id_store], map: "uq_stock_minimum_product_store")
+  @@index([id_store], map: "idx_stock_minimum_store")
+}
+
+/// Ultimo conteo de piezas que reporto un promotor para un producto en una
+/// tienda (se sobreescribe con cada visita nueva; siempre refleja el dato
+/// mas reciente). Se llena automaticamente al responder la pregunta de
+/// sistema "¿Cuantas piezas hay en existencia?" (ver questions.b_stock_question).
+model store_product_stock {
+  id_store    Int      @db.UnsignedInt
+  id_product  Int
+  i_quantity  Int
+  id_task     Int      @db.UnsignedInt
+  id_promoter Int      @db.UnsignedInt
+  dt_register DateTime @default(now()) @updatedAt @db.Timestamp(0)
+  store       stores   @relation(fields: [id_store], references: [id_store])
+  product     products @relation(fields: [id_product], references: [id_product])
+
+  @@id([id_store, id_product])
+  @@index([id_product], map: "idx_stock_reading_product")
+}
+
+model stores {
+  id_store        Int             @id @default(autoincrement()) @db.UnsignedInt
+  id_user         Int             @db.UnsignedInt
+  id_channel_sale Int?            @db.UnsignedInt
+  name            String          @db.VarChar(100)
+  store_code      String?         @db.VarChar(50)
+  i_status        Int             @default(1) @db.TinyInt
+  dt_register     DateTime        @default(now()) @db.Timestamp(0)
+  dt_updated      DateTime        @default(now()) @db.Timestamp(0)
+  order_items     order_items[]
+  store_logs      store_logs[]
+  sales_channel   sales_channels? @relation(fields: [id_channel_sale], references: [id], map: "fk_store_channel")
+  users           users           @relation(fields: [id_user], references: [id_user], map: "fk_store_user")
+  tasks           tasks[]
+  stock_minimums  product_stock_minimums[]
+  stock_readings  store_product_stock[]
+  delivery_stops  delivery_route_stops[]
+  client_stores   client_stores[]
+
+  @@index([id_user], map: "fk_store_user")
+  @@index([id_channel_sale], map: "fk_store_channel")
+}
+
+/// Una tienda se vuelve "tuya" (del cliente) la primera vez que la incluyes
+/// en un pedido. Antes de eso es solo parte del directorio compartido
+/// ("Tiendas de la app"). Se va formando solo, no se asigna a mano.
+model client_stores {
+  id_client_store Int      @id @default(autoincrement()) @db.UnsignedInt
+  id_client       Int      @db.UnsignedInt
+  id_store        Int      @db.UnsignedInt
+  dt_first_order  DateTime @default(now()) @db.Timestamp(0)
+  client          clients  @relation(fields: [id_client], references: [id_client])
+  store           stores   @relation(fields: [id_store], references: [id_store])
+
+  @@unique([id_client, id_store], map: "uq_client_store")
+  @@index([id_client], map: "fk_client_stores_client")
+  @@index([id_store], map: "fk_client_stores_store")
+}
+
+model task_answers {
+  id_task_answer              Int      @id @default(autoincrement()) @db.UnsignedInt
+  id_task                     Int
+  id_promoter                 Int
+  id_request_product_question Int
+  vc_answer                   String?  @db.Text
+  vc_image_url                String?  @db.VarChar(255)
+  dt_register                 DateTime @db.DateTime(0)
+
+  @@unique([id_task, id_promoter, id_request_product_question], map: "uq_task_answers")
+}
+
+// NOTA: sin @relation a `tasks`/`promoters` a propósito. id_task/id_promoter
+// aquí son int(11) con signo, mientras que tasks.id_task y promoters.id son
+// int unsigned — MySQL no permite crear una FK real entre tipos con
+// signedness distinto (errno 150), y cambiar el tipo de esas columnas en
+// producción es más riesgo del que vale la pena. Si se declara la relación,
+// `db push`/`migrate` van a intentar crear la FK en cada corrida y van a
+// tronar aquí. El join tienda/solicitud se hace a mano en
+// tasks.service.ts:getPromoterTaskHistory con una query aparte.
+model task_rejections {
+  id_rejection Int       @id @default(autoincrement())
+  id_task      Int
+  id_promoter  Int
+  /// 'rejected' = el promotor rechazó la oferta; 'timeout' = se le desvinculó
+  /// automáticamente por no iniciar la tarea a tiempo tras "en camino".
+  reason       String    @default("rejected") @db.VarChar(20)
+  dt_register  DateTime? @default(now()) @db.DateTime(0)
+
+  @@unique([id_task, id_promoter], map: "uq_task_promoter")
+  @@index([id_task], map: "idx_task_rejections_task")
+  @@index([id_promoter], map: "idx_task_rejections_promoter")
+}
+
+/// Pedido acordado entre el promotor y el encargado/dueño de la tienda,
+/// cuando la solicitud tiene el extra "Prepedido" activado (b_preorder).
+/// Se levanta cuando, tras el conteo de piezas, hay faltante contra el
+/// minimo configurado por el cliente para esa tienda/producto.
+model task_preorders {
+  id_preorder       Int      @id @default(autoincrement()) @db.UnsignedInt
+  id_task           Int      @db.UnsignedInt @unique
+  /// Numero de WhatsApp del encargado/dueño de la tienda (no del cliente
+  /// empresarial) — es a quien se le manda el mensaje con el pedido.
+  manager_whatsapp  String   @db.VarChar(20)
+  /// Firma electronica del encargado/dueño, capturada en pantalla y
+  /// guardada como imagen (ver StorageService).
+  manager_signature String   @db.VarChar(500)
+  /// Fecha en la que el encargado/dueño pidio que le entreguen el pedido.
+  preferred_date    DateTime @db.Date
+  /// 'MAÑANA' o 'TARDE' — turno de entrega preferido.
+  preferred_time    String   @db.VarChar(10)
+  /// 0 = sin surtir (recien levantado, todavia no se entrega), 1 = surtido
+  /// (ya se le entrego la mercancia a la tienda).
+  id_status         Int      @default(0) @db.TinyInt
+  dt_register       DateTime @default(now()) @db.Timestamp(0)
+  dt_updated        DateTime @default(now()) @updatedAt @db.Timestamp(0)
+  task              tasks    @relation(fields: [id_task], references: [id_task])
+  items             task_preorder_items[]
+  delivery_stops    delivery_route_stops[]
+}
+
+/// Renglones del pedido acordado: cuanto de cada producto se va a surtir.
+model task_preorder_items {
+  id_item              Int             @id @default(autoincrement()) @db.UnsignedInt
+  id_preorder          Int             @db.UnsignedInt
+  id_product           Int
+  i_quantity           Int
+  /// Cuanto de i_quantity se surte de inmediato (con el stock disponible en
+  /// ese momento). Si el producto no maneja stock, o alcanza el stock
+  /// completo, esto es igual a i_quantity.
+  i_quantity_immediate Int?
+  /// Cuanto de i_quantity queda pendiente por surtir despues (backorder).
+  /// NULL o 0 si no aplico backorder para este renglon.
+  i_quantity_backorder Int?
+  /// Dias de entrega prometidos para i_quantity_backorder (copiado del
+  /// producto al momento de crear el prepedido, para que quede fijo aunque
+  /// el cliente cambie despues la configuracion del producto).
+  i_backorder_days     Int?
+  preorder             task_preorders  @relation(fields: [id_preorder], references: [id_preorder])
+  product              products        @relation(fields: [id_product], references: [id_product])
+
+  @@index([id_preorder], map: "idx_preorder_item_preorder")
+}
+
+model tasks {
+  id_task              Int        @id @default(autoincrement()) @db.UnsignedInt
+  id_order             Int        @db.UnsignedInt
+  id_store             Int        @db.UnsignedInt
+  id_promoter          Int?       @db.UnsignedInt
+  vc_folio             String?    @unique(map: "uq_tasks_folio") @db.VarChar(50)
+  dt_register          DateTime   @default(now()) @db.Timestamp(0)
+  dt_update            DateTime   @default(now()) @db.Timestamp(0)
+  id_status            Int        @default(1)
+  /// Motivo/comentario de cancelación (requerido al cancelar desde revisión o
+  /// al cerrar el pedido); null si la tarea no está cancelada por este flujo.
+  vc_cancel_reason     String?    @db.Text
+  /// 'cliente' = cancelada por un admin al revisar la tarea; 'negocio' =
+  /// cancelada en cascada por cierre de pedido. Ver tasks.service.ts.
+  vc_cancel_type       String?    @db.VarChar(20)
+  /// Nota del master al resolver un rechazo del cliente (tarea en estado 9).
+  vc_master_note       String?    @db.Text
+  id_user_resolver     Int?       @db.UnsignedInt
+  dt_dispute_resolved  DateTime?  @db.DateTime(0)
+  i_notification_count Int        @default(0)
+  id_request           Int?       @db.UnsignedInt
+  id_client            Int        @db.UnsignedInt
+  i_current_cycle      Int        @default(0)
+  dt_next_retry        DateTime?
+  id_invoice            Int?       @db.UnsignedInt
+  id_promoter_payment   Int?       @db.UnsignedInt
+  id_activator_payment  Int?       @db.UnsignedInt
+  id_driver_activator_payment Int? @db.UnsignedInt
+  client               clients    @relation(fields: [id_client], references: [id_client])
+  order                orders     @relation(fields: [id_order], references: [id_order])
+  promoter             promoters? @relation(fields: [id_promoter], references: [id])
+  request              requests?  @relation(fields: [id_request], references: [id_request])
+  store                stores     @relation(fields: [id_store], references: [id_store])
+  charge_tasks         client_charge_tasks[]
+  payment_tasks        promoter_payment_tasks[]
+  activator_payment_tasks activator_payment_tasks[]
+  preorder             task_preorders?
+
+  @@index([id_client], map: "tasks_id_client_fkey")
+  @@index([id_order], map: "tasks_id_order_fkey")
+  @@index([id_promoter], map: "tasks_id_promoter_fkey")
+  @@index([id_request], map: "tasks_id_request_fkey")
+  @@index([id_store], map: "tasks_id_store_fkey")
+  @@index([id_invoice], map: "idx_tasks_invoice")
+  @@index([id_promoter_payment], map: "idx_tasks_promoter_payment")
+  @@index([id_activator_payment], map: "idx_tasks_activator_payment")
+  @@index([id_driver_activator_payment], map: "idx_tasks_driver_activator_payment")
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model user_logs {
+  id_user_log Int      @id @default(autoincrement()) @db.UnsignedInt
+  id_user     Int      @db.UnsignedInt
+  log         String   @db.VarChar(1000)
+  i_status    Int      @default(1) @db.TinyInt
+  dt_register DateTime @default(now()) @db.Timestamp(0)
+  dt_updated  DateTime @default(now()) @db.Timestamp(0)
+  users       users    @relation(fields: [id_user], references: [id_user], map: "fk_logs_user")
+
+  @@index([id_user], map: "fk_logs_user")
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model users {
+  id_user                Int                    @id @default(autoincrement()) @db.UnsignedInt
+  email                  String                 @unique(map: "uq_users_email") @db.VarChar(100)
+  password               String                 @db.VarChar(255)
+  i_rol                  Int                    @default(2) @db.TinyInt
+  i_status               Int                    @default(1) @db.TinyInt
+  dt_register            DateTime               @default(now()) @db.Timestamp(0)
+  dt_updated             DateTime               @default(now()) @db.Timestamp(0)
+  name                   String                 @db.VarChar(100)
+  lastname               String                 @db.VarChar(100)
+  reset_password_token   String?                @db.VarChar(500)
+  reset_password_expires DateTime?              @db.Timestamp(0)
+  /// El master reseteo la contraseña (queda en "1234") y esta persona debe
+  /// poner una nueva antes de poder usar el resto del sistema.
+  must_change_password   Boolean                @default(false)
+  /// JSON con la lista de rutas del menu permitidas. NULL = ve todo (usuario master).
+  vc_permisos            String?                @db.Text
+  id_client              Int                    @default(0) @db.UnsignedInt
+  id_user_creator        Int                    @default(0) @db.UnsignedInt
+  client_logs            client_logs[]
+  clients                clients[]
+  orders                 orders[]
+  question_client_logs   question_client_logs[]
+  question_logs          question_logs[]
+  questions              questions[]
+  questions_client       questions_client[]
+  store_logs             store_logs[]
+  stores                 stores[]
+  user_logs              user_logs[]
+
+  @@index([reset_password_token], map: "idx_reset_token")
+  @@index([i_rol, i_status], map: "idx_users_rol_status")
+}
+
+model folios {
+  id_folio        Int      @id @default(autoincrement()) @db.UnsignedInt
+  id_client       Int      @db.UnsignedInt
+  vc_entity       String   @db.VarChar(30)
+  i_current_folio Int      @default(0) @db.UnsignedInt
+  dt_register     DateTime @default(now()) @db.Timestamp(0)
+  dt_updated      DateTime @default(now()) @updatedAt @db.Timestamp(0)
+  client          clients  @relation(fields: [id_client], references: [id_client], map: "fk_folios_client")
+
+  @@unique([id_client, vc_entity], map: "uq_folios_client_entity")
+  @@index([id_client], map: "idx_folios_client")
+}
+
+// ==================== FINANZAS: COBROS A CLIENTES ====================
+
+model client_charges {
+  id_charge           Int       @id @default(autoincrement()) @db.UnsignedInt
+  id_client           Int       @db.UnsignedInt
+  vc_folio            String?   @unique(map: "uq_client_charges_folio") @db.VarChar(50)
+  dt_start            DateTime  @db.DateTime(0)
+  dt_end              DateTime  @db.DateTime(0)
+  f_total             Decimal   @db.Decimal(10, 2)
+  id_user_creator     Int       @db.UnsignedInt
+  dt_register         DateTime  @default(now()) @db.Timestamp(0)
+  dt_updated          DateTime  @default(now()) @updatedAt @db.Timestamp(0)
+
+  client        clients                @relation(fields: [id_client], references: [id_client])
+  charge_orders client_charge_orders[]
+  charge_tasks  client_charge_tasks[]
+
+  @@index([id_client], map: "idx_client_charges_client")
+}
+
+model client_charge_orders {
+  id                   Int            @id @default(autoincrement()) @db.UnsignedInt
+  id_charge            Int            @db.UnsignedInt
+  id_order             Int            @db.UnsignedInt
+  vc_folio             String?        @unique(map: "uq_charge_orders_folio") @db.VarChar(50)
+  f_amount             Decimal        @db.Decimal(10, 2)
+  f_subtotal           Decimal?       @db.Decimal(10, 2)
+  f_tax                Decimal?       @db.Decimal(10, 2)
+  id_status            Int            @default(1)
+  dt_due               DateTime?      @db.DateTime(0)
+  dt_payment           DateTime?      @db.DateTime(0)
+  vc_payment_method    String?        @db.VarChar(50)
+  vc_rejection_reason  String?        @db.VarChar(500)
+  id_user_validator    Int?           @db.UnsignedInt
+  dt_register          DateTime       @default(now()) @db.Timestamp(0)
+  dt_updated           DateTime       @default(now()) @updatedAt @db.Timestamp(0)
+
+  charge      client_charges @relation(fields: [id_charge], references: [id_charge])
+  order       orders         @relation(fields: [id_order], references: [id_order])
+
+  @@unique([id_charge, id_order], map: "uq_charge_order")
+  @@index([id_order], map: "idx_charge_orders_order")
+  @@index([id_status], map: "idx_charge_orders_status")
+}
+
+model client_charge_tasks {
+  id          Int            @id @default(autoincrement()) @db.UnsignedInt
+  id_charge   Int            @db.UnsignedInt
+  id_order    Int            @db.UnsignedInt
+  id_task     Int            @db.UnsignedInt
+  f_amount    Decimal        @db.Decimal(10, 2)
+  dt_register DateTime       @default(now()) @db.Timestamp(0)
+  charge      client_charges @relation(fields: [id_charge], references: [id_charge])
+  task        tasks          @relation(fields: [id_task], references: [id_task])
+
+  @@unique([id_charge, id_task], map: "uq_charge_task")
+  @@index([id_task], map: "idx_charge_tasks_task")
+}
+
+model client_charge_logs {
+  id_charge_log Int      @id @default(autoincrement()) @db.UnsignedInt
+  id_charge     Int      @db.UnsignedInt
+  id_user       Int      @db.UnsignedInt
+  vc_log        String   @db.VarChar(1000)
+  i_status      Int      @default(1) @db.TinyInt
+  dt_register   DateTime @default(now()) @db.Timestamp(0)
+
+  @@index([id_charge], map: "idx_client_charge_logs_charge")
+}
+
+// ==================== FINANZAS: PAGOS A PROMOTORES ====================
+
+model promoter_payments {
+  id_payment      Int       @id @default(autoincrement()) @db.UnsignedInt
+  id_promoter     Int       @db.UnsignedInt
+  vc_folio        String?   @unique(map: "uq_promoter_payments_folio") @db.VarChar(50)
+  dt_start        DateTime  @db.DateTime(0)
+  dt_end          DateTime  @db.DateTime(0)
+  f_total         Decimal   @db.Decimal(10, 2)
+  id_status       Int       @default(1)
+  id_bank_account Int?      @db.UnsignedInt
+  dt_payment      DateTime? @db.DateTime(0)
+  vc_notes        String?   @db.VarChar(500)
+  id_user_creator Int       @db.UnsignedInt
+  id_user_payer   Int?      @db.UnsignedInt
+  dt_register     DateTime  @default(now()) @db.Timestamp(0)
+  dt_updated      DateTime  @default(now()) @updatedAt @db.Timestamp(0)
+
+  promoter      promoters                @relation(fields: [id_promoter], references: [id])
+  payment_tasks promoter_payment_tasks[]
+
+  @@index([id_promoter, id_status], map: "idx_promoter_payments_promoter_status")
+}
+
+model promoter_payment_tasks {
+  id          Int               @id @default(autoincrement()) @db.UnsignedInt
+  id_payment  Int               @db.UnsignedInt
+  id_task     Int               @db.UnsignedInt
+  f_amount    Decimal           @db.Decimal(10, 2)
+  dt_register DateTime          @default(now()) @db.Timestamp(0)
+  payment     promoter_payments @relation(fields: [id_payment], references: [id_payment])
+  task        tasks             @relation(fields: [id_task], references: [id_task])
+
+  @@unique([id_payment, id_task], map: "uq_payment_task")
+  @@index([id_task], map: "idx_payment_tasks_task")
+}
+
+model promoter_payment_logs {
+  id_payment_log Int      @id @default(autoincrement()) @db.UnsignedInt
+  id_payment     Int      @db.UnsignedInt
+  id_user        Int      @db.UnsignedInt
+  vc_log         String   @db.VarChar(1000)
+  i_status       Int      @default(1) @db.TinyInt
+  dt_register    DateTime @default(now()) @db.Timestamp(0)
+
+  @@index([id_payment], map: "idx_promoter_payment_logs_payment")
+}
+
+model finance_settings {
+  id_setting                          Int      @id @default(1)
+  f_promoter_commission_percentage    Decimal  @db.Decimal(5, 2) @default(0)
+  f_activator_commission_percentage   Decimal  @db.Decimal(5, 2) @default(10)
+  id_system_client                    Int      @db.UnsignedInt
+  id_user_updater                     Int?     @db.UnsignedInt
+  dt_updated                          DateTime @default(now()) @updatedAt @db.Timestamp(0)
+}
+
+// ==================== FINANZAS: PAGOS A ACTIVADORES ====================
+model activator_payments {
+  id_payment       Int       @id @default(autoincrement()) @db.UnsignedInt
+  id_activator     Int       @db.UnsignedInt
+  vc_folio         String?   @unique(map: "uq_activator_payments_folio") @db.VarChar(50)
+  dt_start         DateTime  @db.DateTime(0)
+  dt_end           DateTime  @db.DateTime(0)
+  f_total          Decimal   @db.Decimal(10, 2)
+  id_status        Int       @default(1)
+  dt_payment       DateTime? @db.DateTime(0)
+  id_bank_account  Int?      @db.UnsignedInt
+  vc_notes         String?   @db.VarChar(500)
+  id_user_creator  Int       @db.UnsignedInt
+  id_user_payer    Int?      @db.UnsignedInt
+  dt_register      DateTime  @default(now()) @db.Timestamp(0)
+  dt_updated       DateTime  @default(now()) @updatedAt @db.Timestamp(0)
+
+  activator     promoters @relation(fields: [id_activator], references: [id])
+  payment_tasks activator_payment_tasks[]
+
+  @@index([id_activator, id_status], map: "idx_activator_payments_activator_status")
+}
+
+model activator_payment_tasks {
+  id          Int      @id @default(autoincrement()) @db.UnsignedInt
+  id_payment  Int      @db.UnsignedInt
+  id_task     Int      @db.UnsignedInt
+  id_promoter Int      @db.UnsignedInt
+  f_amount    Decimal  @db.Decimal(10, 2)
+  dt_register DateTime @default(now()) @db.Timestamp(0)
+
+  payment activator_payments @relation(fields: [id_payment], references: [id_payment])
+  task    tasks              @relation(fields: [id_task], references: [id_task])
+
+  @@unique([id_payment, id_task], map: "uq_activator_payment_task")
+  @@index([id_task], map: "idx_activator_payment_tasks_task")
+}
+
+model activator_payment_logs {
+  id_payment_log Int      @id @default(autoincrement()) @db.UnsignedInt
+  id_payment     Int      @db.UnsignedInt
+  id_user        Int      @db.UnsignedInt
+  vc_log         String   @db.VarChar(1000)
+  dt_register    DateTime @default(now()) @db.Timestamp(0)
+
+  @@index([id_payment], map: "idx_activator_payment_logs_payment")
+}
+
+// ==================== OPERACIÓN: CONFIGURACIÓN DE TAREAS ====================
+model task_settings {
+  id_setting              Int      @id @default(1)
+  i_review_timeout_hours  Int      @default(24)
+  /// Despues de cuantas horas sin que el cliente cierre un pedido, se
+  /// cierra solo (cancelando las tareas que nadie tomo, para que dejen de
+  /// mandar notificaciones de "nueva tarea disponible" indefinidamente).
+  i_order_auto_close_hours Int     @default(24)
+  /// Como se cobra el extra "Prepedido" en una solicitud: monto fijo o
+  /// porcentaje sobre el total. El master lo puede cambiar cuando quiera
+  /// desde el panel, no esta fijo en el codigo.
+  preorder_pricing_type   String   @default("FIXED") @db.VarChar(10) // 'FIXED' | 'PERCENTAGE'
+  preorder_pricing_value  Decimal  @default(0) @db.Decimal(10, 2)
+  id_user_updater         Int?     @db.UnsignedInt
+  dt_updated               DateTime @default(now()) @updatedAt @db.Timestamp(0)
+}
+
+// ==================== FINANZAS ====================
+model sales_channels {
+  id          Int      @id @default(autoincrement()) @db.UnsignedInt
+  name        String
+  description String?
+  url_image   String?
+  is_active   Boolean  @default(true)
+  stores      stores[]
+}
+
+enum promoter_account_type {
+  CLABE
+  CARD
+}
+
+model promoter_bank_accounts {
+  id                  Int                   @id @default(autoincrement()) @db.UnsignedInt
+  id_promoter         Int                   @db.UnsignedInt
+  account_holder_name String                @db.VarChar(255)
+  account_type        promoter_account_type
+  /// Cifrado con AES-256-GCM (ver EncryptionService). Nunca se guarda en
+  /// texto plano. Formato: "iv:authTag:cipherText".
+  clabe               String?               @db.Text
+  /// Cifrado con AES-256-GCM (ver EncryptionService). Nunca se guarda en
+  /// texto plano. Formato: "iv:authTag:cipherText".
+  card_number         String?               @db.Text
+  bank_name           String                @db.VarChar(255)
+  dt_register         DateTime              @default(now()) @db.Timestamp(0)
+  dt_updated          DateTime              @default(now()) @updatedAt @db.Timestamp(0)
+  dt_deleted          DateTime?             @db.Timestamp(0)
+  promoter            promoters             @relation(fields: [id_promoter], references: [id])
+
+  @@index([id_promoter], map: "idx_promoter_bank_accounts_promoter")
+}
+
+// ==================== LOGISTICA / CHOFERES ====================
+
+model drivers {
+  id_driver      Int              @id @default(autoincrement()) @db.UnsignedInt
+  id_client      Int              @db.UnsignedInt
+  name           String           @db.VarChar(150)
+  phone          String           @db.VarChar(20)
+  email          String?          @db.VarChar(255)
+  password_hash  String           @db.VarChar(255)
+  vc_photo       String?          @db.VarChar(500)
+  /// Ubicacion mas reciente del chofer, para poder ordenar su lista de
+  /// entregas de la mas cercana a la mas lejana.
+  latitude       Decimal?         @db.Decimal(10, 8)
+  longitude      Decimal?         @db.Decimal(11, 8)
+  dt_location_updated DateTime?   @db.Timestamp(0)
+  i_status       Int              @default(1) @db.TinyInt
+  /// El master/cliente reseteo la contraseña (queda en "1234") y el chofer
+  /// debe poner una nueva antes de poder usar el resto del panel.
+  must_change_password Boolean    @default(false)
+  dt_register    DateTime         @default(now()) @db.Timestamp(0)
+  dt_updated     DateTime         @default(now()) @updatedAt @db.Timestamp(0)
+  client         clients          @relation(fields: [id_client], references: [id_client])
+  routes         delivery_routes[]
+  route_schedules route_driver_schedules[]
+  vc_referral_code String? @unique(map: "uq_drivers_referral_code") @db.VarChar(20)
+
+  @@index([id_client], map: "idx_drivers_client")
+}
+
+model delivery_routes {
+  id_route    Int                    @id @default(autoincrement()) @db.UnsignedInt
+  id_client   Int                    @db.UnsignedInt
+  id_driver   Int                    @db.UnsignedInt
+  route_date  DateTime               @db.Date
+  /// Horario real de cada turno para esta ruta (ej. "10:00" a "13:00"),
+  /// se define cada vez que se arma la ruta. Null = no se especifico.
+  manana_inicio String?              @db.VarChar(5)
+  manana_fin    String?              @db.VarChar(5)
+  tarde_inicio  String?              @db.VarChar(5)
+  tarde_fin     String?              @db.VarChar(5)
+  /// El cliente puede desactivar una ruta ya organizada (por ejemplo, si ya
+  /// no se va a usar) sin borrar su historial -- asi sabe la ultima vez
+  /// que se uso con solo ver route_date. Si viene de una asignacion
+  /// automatica (id_schedule), el propio sistema la activa/desactiva sola.
+  is_active   Boolean                @default(true)
+  /// Si esta ruta se genero (o se organizo con "repetir automatico") desde
+  /// una asignacion recurrente, aqui queda la referencia -- sirve para
+  /// mostrar la frecuencia en "Rutas Creadas" y para la activacion/
+  /// desactivacion automatica.
+  id_schedule Int?                   @db.UnsignedInt
+  /// A que ruta reutilizable (nombre + tiendas) pertenece esta ruta ya
+  /// organizada -- se guarda SIEMPRE, se repita automatico o no, para que
+  /// el nombre aparezca en "Rutas Creadas" y para poder adjuntarla despues.
+  id_route_template Int?             @db.UnsignedInt
+  dt_register DateTime               @default(now()) @db.Timestamp(0)
+  driver      drivers                @relation(fields: [id_driver], references: [id_driver])
+  schedule    route_driver_schedules? @relation(fields: [id_schedule], references: [id_schedule])
+  route_template route_templates?    @relation(fields: [id_route_template], references: [id_route_template])
+  stops       delivery_route_stops[]
+
+  @@index([id_client], map: "idx_delivery_routes_client")
+  @@index([id_driver], map: "idx_delivery_routes_driver")
+  @@index([id_schedule], map: "idx_delivery_routes_schedule")
+}
+
+model delivery_route_stops {
+  id_stop              Int             @id @default(autoincrement()) @db.UnsignedInt
+  id_route             Int             @db.UnsignedInt
+  id_store             Int             @db.UnsignedInt
+  /// 'MAÑANA' o 'TARDE' -- turno en el que se visita esta tienda dentro
+  /// de ESTA ruta especifica (se etiqueta cada vez que se arma la ruta).
+  turno                String          @default("MAÑANA") @db.VarChar(10)
+  /// Puede no haber pedido — algunas visitas son solo de revision/entrega
+  /// general, sin un prepedido especifico detras.
+  id_preorder          Int?            @db.UnsignedInt
+  /// Orden dentro de la ruta (1, 2, 3...) — en modo lista se calcula del
+  /// mas cercano al chofer al mas lejano; en modo mapa, el orden en el que
+  /// el usuario fue palomeando las tiendas.
+  i_order              Int
+  /// 0 = por visitar, 1 = visitada
+  i_status             Int             @default(0) @db.TinyInt
+  /// Si ya se visito: si se dejo mercancia o no, y por que no si aplica.
+  b_delivered          Boolean?
+  vc_no_delivery_reason String?        @db.VarChar(500)
+  /// true si la mercancia se dejo a consignacion (no se cobro nada al
+  /// momento de la entrega).
+  b_consigna           Boolean         @default(false)
+  /// Cuanto se cobro en efectivo y cuanto por transferencia — pueden venir
+  /// los dos a la vez si el pago se dividio.
+  f_amount_cash        Decimal?        @db.Decimal(10, 2)
+  f_amount_transfer    Decimal?        @db.Decimal(10, 2)
+  /// Valor total de lo entregado, calculado con el precio a tienda de cada
+  /// producto (delivery_stop_items) al momento de la entrega.
+  f_total_charged      Decimal?        @db.Decimal(10, 2)
+  dt_visited           DateTime?       @db.Timestamp(0)
+  dt_register          DateTime        @default(now()) @db.Timestamp(0)
+  route                delivery_routes @relation(fields: [id_route], references: [id_route])
+  store                stores          @relation(fields: [id_store], references: [id_store])
+  preorder             task_preorders? @relation(fields: [id_preorder], references: [id_preorder])
+  items                delivery_stop_items[]
+
+  @@index([id_route], map: "idx_delivery_stops_route")
+  @@index([id_preorder], map: "idx_delivery_stops_preorder")
+}
+
+/// Que productos (y cuantos) se dejaron realmente en una parada de la
+/// ruta -- puede no coincidir exacto con lo que decia el prepedido
+/// original (sustituciones, faltantes, etc). f_unit_price guarda el
+/// precio a tienda del producto al momento de la entrega, para que el
+/// historial no cambie si despues se actualiza el precio del producto.
+model delivery_stop_items {
+  id_item     Int                  @id @default(autoincrement()) @db.UnsignedInt
+  id_stop     Int                  @db.UnsignedInt
+  id_product  Int
+  i_quantity  Int
+  f_unit_price Decimal             @db.Decimal(10, 2)
+  stop        delivery_route_stops @relation(fields: [id_stop], references: [id_stop])
+  product     products             @relation(fields: [id_product], references: [id_product])
+
+  @@index([id_stop], map: "idx_delivery_stop_items_stop")
+}
+
+/// Textos configurables del sistema que el master puede editar sin
+/// necesitar una actualizacion de la app o del panel (ej. el mensaje de
+/// instrucciones que ve el promotor al aceptar una tarea).
+model app_settings {
+  id_setting  Int      @id @default(autoincrement()) @db.UnsignedInt
+  vc_key      String   @unique @db.VarChar(100)
+  vc_value    String   @db.Text
+  dt_updated  DateTime @default(now()) @updatedAt @db.Timestamp(0)
+}
+
+/// Clips crudos (fondo verde, sin procesar) que el master sube por cada uno
+/// de los 5 "checkpoints" del video de introduccion (ver
+/// IntroVideosService.CHECKPOINTS para las llaves validas de vc_checkpoint_key:
+/// fotos_antes, fotos_post_foto1, fotos_post_foto2, preguntas, preventa).
+/// Puede haber varios clips por checkpoint, ordenados por i_order; se pegan
+/// en un solo video (ffmpeg) cuyo resultado se guarda en app_settings bajo
+/// la llave `intro_video_processed_<checkpoint_key>` (fuera de esta tabla
+/// para no duplicar tabla de "1 valor" que app_settings ya resuelve).
+model intro_video_clips {
+  id_clip           Int      @id @default(autoincrement()) @db.UnsignedInt
+  vc_checkpoint_key String   @db.VarChar(50)
+  vc_url            String   @db.VarChar(500)
+  vc_bucket_path    String   @db.VarChar(500)
+  i_order           Int      @default(0)
+  dt_register       DateTime @default(now()) @db.Timestamp(0)
+
+  @@index([vc_checkpoint_key, i_order], map: "idx_intro_video_clips_checkpoint")
+}
+
+/// Ruta reutilizable que el cliente arma una vez (nombre + tiendas + con que
+/// frecuencia se repite), para no tener que buscar tienda por tienda cada
+/// vez que organiza una ruta de entrega. Al "Organizar ruta" en Logistica,
+/// puede adjuntar una de estas para que le rellene las tiendas de una vez.
+model route_templates {
+  id_route_template Int      @id @default(autoincrement()) @db.UnsignedInt
+  id_client         Int      @db.UnsignedInt
+  name              String   @db.VarChar(150)
+  dt_register       DateTime @default(now()) @db.Timestamp(0)
+  dt_updated        DateTime @default(now()) @updatedAt @db.Timestamp(0)
+  stores            route_template_stores[]
+  schedules         route_driver_schedules[]
+  routes            delivery_routes[]
+
+  @@index([id_client], map: "idx_route_templates_client")
+}
+
+model route_template_stores {
+  id_route_template_store Int              @id @default(autoincrement()) @db.UnsignedInt
+  id_route_template       Int              @db.UnsignedInt
+  id_store                Int              @db.UnsignedInt
+  /// 'MAÑANA' o 'TARDE' -- turno en el que se visita esta tienda dentro
+  /// de la ruta. Default MAÑANA para no romper tiendas ya guardadas.
+  turno                   String           @default("MAÑANA") @db.VarChar(10)
+  route_template          route_templates  @relation(fields: [id_route_template], references: [id_route_template], onDelete: Cascade)
+
+  @@unique([id_route_template, id_store], map: "uq_route_template_store")
+  @@index([id_route_template], map: "idx_route_template_stores_template")
+}
+
+/// Asigna una ruta (route_templates) a un chofer para que se le genere sola
+/// cada cierto tiempo, en vez de que el cliente tenga que entrar cada
+/// semana a organizarla a mano. Se crea desde "Organizar Ruta" al marcar
+/// "repetir automatico". Un worker revisa esta tabla a diario.
+model route_driver_schedules {
+  id_schedule       Int              @id @default(autoincrement()) @db.UnsignedInt
+  id_client         Int              @db.UnsignedInt
+  id_route_template Int              @db.UnsignedInt
+  id_driver         Int              @db.UnsignedInt
+  /// 1=lunes ... 7=domingo
+  day_of_week       Int              @db.TinyInt
+  /// Cada cuantas semanas se repite: 1=cada semana, 2=cada 2, 3=cada 3, 4=cada 4
+  interval_weeks    Int              @db.TinyInt
+  /// Semana de referencia para contar el intervalo (la fecha en que se creo
+  /// la primer ruta de esta asignacion). No cambia aunque pasen las semanas.
+  anchor_date       DateTime         @db.Date
+  /// Turno de la visita en este dia: 'MANANA' o 'TARDE'
+  turno             String           @default("MANANA") @db.VarChar(10)
+  is_active         Boolean          @default(true)
+  dt_register       DateTime         @default(now()) @db.Timestamp(0)
+  route_template    route_templates  @relation(fields: [id_route_template], references: [id_route_template], onDelete: Cascade)
+  driver            drivers          @relation(fields: [id_driver], references: [id_driver])
+  routes            delivery_routes[]
+
+  @@index([id_client], map: "idx_route_schedules_client")
+  @@index([id_route_template], map: "idx_route_schedules_template")
+}
+
+
+/// Pantalla de la app registrada por el master para poder senalar botones
+/// sobre ella en las respuestas de "Dudas?". Cada pantalla tiene una foto
+/// (screenshot) subida por el master y, sobre ella, los botones marcados
+/// (ver faq_screen_elements).
+model faq_screens {
+  id_faq_screen             Int      @id @default(autoincrement()) @db.UnsignedInt
+  vc_screen_key             String   @unique @db.VarChar(100)
+  vc_title                  String   @db.VarChar(150)
+  vc_screenshot_url         String   @db.VarChar(500)
+  vc_screenshot_bucket_path String   @db.VarChar(500)
+  vc_app_route              String?  @db.VarChar(100)
+  dt_register               DateTime @default(now()) @db.Timestamp(0)
+  dt_updated                DateTime @default(now()) @updatedAt @db.Timestamp(0)
+  elements                  faq_screen_elements[]
+}
+
+/// Un boton/elemento marcado por el master sobre la foto de una pantalla
+/// (faq_screens), con el rectangulo donde aparece (en porcentaje, para que
+/// no dependa de la resolucion de pantalla). vc_element_key debe coincidir
+/// con la llave real que tiene ese boton en el codigo de la app (Flutter),
+/// para poder resaltarlo de verdad cuando se usa en un paso (ver
+/// faq_highlight_steps).
+model faq_screen_elements {
+  id_faq_screen_element Int      @id @default(autoincrement()) @db.UnsignedInt
+  id_faq_screen         Int      @db.UnsignedInt
+  vc_element_key        String   @db.VarChar(100)
+  vc_label              String   @db.VarChar(150)
+  f_x                   Float
+  f_y                   Float
+  f_width               Float
+  f_height              Float
+  vc_direction          String?  @db.VarChar(20)
+  f_rotation_deg        Float    @default(0)
+  dt_register           DateTime @default(now()) @db.Timestamp(0)
+  screen                faq_screens @relation(fields: [id_faq_screen], references: [id_faq_screen], onDelete: Cascade)
+  steps                 faq_highlight_steps[]
+
+  @@unique([id_faq_screen, vc_element_key], map: "uq_faq_screen_element_key")
+}
+
+/// Pregunta frecuente armada por el master: una respuesta con varias
+/// formas distintas de preguntarla (faq_question_phrases) para que el
+/// promotor la encuentre escriba como escriba, y opcionalmente una
+/// secuencia de botones a resaltar (faq_highlight_steps).
+model faq_questions {
+  id_faq_question Int      @id @default(autoincrement()) @db.UnsignedInt
+  vc_answer_text  String   @db.Text
+  i_status        Int      @default(1) @db.TinyInt
+  dt_register     DateTime @default(now()) @db.Timestamp(0)
+  dt_updated      DateTime @default(now()) @updatedAt @db.Timestamp(0)
+  phrases         faq_question_phrases[]
+  steps           faq_highlight_steps[]
+}
+
+model faq_question_phrases {
+  id_faq_question_phrase Int      @id @default(autoincrement()) @db.UnsignedInt
+  id_faq_question        Int      @db.UnsignedInt
+  vc_phrase              String   @db.VarChar(255)
+  dt_register            DateTime @default(now()) @db.Timestamp(0)
+  question               faq_questions @relation(fields: [id_faq_question], references: [id_faq_question], onDelete: Cascade)
+
+  @@index([id_faq_question], map: "idx_faq_question_phrases_question")
+}
+
+model faq_highlight_steps {
+  id_faq_highlight_step Int      @id @default(autoincrement()) @db.UnsignedInt
+  id_faq_question       Int      @db.UnsignedInt
+  id_faq_screen_element Int      @db.UnsignedInt
+  i_order               Int      @default(0)
+  question              faq_questions @relation(fields: [id_faq_question], references: [id_faq_question], onDelete: Cascade)
+  element               faq_screen_elements @relation(fields: [id_faq_screen_element], references: [id_faq_screen_element])
+
+  @@index([id_faq_question, i_order], map: "idx_faq_highlight_steps_question")
+}
+
+model faq_cliente_questions {
+  id_faq_cliente_question Int      @id @default(autoincrement()) @db.UnsignedInt
+  vc_answer_text          String   @db.Text
+  i_status                Int      @default(1) @db.TinyInt
+  dt_register             DateTime @default(now()) @db.Timestamp(0)
+  dt_updated              DateTime @default(now()) @updatedAt @db.Timestamp(0)
+  vc_route                String?  @db.VarChar(100)
+  phrases                 faq_cliente_phrases[]
+}
+
+model faq_cliente_phrases {
+  id_faq_cliente_phrase   Int      @id @default(autoincrement()) @db.UnsignedInt
+  id_faq_cliente_question Int      @db.UnsignedInt
+  vc_phrase               String   @db.VarChar(255)
+  dt_register             DateTime @default(now()) @db.Timestamp(0)
+  question                faq_cliente_questions @relation(fields: [id_faq_cliente_question], references: [id_faq_cliente_question], onDelete: Cascade)
+
+  @@index([id_faq_cliente_question], map: "idx_faq_cliente_phrases_question")
+}
+
+/// Libreta del saldo de clientes PREPAGO. f_amount con signo: positivo suma
+/// (RECARGA, DEVOLUCION, AJUSTE+), negativo resta (CARGO_PEDIDO, AJUSTE-).
+/// Los unique evitan devolver dos veces la misma tarea o acreditar dos veces
+/// la misma recarga.
+model client_balance_movements {
+  id_movement     Int      @id @default(autoincrement()) @db.UnsignedInt
+  id_client       Int      @db.UnsignedInt
+  vc_type         String   @db.VarChar(20)
+  f_amount        Decimal  @db.Decimal(12, 2)
+  f_balance_after Decimal  @db.Decimal(12, 2)
+  id_order        Int?     @db.UnsignedInt
+  id_task         Int?     @db.UnsignedInt
+  id_topup        Int?     @db.UnsignedInt
+  vc_note         String?  @db.VarChar(255)
+  id_user         Int?     @db.UnsignedInt
+  dt_register     DateTime @default(now()) @db.Timestamp(0)
+
+  client clients @relation(fields: [id_client], references: [id_client])
+
+  @@unique([id_task, vc_type], map: "uq_cbm_task_type")
+  @@unique([id_topup, vc_type], map: "uq_cbm_topup_type")
+  @@index([id_client, dt_register], map: "idx_cbm_client")
+  @@index([id_order], map: "idx_cbm_order")
+}
+
+/// Recargas que pide el cliente prepago (1=pendiente, 2=aprobada, 3=rechazada).
+model client_topups {
+  id_topup            Int       @id @default(autoincrement()) @db.UnsignedInt
+  id_client           Int       @db.UnsignedInt
+  f_amount            Decimal   @db.Decimal(12, 2)
+  vc_receipt_url      String?   @db.VarChar(500)
+  vc_reference        String?   @db.VarChar(100)
+  id_status           Int       @default(1) @db.TinyInt
+  vc_rejection_reason String?   @db.VarChar(255)
+  id_user_requester   Int?      @db.UnsignedInt
+  id_user_validator   Int?      @db.UnsignedInt
+  dt_register         DateTime  @default(now()) @db.Timestamp(0)
+  dt_resolved         DateTime? @db.DateTime(0)
+
+  client clients @relation(fields: [id_client], references: [id_client])
+
+  @@index([id_client], map: "idx_topups_client")
+  @@index([id_status], map: "idx_topups_status")
+}
+
+// ==================== FINANZAS: PAGOS A CHOFERES POR INVITAR PROMOTORES ====================
+model driver_activator_payments {
+  id_payment      Int       @id @default(autoincrement()) @db.UnsignedInt
+  id_driver       Int       @db.UnsignedInt
+  vc_folio        String?   @unique(map: "uq_driver_activator_payments_folio") @db.VarChar(50)
+  dt_start        DateTime  @db.DateTime(0)
+  dt_end          DateTime  @db.DateTime(0)
+  f_total         Decimal   @db.Decimal(10, 2)
+  id_status       Int       @default(1)
+  dt_payment      DateTime? @db.DateTime(0)
+  vc_notes        String?   @db.VarChar(500)
+  id_user_creator Int       @db.UnsignedInt
+  id_user_payer   Int?      @db.UnsignedInt
+  dt_register     DateTime  @default(now()) @db.Timestamp(0)
+  dt_updated      DateTime  @default(now()) @updatedAt @db.Timestamp(0)
+  payment_tasks   driver_activator_payment_tasks[]
+
+  @@index([id_driver, id_status], map: "idx_driver_act_payments_driver_status")
+}
+
+model driver_activator_payment_tasks {
+  id          Int      @id @default(autoincrement()) @db.UnsignedInt
+  id_payment  Int      @db.UnsignedInt
+  id_task     Int      @db.UnsignedInt
+  id_promoter Int      @db.UnsignedInt
+  f_amount    Decimal  @db.Decimal(10, 2)
+  dt_register DateTime @default(now()) @db.Timestamp(0)
+  payment     driver_activator_payments @relation(fields: [id_payment], references: [id_payment])
+
+  @@unique([id_payment, id_task], map: "uq_driver_act_payment_task")
+  @@index([id_task], map: "idx_driver_act_payment_tasks_task")
+}
+
+model driver_activator_payment_logs {
+  id_payment_log Int      @id @default(autoincrement()) @db.UnsignedInt
+  id_payment     Int      @db.UnsignedInt
+  id_user        Int      @db.UnsignedInt
+  vc_log         String   @db.VarChar(1000)
+  dt_register    DateTime @default(now()) @db.Timestamp(0)
+
+  @@index([id_payment], map: "idx_driver_act_payment_logs_payment")
+}
+
+// Cuenta (CLABE o tarjeta) del chofer para que master le deposite sus comisiones.
+// El numero se guarda cifrado (AES-256-GCM), igual que en promoter_bank_accounts.
+model driver_bank_accounts {
+  id                  Int                   @id @default(autoincrement()) @db.UnsignedInt
+  id_driver           Int                   @db.UnsignedInt
+  account_holder_name String                @db.VarChar(255)
+  account_type        promoter_account_type
+  clabe               String?               @db.Text
+  card_number         String?               @db.Text
+  bank_name           String                @db.VarChar(255)
+  dt_register         DateTime              @default(now()) @db.Timestamp(0)
+  dt_updated          DateTime              @default(now()) @updatedAt @db.Timestamp(0)
+  dt_deleted          DateTime?             @db.Timestamp(0)
+
+  @@index([id_driver], map: "idx_driver_bank_accounts_driver")
+}
